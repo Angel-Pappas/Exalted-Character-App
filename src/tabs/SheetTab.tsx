@@ -348,12 +348,12 @@ export default function SheetTab({ sheet, onChange }: Props) {
           isDraggable={editMode}
           isResizable={editMode}
           onLayoutChange={(newLayout: PanelLayout[]) => update({ layout: newLayout.map(({ i, x, y, w, h }) => ({ i, x, y, w, h })) })}
-          margin={[6, 6]}
-          containerPadding={[8, 8]}
+          margin={[0, 0]}
+          containerPadding={[0, 0]}
           draggableHandle=".drag-handle"
         >
           {Object.entries(panels).map(([key, content]) => (
-            <div key={key} className="relative">
+            <div key={key} className="relative p-[2px]">
               {editMode && (
                 <div className="drag-handle absolute inset-x-0 top-0 h-5 bg-amber-500/20 hover:bg-amber-500/40 cursor-grab active:cursor-grabbing rounded-t-lg flex items-center justify-center z-10">
                   <div className="flex gap-0.5">
