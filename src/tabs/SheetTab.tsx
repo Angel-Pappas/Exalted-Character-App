@@ -340,10 +340,14 @@ export default function SheetTab({ sheet, onChange }: Props) {
           compactor={noCompactor}
           layout={data.layout}
           onLayoutChange={(newLayout) => update({ layout: newLayout.map(({ i, x, y, w, h }) => ({ i, x, y, w, h })) })}
-          style={editMode ? {
-            backgroundImage: 'linear-gradient(rgba(251,191,36,0.08) 1px, transparent 1px), linear-gradient(90deg, rgba(251,191,36,0.08) 1px, transparent 1px)',
-            backgroundSize: `${width / 64}px 10px`,
-          } : undefined}
+          autoSize={false}
+          style={{
+            minHeight: '2000px',
+            ...(editMode ? {
+              backgroundImage: 'linear-gradient(rgba(251,191,36,0.08) 1px, transparent 1px), linear-gradient(90deg, rgba(251,191,36,0.08) 1px, transparent 1px)',
+              backgroundSize: `${width / 64}px 10px`,
+            } : {}),
+          }}
         >
           {Object.entries(panels).map(([key, content]) => (
             <div key={key} className="relative p-[2px]">
