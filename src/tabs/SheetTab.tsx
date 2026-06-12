@@ -323,7 +323,7 @@ export default function SheetTab({ sheet, onChange }: Props) {
   }, [])
 
   return (
-    <div className="relative" ref={containerRef}>
+    <div className="relative">
       {/* Edit layout toggle */}
       <div className="absolute top-2 right-4 z-10">
         <button
@@ -341,11 +341,13 @@ export default function SheetTab({ sheet, onChange }: Props) {
         </button>
       </div>
 
+      {/* ref is on this div so measured width matches exactly what GridLayout renders into */}
       <div
-        className="pt-2"
+        ref={containerRef}
         style={editMode ? {
           backgroundImage: 'linear-gradient(rgba(251,191,36,0.07) 1px, transparent 1px), linear-gradient(90deg, rgba(251,191,36,0.07) 1px, transparent 1px)',
           backgroundSize: `calc(100% / 64) 10px`,
+          backgroundPosition: '0 0',
         } : undefined}
       >
         <GridLayout
