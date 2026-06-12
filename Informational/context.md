@@ -39,11 +39,11 @@ This is a custom/modified version of the Exalted tabletop RPG. Not all standard 
 - Characters tab: NPC list with per-NPC notes
 - Auto-save to Supabase (1 second debounce)
 - 404-on-refresh fix via vercel.json rewrites
-- Grid layout on character sheet: 64-unit system, 4 columns (4fr 4fr 8fr 48fr), col 4 reserved for future panels
+- **Drag-and-drop grid layout editor** on the character sheet:
+  - 8 independent panels, each freely movable and resizable
+  - "Edit Layout" toggle button top-right; amber grid lines visible in edit mode only
+  - Layout persisted per character in Supabase
 
-## Next Planned Feature
-- **Drag-and-drop layout editor** for the character sheet panels
-- Recommended library: `react-grid-layout`
-- Toggle "edit layout" mode on/off
-- When on: panels are draggable and resizable, snapping to the 64-column grid
-- When off: layout is locked and saved to Supabase per character
+## Next Planned Features
+- Additional panels in the large empty area to the right (reserved space on the grid)
+- Calculated/dynamic defenses (currently manual number fields)

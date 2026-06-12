@@ -23,12 +23,11 @@ A personal interactive character sheet web app for the tabletop RPG **Exalted** 
 - Dark theme (stone/amber color palette)
 - Compact and information-dense — minimize scrolling
 - The character sheet uses a grid layout (64-unit system) with panels placed in columns
-- The layout will eventually be user-configurable (drag-and-drop panels, resize) — this is planned but not yet implemented
+- The layout is user-configurable: panels can be dragged and resized in "Edit Layout" mode; layout is saved per character
 - No unnecessary chrome — clean, functional, no bloat
 
 ## What Is NOT In Scope (Yet)
 - PWA / native mobile app
 - Real-time collaboration / multiplayer
-- Drag-and-drop layout editor (planned next)
 - Dice roller
 - Any game automation or rules enforcement — this is purely a reference/tracking sheet

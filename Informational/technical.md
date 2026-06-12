@@ -53,7 +53,8 @@ characters (
     merits: { id, type: 'Primary'|'Secondary'|'Tertiary', name }[],
     intimacies: { id, intensity: 'Minor'|'Major'|'Defining', description }[],
     motes: { current: number, committed: number, total: number },
-    health: { penalty: string, checked: boolean }[]
+    health: { penalty: string, checked: boolean }[],
+    layout: { i: string, x: number, y: number, w: number, h: number }[]
   },
   milestones: {
     id: string,
@@ -117,12 +118,18 @@ Athletics, Awareness, Close Combat, Craft, Embassy, Integrity, Navigate, Perform
 **Health track:** -0, -1, -1, -2, -2, -4, Incap (7 boxes, no damage types)
 
 ## Layout System (SheetTab)
-- CSS grid with inline style: `gridTemplateColumns: '4fr 4fr 8fr 48fr'`
-- Total = 64 units
-- Col 1 (4fr): Attributes + Abilities
-- Col 2 (4fr): Defenses + Motes + Health
-- Col 3 (8fr): Merits + Languages + Intimacies
-- Col 4 (48fr): Reserved / open for future panels
+- Uses `react-grid-layout` and `react-resizable` for drag-and-drop panel layout
+- 64-column grid, row height = 10px, margins = 6px
+- 8 independent panels: `attributes`, `abilities`, `defenses`, `motes`, `health`, `merits`, `languages`, `intimacies`
+- Default layout places panels in 3 column groups (widths ~8, 8, 14 cols) with the rest reserved
+- Layout is stored in `SheetData.layout: PanelLayout[]` and saved to Supabase via auto-save
+- **Edit mode toggle** (top-right button): when ON, panels are draggable/resizable with an amber drag handle bar at the top; grid lines are shown as a faint amber crosshatch background. When OFF, layout is locked and handles are hidden.
+- `draggableHandle=".drag-handle"` — only the top handle bar triggers dragging in edit mode
+
+### PanelLayout type (in character.ts)
+```ts
+interface PanelLayout { i: string; x: number; y: number; w: number; h: number }
+```
 
 ## Auto-save
 - Triggered 1 second after any data change (debounced `setTimeout`)

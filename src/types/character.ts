@@ -47,6 +47,14 @@ export interface HealthBox {
   checked: boolean
 }
 
+export interface PanelLayout {
+  i: string
+  x: number
+  y: number
+  w: number
+  h: number
+}
+
 export interface SheetData {
   attributes: Record<string, number>
   abilities: Record<string, AbilityData>
@@ -56,6 +64,7 @@ export interface SheetData {
   intimacies: IntimacyEntry[]
   motes: { current: number; committed: number; total: number }
   health: HealthBox[]
+  layout: PanelLayout[]
 }
 
 export interface CharacterData {
