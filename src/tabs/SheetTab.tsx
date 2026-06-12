@@ -89,6 +89,16 @@ export default function SheetTab({ sheet, onChange }: Props) {
   const [newIntensity, setNewIntensity] = useState<IntimacyEntry['intensity']>('Minor')
   const [newIntimacyDesc, setNewIntimacyDesc] = useState('')
 
+  // Edit state
+  const [editingMeritId, setEditingMeritId] = useState<string | null>(null)
+  const [editMeritType, setEditMeritType] = useState<MeritEntry['type']>('Primary')
+  const [editMeritName, setEditMeritName] = useState('')
+  const [editingLangIdx, setEditingLangIdx] = useState<number | null>(null)
+  const [editLangValue, setEditLangValue] = useState('')
+  const [editingIntimacyId, setEditingIntimacyId] = useState<string | null>(null)
+  const [editIntimacyIntensity, setEditIntimacyIntensity] = useState<IntimacyEntry['intensity']>('Minor')
+  const [editIntimacyDesc, setEditIntimacyDesc] = useState('')
+
   function update(partial: Partial<SheetData>) { onChange({ ...data, ...partial }) }
   function setAttr(name: string, value: number) { update({ attributes: { ...data.attributes, [name]: value } }) }
   function setAbility(name: string, patch: Partial<AbilityData>) {
@@ -101,18 +111,33 @@ export default function SheetTab({ sheet, onChange }: Props) {
     setNewLanguage('')
   }
   function removeLanguage(i: number) { update({ languages: data.languages.filter((_, idx) => idx !== i) }) }
+  function saveLang() {
+    if (editingLangIdx === null || !editLangValue.trim()) return
+    update({ languages: data.languages.map((l, i) => i === editingLangIdx ? editLangValue.trim() : l) })
+    setEditingLangIdx(null)
+  }
   function addMerit() {
     if (!newMeritName.trim()) return
     update({ merits: [...data.merits, { id: crypto.randomUUID(), type: newMeritType, name: newMeritName.trim() }] })
     setNewMeritName('')
   }
   function removeMerit(id: string) { update({ merits: data.merits.filter(m => m.id !== id) }) }
+  function saveMerit() {
+    if (!editingMeritId || !editMeritName.trim()) return
+    update({ merits: data.merits.map(m => m.id === editingMeritId ? { ...m, type: editMeritType, name: editMeritName.trim() } : m) })
+    setEditingMeritId(null)
+  }
   function addIntimacy() {
     if (!newIntimacyDesc.trim()) return
     update({ intimacies: [...data.intimacies, { id: crypto.randomUUID(), intensity: newIntensity, description: newIntimacyDesc.trim() }] })
     setNewIntimacyDesc('')
   }
   function removeIntimacy(id: string) { update({ intimacies: data.intimacies.filter(i => i.id !== id) }) }
+  function saveIntimacy() {
+    if (!editingIntimacyId || !editIntimacyDesc.trim()) return
+    update({ intimacies: data.intimacies.map(i => i.id === editingIntimacyId ? { ...i, intensity: editIntimacyIntensity, description: editIntimacyDesc.trim() } : i) })
+    setEditingIntimacyId(null)
+  }
   function toggleHealth(i: number) {
     update({ health: data.health.map((h, idx) => idx === i ? { ...h, checked: !h.checked } : h) })
   }
@@ -236,12 +261,30 @@ export default function SheetTab({ sheet, onChange }: Props) {
         <SectionHeader title="Merits" />
         <div className="space-y-1 mb-2">
           {data.merits.map(merit => (
-            <div key={merit.id} className="flex items-center justify-between text-xs">
-              <div className="flex items-center gap-1.5 min-w-0">
-                <span className={`shrink-0 font-semibold px-1 py-0.5 rounded ${merit.type === 'Primary' ? 'bg-amber-900 text-amber-300' : merit.type === 'Secondary' ? 'bg-sky-900 text-sky-300' : 'bg-stone-700 text-stone-300'}`}>{merit.type[0]}</span>
-                <span className="text-stone-200 truncate">{merit.name}</span>
+            <div key={merit.id}>
+              <div className="flex items-center justify-between text-xs">
+                <div className="flex items-center gap-1.5 min-w-0">
+                  <span className={`shrink-0 font-semibold px-1 py-0.5 rounded ${merit.type === 'Primary' ? 'bg-amber-900 text-amber-300' : merit.type === 'Secondary' ? 'bg-sky-900 text-sky-300' : 'bg-stone-700 text-stone-300'}`}>{merit.type[0]}</span>
+                  <span className="text-stone-200 truncate">{merit.name}</span>
+                </div>
+                <div className="flex gap-1 ml-1 shrink-0">
+                  <button onClick={() => { setEditingMeritId(merit.id); setEditMeritType(merit.type); setEditMeritName(merit.name) }} className="text-stone-500 hover:text-amber-400 transition-colors">✎</button>
+                  <button onClick={() => removeMerit(merit.id)} className="text-stone-500 hover:text-red-400 transition-colors">✕</button>
+                </div>
               </div>
-              <button onClick={() => removeMerit(merit.id)} className="text-stone-600 hover:text-red-400 ml-1 shrink-0 transition-colors">✕</button>
+              {editingMeritId === merit.id && (
+                <div className="flex gap-1 mt-1">
+                  <select value={editMeritType} onChange={e => setEditMeritType(e.target.value as MeritEntry['type'])}
+                    className="bg-stone-800 border border-amber-500 text-stone-100 rounded px-1 py-0.5 text-xs focus:outline-none">
+                    <option>Primary</option><option>Secondary</option><option>Tertiary</option>
+                  </select>
+                  <input type="text" value={editMeritName} onChange={e => setEditMeritName(e.target.value)}
+                    onKeyDown={e => { if (e.key === 'Enter') saveMerit(); if (e.key === 'Escape') setEditingMeritId(null) }}
+                    className="flex-1 min-w-0 bg-stone-800 border border-amber-500 text-stone-100 rounded px-2 py-0.5 text-xs focus:outline-none" />
+                  <button onClick={saveMerit} className="bg-amber-600 hover:bg-amber-500 text-white rounded px-2 py-0.5 text-xs transition-colors">✓</button>
+                  <button onClick={() => setEditingMeritId(null)} className="text-stone-500 hover:text-stone-300 text-xs px-1">✕</button>
+                </div>
+              )}
             </div>
           ))}
           {data.merits.length === 0 && <p className="text-xs text-stone-500">None.</p>}
@@ -264,9 +307,23 @@ export default function SheetTab({ sheet, onChange }: Props) {
         <SectionHeader title="Languages" />
         <div className="space-y-1 mb-2">
           {data.languages.map((lang, i) => (
-            <div key={i} className="flex items-center justify-between text-xs text-stone-200">
-              <span>{lang}</span>
-              <button onClick={() => removeLanguage(i)} className="text-stone-600 hover:text-red-400 transition-colors">✕</button>
+            <div key={i}>
+              <div className="flex items-center justify-between text-xs text-stone-200">
+                <span>{lang}</span>
+                <div className="flex gap-1 ml-1 shrink-0">
+                  <button onClick={() => { setEditingLangIdx(i); setEditLangValue(lang) }} className="text-stone-500 hover:text-amber-400 transition-colors">✎</button>
+                  <button onClick={() => removeLanguage(i)} className="text-stone-500 hover:text-red-400 transition-colors">✕</button>
+                </div>
+              </div>
+              {editingLangIdx === i && (
+                <div className="flex gap-1 mt-1">
+                  <input type="text" value={editLangValue} onChange={e => setEditLangValue(e.target.value)}
+                    onKeyDown={e => { if (e.key === 'Enter') saveLang(); if (e.key === 'Escape') setEditingLangIdx(null) }}
+                    className="flex-1 min-w-0 bg-stone-800 border border-amber-500 text-stone-100 rounded px-2 py-0.5 text-xs focus:outline-none" />
+                  <button onClick={saveLang} className="bg-amber-600 hover:bg-amber-500 text-white rounded px-2 py-0.5 text-xs transition-colors">✓</button>
+                  <button onClick={() => setEditingLangIdx(null)} className="text-stone-500 hover:text-stone-300 text-xs px-1">✕</button>
+                </div>
+              )}
             </div>
           ))}
           {data.languages.length === 0 && <p className="text-xs text-stone-500">None.</p>}
@@ -285,12 +342,30 @@ export default function SheetTab({ sheet, onChange }: Props) {
         <SectionHeader title="Intimacies" />
         <div className="space-y-1 mb-2">
           {data.intimacies.map(intimacy => (
-            <div key={intimacy.id} className="flex items-center justify-between text-xs">
-              <div className="flex items-center gap-1.5 min-w-0">
-                <span className={`shrink-0 font-semibold px-1 py-0.5 rounded ${intimacy.intensity === 'Defining' ? 'bg-purple-900 text-purple-300' : intimacy.intensity === 'Major' ? 'bg-amber-900 text-amber-300' : 'bg-stone-700 text-stone-300'}`}>{intimacy.intensity[0]}</span>
-                <span className="text-stone-200 truncate">{intimacy.description}</span>
+            <div key={intimacy.id}>
+              <div className="flex items-center justify-between text-xs">
+                <div className="flex items-center gap-1.5 min-w-0">
+                  <span className={`shrink-0 font-semibold px-1 py-0.5 rounded ${intimacy.intensity === 'Defining' ? 'bg-purple-900 text-purple-300' : intimacy.intensity === 'Major' ? 'bg-amber-900 text-amber-300' : 'bg-stone-700 text-stone-300'}`}>{intimacy.intensity[0]}</span>
+                  <span className="text-stone-200 truncate">{intimacy.description}</span>
+                </div>
+                <div className="flex gap-1 ml-1 shrink-0">
+                  <button onClick={() => { setEditingIntimacyId(intimacy.id); setEditIntimacyIntensity(intimacy.intensity); setEditIntimacyDesc(intimacy.description) }} className="text-stone-500 hover:text-amber-400 transition-colors">✎</button>
+                  <button onClick={() => removeIntimacy(intimacy.id)} className="text-stone-500 hover:text-red-400 transition-colors">✕</button>
+                </div>
               </div>
-              <button onClick={() => removeIntimacy(intimacy.id)} className="text-stone-600 hover:text-red-400 ml-1 shrink-0 transition-colors">✕</button>
+              {editingIntimacyId === intimacy.id && (
+                <div className="flex gap-1 mt-1">
+                  <select value={editIntimacyIntensity} onChange={e => setEditIntimacyIntensity(e.target.value as IntimacyEntry['intensity'])}
+                    className="bg-stone-800 border border-amber-500 text-stone-100 rounded px-1 py-0.5 text-xs focus:outline-none">
+                    <option>Minor</option><option>Major</option><option>Defining</option>
+                  </select>
+                  <input type="text" value={editIntimacyDesc} onChange={e => setEditIntimacyDesc(e.target.value)}
+                    onKeyDown={e => { if (e.key === 'Enter') saveIntimacy(); if (e.key === 'Escape') setEditingIntimacyId(null) }}
+                    className="flex-1 min-w-0 bg-stone-800 border border-amber-500 text-stone-100 rounded px-2 py-0.5 text-xs focus:outline-none" />
+                  <button onClick={saveIntimacy} className="bg-amber-600 hover:bg-amber-500 text-white rounded px-2 py-0.5 text-xs transition-colors">✓</button>
+                  <button onClick={() => setEditingIntimacyId(null)} className="text-stone-500 hover:text-stone-300 text-xs px-1">✕</button>
+                </div>
+              )}
             </div>
           ))}
           {data.intimacies.length === 0 && <p className="text-xs text-stone-500">None.</p>}
