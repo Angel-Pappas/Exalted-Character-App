@@ -1,7 +1,6 @@
-import { useState, useRef, useEffect } from 'react'
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
-import GridLayoutRaw from 'react-grid-layout'
-const GridLayout = GridLayoutRaw as any
+import { useState } from 'react'
+import { GridLayout, useContainerWidth } from 'react-grid-layout'
+import { GridBackground } from 'react-grid-layout/extras'
 import 'react-grid-layout/css/styles.css'
 import 'react-resizable/css/styles.css'
 import type { SheetData, AbilityData, MeritEntry, IntimacyEntry, HealthBox, PanelLayout } from '../types/character'
@@ -311,19 +310,10 @@ export default function SheetTab({ sheet, onChange }: Props) {
     ),
   }
 
-  const containerRef = useRef<HTMLDivElement>(null)
-  const [containerWidth, setContainerWidth] = useState(1200)
-  useEffect(() => {
-    if (!containerRef.current) return
-    const obs = new ResizeObserver(entries => {
-      setContainerWidth(entries[0].contentRect.width)
-    })
-    obs.observe(containerRef.current)
-    return () => obs.disconnect()
-  }, [])
+  const { width, containerRef, mounted } = useContainerWidth()
 
   return (
-    <div className="relative">
+    <div className="relative" ref={containerRef}>
       {/* Edit layout toggle */}
       <div className="absolute top-2 right-4 z-10">
         <button
@@ -341,42 +331,44 @@ export default function SheetTab({ sheet, onChange }: Props) {
         </button>
       </div>
 
-      {/* ref is on this div so measured width matches exactly what GridLayout renders into */}
-      <div
-        ref={containerRef}
-        style={editMode ? {
-          backgroundImage: 'linear-gradient(rgba(251,191,36,0.07) 1px, transparent 1px), linear-gradient(90deg, rgba(251,191,36,0.07) 1px, transparent 1px)',
-          backgroundSize: `calc(100% / 64) 10px`,
-          backgroundPosition: '0 0',
-        } : undefined}
-      >
-        <GridLayout
-          className="layout"
-          layout={data.layout}
-          cols={64}
-          rowHeight={10}
-          width={containerWidth}
-          isDraggable={editMode}
-          isResizable={editMode}
-          onLayoutChange={(newLayout: PanelLayout[]) => update({ layout: newLayout.map(({ i, x, y, w, h }) => ({ i, x, y, w, h })) })}
-          margin={[0, 0]}
-          containerPadding={[0, 0]}
-          draggableHandle=".drag-handle"
-        >
-          {Object.entries(panels).map(([key, content]) => (
-            <div key={key} className="relative p-[2px]">
-              {editMode && (
-                <div className="drag-handle absolute inset-x-0 top-0 h-5 bg-amber-500/20 hover:bg-amber-500/40 cursor-grab active:cursor-grabbing rounded-t-lg flex items-center justify-center z-10">
-                  <div className="flex gap-0.5">
-                    {[...Array(4)].map((_, i) => <div key={i} className="w-0.5 h-2.5 bg-amber-400/60 rounded" />)}
+      {mounted && (
+        <>
+          {editMode && (
+            <GridBackground
+              width={width}
+              cols={64}
+              rowHeight={10}
+              margin={[0, 0]}
+              rows="auto"
+              color="rgba(251,191,36,0.08)"
+              borderRadius={0}
+              style={{ position: 'absolute', top: 0, left: 0, zIndex: 0 }}
+            />
+          )}
+          <GridLayout
+            width={width}
+            gridConfig={{ cols: 64, rowHeight: 10, margin: [0, 0], containerPadding: [0, 0] }}
+            dragConfig={{ enabled: editMode, handle: '.drag-handle' }}
+            resizeConfig={{ enabled: editMode }}
+            layout={data.layout}
+            onLayoutChange={(newLayout) => update({ layout: newLayout.map(({ i, x, y, w, h }) => ({ i, x, y, w, h })) })}
+            style={{ position: 'relative', zIndex: 1 }}
+          >
+            {Object.entries(panels).map(([key, content]) => (
+              <div key={key} className="relative p-[2px]">
+                {editMode && (
+                  <div className="drag-handle absolute inset-x-0 top-0 h-5 bg-amber-500/20 hover:bg-amber-500/40 cursor-grab active:cursor-grabbing rounded-t-lg flex items-center justify-center z-10">
+                    <div className="flex gap-0.5">
+                      {[...Array(4)].map((_, i) => <div key={i} className="w-0.5 h-2.5 bg-amber-400/60 rounded" />)}
+                    </div>
                   </div>
-                </div>
-              )}
-              {content}
-            </div>
-          ))}
-        </GridLayout>
-      </div>
+                )}
+                {content}
+              </div>
+            ))}
+          </GridLayout>
+        </>
+      )}
     </div>
   )
 }
