@@ -343,12 +343,12 @@ export default function SheetTab({ sheet, onChange }: Props) {
         <div className="space-y-1 mb-2">
           {data.intimacies.map(intimacy => (
             <div key={intimacy.id}>
-              <div className="flex items-center justify-between text-xs">
-                <div className="flex items-center gap-1.5 min-w-0">
+              <div className="flex items-start justify-between text-xs gap-1">
+                <div className="flex items-start gap-1.5 min-w-0">
                   <span className={`shrink-0 font-semibold px-1 py-0.5 rounded ${intimacy.intensity === 'Defining' ? 'bg-purple-900 text-purple-300' : intimacy.intensity === 'Major' ? 'bg-amber-900 text-amber-300' : 'bg-stone-700 text-stone-300'}`}>{intimacy.intensity[0]}</span>
-                  <span className="text-stone-200 truncate">{intimacy.description}</span>
+                  <span className="text-stone-200 break-words min-w-0">{intimacy.description}</span>
                 </div>
-                <div className="flex gap-1 ml-1 shrink-0">
+                <div className="flex gap-1 shrink-0">
                   <button onClick={() => { setEditingIntimacyId(intimacy.id); setEditIntimacyIntensity(intimacy.intensity); setEditIntimacyDesc(intimacy.description) }} className="text-stone-500 hover:text-amber-400 transition-colors">✎</button>
                   <button onClick={() => removeIntimacy(intimacy.id)} className="text-stone-500 hover:text-red-400 transition-colors">✕</button>
                 </div>
