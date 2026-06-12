@@ -22,6 +22,14 @@ body {
 }
 
 /* Resize handle: always on top of drag handle and panel content */
+.no-scrollbar {
+  scrollbar-width: none;
+  -ms-overflow-style: none;
+}
+.no-scrollbar::-webkit-scrollbar {
+  display: none;
+}
+
 .react-resizable-handle {
   width: 20px !important;
   height: 20px !important;

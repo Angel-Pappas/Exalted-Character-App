@@ -202,7 +202,7 @@ function CharmPanel({ categories, onChange, dragEnabled }: {
         </div>
       )}
 
-      <div className="space-y-2 overflow-y-auto flex-1">
+      <div className="space-y-2 overflow-y-auto no-scrollbar flex-1">
         {categories.length === 0 && <p className="text-xs text-stone-500">No categories yet.</p>}
         {categories.map(cat => (
           <div key={cat.id}
@@ -376,7 +376,7 @@ function EffectPanel({ categories, onChange, dragEnabled }: {
     <div className="bg-stone-900 border border-stone-700 rounded-lg p-2 overflow-hidden h-full flex flex-col">
       <div className="flex items-center justify-between mb-2 shrink-0"><SectionHeader title="Effects" /><button onClick={() => setAddingCat(v => !v)} className={g}>+ category</button></div>
       {addingCat && <div className="flex gap-1 mb-2 shrink-0"><input autoFocus type="text" value={newCatName} onChange={e => setNewCatName(e.target.value)} onKeyDown={e => { if (e.key === 'Enter') addCat(); if (e.key === 'Escape') setAddingCat(false) }} placeholder="Category name…" className={inputCls} /><button onClick={addCat} className="bg-amber-600 hover:bg-amber-500 text-white rounded px-2 py-0.5 text-xs">✓</button><button onClick={() => setAddingCat(false)} className="text-stone-500 hover:text-stone-300 text-xs px-1">✕</button></div>}
-      <div className="space-y-2 overflow-y-auto flex-1">
+      <div className="space-y-2 overflow-y-auto no-scrollbar flex-1">
         {categories.length === 0 && <p className="text-xs text-stone-500">No categories yet.</p>}
         {categories.map(cat => (
           <div key={cat.id}
@@ -467,7 +467,7 @@ function InventoryPanel({ categories, onChange, dragEnabled }: {
     <div className="bg-stone-900 border border-stone-700 rounded-lg p-2 overflow-hidden h-full flex flex-col">
       <div className="flex items-center justify-between mb-2 shrink-0"><SectionHeader title="Inventory" /><button onClick={() => setAddingCat(v => !v)} className={g}>+ category</button></div>
       {addingCat && <div className="flex gap-1 mb-2 shrink-0"><input autoFocus type="text" value={newCatName} onChange={e => setNewCatName(e.target.value)} onKeyDown={e => { if (e.key === 'Enter') addCat(); if (e.key === 'Escape') setAddingCat(false) }} placeholder="Category name…" className={inputCls} /><button onClick={addCat} className="bg-amber-600 hover:bg-amber-500 text-white rounded px-2 py-0.5 text-xs">✓</button><button onClick={() => setAddingCat(false)} className="text-stone-500 hover:text-stone-300 text-xs px-1">✕</button></div>}
-      <div className="space-y-2 overflow-y-auto flex-1">
+      <div className="space-y-2 overflow-y-auto no-scrollbar flex-1">
         {categories.length === 0 && <p className="text-xs text-stone-500">No categories yet.</p>}
         {categories.map(cat => (
           <div key={cat.id} onDragOver={e => { e.preventDefault(); setDropTargetCatId(cat.id) }} onDragLeave={e => { if (!e.currentTarget.contains(e.relatedTarget as Node)) setDropTargetCatId(null) }} onDrop={e => onDrop(e, cat.id)} className={`rounded border transition-colors ${dropTargetCatId === cat.id ? 'border-amber-500/60 bg-amber-500/5' : 'border-stone-700/50'}`}>
