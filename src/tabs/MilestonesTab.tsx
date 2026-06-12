@@ -11,6 +11,15 @@ interface Props {
 
 const emptyAmounts = { personal: '', exalted: '', minor: '', major: '' }
 
+function toAmounts(tx: MilestoneTransaction) {
+  return {
+    personal: tx.personal ? String(tx.personal) : '',
+    exalted: tx.exalted ? String(tx.exalted) : '',
+    minor: tx.minor ? String(tx.minor) : '',
+    major: tx.major ? String(tx.major) : '',
+  }
+}
+
 function totalEarned(milestones: MilestoneTransaction[], type: MType) {
   return milestones
     .filter(m => m.kind === 'gain')
@@ -32,6 +41,9 @@ export default function MilestonesTab({ milestones, onChange }: Props) {
   const [gainDesc, setGainDesc] = useState('')
   const [purchaseAmounts, setPurchaseAmounts] = useState(emptyAmounts)
   const [purchaseDesc, setPurchaseDesc] = useState('')
+  const [editingId, setEditingId] = useState<string | null>(null)
+  const [editAmounts, setEditAmounts] = useState(emptyAmounts)
+  const [editDesc, setEditDesc] = useState('')
 
   function addGain() {
     const vals = {
@@ -75,6 +87,27 @@ export default function MilestonesTab({ milestones, onChange }: Props) {
     setShowPurchase(false)
   }
 
+  function startEdit(tx: MilestoneTransaction) {
+    setEditingId(tx.id)
+    setEditAmounts(toAmounts(tx))
+    setEditDesc(tx.description)
+    setShowGain(false)
+    setShowPurchase(false)
+  }
+
+  function saveEdit(tx: MilestoneTransaction) {
+    const updated: MilestoneTransaction = {
+      ...tx,
+      personal: parseInt(editAmounts.personal) || 0,
+      exalted: parseInt(editAmounts.exalted) || 0,
+      minor: parseInt(editAmounts.minor) || 0,
+      major: parseInt(editAmounts.major) || 0,
+      description: editDesc.trim() || tx.description,
+    }
+    onChange(milestones.map(m => m.id === tx.id ? updated : m))
+    setEditingId(null)
+  }
+
   const sorted = [...milestones].sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime())
 
   return (
@@ -94,13 +127,13 @@ export default function MilestonesTab({ milestones, onChange }: Props) {
       {/* Action buttons */}
       <div className="flex gap-3">
         <button
-          onClick={() => { setShowGain(v => !v); setShowPurchase(false) }}
+          onClick={() => { setShowGain(v => !v); setShowPurchase(false); setEditingId(null) }}
           className="bg-amber-600 hover:bg-amber-500 text-white font-semibold rounded px-4 py-2 text-sm transition-colors"
         >
           + Add Session Rewards
         </button>
         <button
-          onClick={() => { setShowPurchase(v => !v); setShowGain(false) }}
+          onClick={() => { setShowPurchase(v => !v); setShowGain(false); setEditingId(null) }}
           className="bg-stone-700 hover:bg-stone-600 text-white font-semibold rounded px-4 py-2 text-sm transition-colors"
         >
           − Make Purchase
@@ -116,8 +149,7 @@ export default function MilestonesTab({ milestones, onChange }: Props) {
               <div key={type}>
                 <label className="block text-xs text-stone-400 mb-1 capitalize">{type}</label>
                 <input
-                  type="number"
-                  min="0"
+                  type="number" min="0"
                   value={gainAmounts[type]}
                   onChange={e => setGainAmounts(a => ({ ...a, [type]: e.target.value }))}
                   placeholder="0"
@@ -129,8 +161,7 @@ export default function MilestonesTab({ milestones, onChange }: Props) {
           <div>
             <label className="block text-xs text-stone-400 mb-1">Note (e.g. Session 5 — rescued the village)</label>
             <input
-              type="text"
-              value={gainDesc}
+              type="text" value={gainDesc}
               onChange={e => setGainDesc(e.target.value)}
               placeholder="Session description…"
               className="w-full bg-stone-800 border border-stone-600 text-stone-100 rounded px-2 py-1 text-sm focus:outline-none focus:border-amber-500"
@@ -152,8 +183,7 @@ export default function MilestonesTab({ milestones, onChange }: Props) {
               <div key={type}>
                 <label className="block text-xs text-stone-400 mb-1 capitalize">{type}</label>
                 <input
-                  type="number"
-                  min="0"
+                  type="number" min="0"
                   value={purchaseAmounts[type]}
                   onChange={e => setPurchaseAmounts(a => ({ ...a, [type]: e.target.value }))}
                   placeholder="0"
@@ -165,8 +195,7 @@ export default function MilestonesTab({ milestones, onChange }: Props) {
           <div>
             <label className="block text-xs text-stone-400 mb-1">What did you spend it on?</label>
             <input
-              type="text"
-              value={purchaseDesc}
+              type="text" value={purchaseDesc}
               onChange={e => setPurchaseDesc(e.target.value)}
               placeholder="e.g. Bought Charm: Solar Flare"
               className="w-full bg-stone-800 border border-stone-600 text-stone-100 rounded px-2 py-1 text-sm focus:outline-none focus:border-amber-500"
@@ -196,33 +225,80 @@ export default function MilestonesTab({ milestones, onChange }: Props) {
             </thead>
             <tbody>
               {sorted.map(tx => (
-                <tr key={tx.id} className="border-b border-stone-800 hover:bg-stone-900/50">
-                  <td className="py-2 pr-3">
-                    <span className={`text-xs font-semibold px-1.5 py-0.5 rounded ${
-                      tx.kind === 'gain' ? 'bg-emerald-900 text-emerald-300' : 'bg-red-900 text-red-300'
-                    }`}>
-                      {tx.kind === 'gain' ? 'Gain' : 'Purchase'}
-                    </span>
-                  </td>
-                  {TYPES.map(type => (
-                    <td key={type} className="text-center py-2 px-2 font-mono">
-                      {tx[type] > 0 ? (
-                        <span className={tx.kind === 'gain' ? 'text-emerald-400' : 'text-red-400'}>
-                          {tx.kind === 'gain' ? '+' : '-'}{tx[type]}
-                        </span>
-                      ) : (
-                        <span className="text-stone-700">—</span>
-                      )}
+                <>
+                  <tr key={tx.id} className="border-b border-stone-800 hover:bg-stone-900/50">
+                    <td className="py-2 pr-3">
+                      <span className={`text-xs font-semibold px-1.5 py-0.5 rounded ${
+                        tx.kind === 'gain' ? 'bg-emerald-900 text-emerald-300' : 'bg-red-900 text-red-300'
+                      }`}>
+                        {tx.kind === 'gain' ? 'Gain' : 'Purchase'}
+                      </span>
                     </td>
-                  ))}
-                  <td className="py-2 pl-3 text-stone-300">{tx.description}</td>
-                  <td className="py-2 pl-2">
-                    <button
-                      onClick={() => onChange(milestones.filter(m => m.id !== tx.id))}
-                      className="text-stone-600 hover:text-red-400 text-xs transition-colors"
-                    >✕</button>
-                  </td>
-                </tr>
+                    {TYPES.map(type => (
+                      <td key={type} className="text-center py-2 px-2 font-mono">
+                        {tx[type] > 0 ? (
+                          <span className={tx.kind === 'gain' ? 'text-emerald-400' : 'text-red-400'}>
+                            {tx.kind === 'gain' ? '+' : '-'}{tx[type]}
+                          </span>
+                        ) : (
+                          <span className="text-stone-700">—</span>
+                        )}
+                      </td>
+                    ))}
+                    <td className="py-2 pl-3 text-stone-300">{tx.description}</td>
+                    <td className="py-2 pl-2">
+                      <div className="flex items-center gap-2">
+                        <button
+                          onClick={() => editingId === tx.id ? setEditingId(null) : startEdit(tx)}
+                          className="text-stone-600 hover:text-amber-400 transition-colors"
+                          title="Edit"
+                        >
+                          <svg xmlns="http://www.w3.org/2000/svg" className="w-3.5 h-3.5" viewBox="0 0 20 20" fill="currentColor">
+                            <path d="M13.586 3.586a2 2 0 112.828 2.828l-.793.793-2.828-2.828.793-.793zM11.379 5.793L3 14.172V17h2.828l8.38-8.379-2.83-2.828z" />
+                          </svg>
+                        </button>
+                        <button
+                          onClick={() => onChange(milestones.filter(m => m.id !== tx.id))}
+                          className="text-stone-600 hover:text-red-400 text-xs transition-colors"
+                          title="Delete"
+                        >✕</button>
+                      </div>
+                    </td>
+                  </tr>
+                  {editingId === tx.id && (
+                    <tr className="border-b border-stone-700 bg-stone-900">
+                      <td colSpan={7} className="px-3 py-3">
+                        <div className="flex flex-wrap gap-3 items-end">
+                          {TYPES.map(type => (
+                            <div key={type}>
+                              <label className="block text-xs text-stone-400 mb-1 capitalize">{type}</label>
+                              <input
+                                type="number" min="0"
+                                value={editAmounts[type]}
+                                onChange={e => setEditAmounts(a => ({ ...a, [type]: e.target.value }))}
+                                placeholder="0"
+                                className="w-16 bg-stone-800 border border-stone-600 text-stone-100 rounded px-2 py-1 text-sm focus:outline-none focus:border-amber-500"
+                              />
+                            </div>
+                          ))}
+                          <div className="flex-1 min-w-40">
+                            <label className="block text-xs text-stone-400 mb-1">Description</label>
+                            <input
+                              type="text"
+                              value={editDesc}
+                              onChange={e => setEditDesc(e.target.value)}
+                              className="w-full bg-stone-800 border border-stone-600 text-stone-100 rounded px-2 py-1 text-sm focus:outline-none focus:border-amber-500"
+                            />
+                          </div>
+                          <div className="flex gap-2">
+                            <button onClick={() => saveEdit(tx)} className="bg-amber-600 hover:bg-amber-500 text-white rounded px-3 py-1 text-sm transition-colors">Save</button>
+                            <button onClick={() => setEditingId(null)} className="text-stone-400 hover:text-stone-200 text-sm px-2">Cancel</button>
+                          </div>
+                        </div>
+                      </td>
+                    </tr>
+                  )}
+                </>
               ))}
             </tbody>
           </table>

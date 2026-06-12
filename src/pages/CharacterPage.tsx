@@ -69,7 +69,7 @@ export default function CharacterPage() {
           <button onClick={() => navigate('/')} className="text-stone-400 hover:text-stone-200 text-sm">← Back</button>
           <h1 className="text-amber-400 font-semibold">{character.name}</h1>
         </div>
-        <span className="text-xs text-stone-500">{saving ? 'Saving…' : 'Saved'}</span>
+        {saving && <span className="text-xs text-stone-500">Saving…</span>}
       </header>
 
       <TabBar active={activeTab} onChange={setActiveTab} />
