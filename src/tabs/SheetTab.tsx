@@ -158,10 +158,10 @@ export default function SheetTab({ sheet, onChange }: Props) {
             <table className="w-full text-xs">
               <thead>
                 <tr className="text-stone-500 border-b border-stone-700">
-                  <th className="text-left py-1.5 px-2 font-medium">Ability</th>
-                  <th className="text-center py-1.5 px-1 font-medium w-10">Rtg</th>
+                  <th className="text-left py-1.5 px-2 font-medium w-[80px]">Ability</th>
+                  <th className="text-center py-1.5 px-1 font-medium w-[38px]">Rtg</th>
                   <th className="text-left py-1.5 px-1 font-medium">Specialty</th>
-                  <th className="text-center py-1.5 px-1 font-medium w-8" title="Excellency">Ex</th>
+                  <th className="text-center py-1.5 px-1 font-medium w-[20px]" title="Excellency">Ex</th>
                 </tr>
               </thead>
               <tbody>
@@ -185,7 +185,7 @@ export default function SheetTab({ sheet, onChange }: Props) {
                       </td>
                       <td className="py-1 px-1 text-center">
                         <button onClick={() => setAbility(ability, { excellency: !ab.excellency })}
-                          className={`w-4 h-4 rounded-full border-2 transition-colors ${
+                          className={`w-3 h-3 rounded-full border-2 transition-colors ${
                             ab.excellency ? 'bg-amber-400 border-amber-400' : 'bg-transparent border-stone-600 hover:border-amber-500'
                           }`} />
                       </td>
