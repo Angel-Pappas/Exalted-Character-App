@@ -142,7 +142,7 @@ export default function SheetTab({ sheet, onChange }: Props) {
     update({ health: data.health.map((h, idx) => idx === i ? { ...h, checked: !h.checked } : h) })
   }
 
-  const panelBase = "bg-stone-900 border border-stone-700 rounded-lg p-2 overflow-auto h-full"
+  const panelBase = "bg-stone-900 border border-stone-700 rounded-lg p-2 overflow-hidden h-full"
 
   const panels: Record<string, React.ReactNode> = {
     attributes: (
