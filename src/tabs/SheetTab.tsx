@@ -1,8 +1,8 @@
-import { useState } from 'react'
+import { useState, useRef } from 'react'
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 import { GridLayout, useContainerWidth, noCompactor } from 'react-grid-layout'
 import 'react-grid-layout/css/styles.css'
-import type { SheetData, AbilityData, MeritEntry, IntimacyEntry, HealthBox, PanelLayout } from '../types/character'
+import type { SheetData, AbilityData, MeritEntry, IntimacyEntry, HealthBox, PanelLayout, CharmCategory, CharmEntry } from '../types/character'
 
 const ATTRIBUTE_GROUPS = [
   { label: 'Physical', attrs: ['Strength', 'Dexterity', 'Stamina'] },
@@ -37,6 +37,7 @@ const DEFAULT_LAYOUT: PanelLayout[] = [
   { i: 'merits',     x: 32, y: 0,  w: 28, h: 18, minW: 4, minH: 8 },
   { i: 'languages',  x: 32, y: 18, w: 28, h: 10, minW: 4, minH: 8 },
   { i: 'intimacies', x: 32, y: 28, w: 28, h: 18, minW: 4, minH: 8 },
+  { i: 'charms',     x: 60, y: 0,  w: 40, h: 46, minW: 4, minH: 8 },
 ]
 
 const defaultAbility: AbilityData = { rating: 0, specialty: '', excellency: false }
@@ -54,6 +55,7 @@ function defaultSheet(): SheetData {
     motes: { current: 0, committed: 0, total: 0 },
     health: DEFAULT_HEALTH.map(h => ({ ...h })),
     layout: DEFAULT_LAYOUT.map(l => ({ ...l })),
+    charms: [],
   }
 }
 
@@ -64,6 +66,207 @@ interface Props {
 
 function SectionHeader({ title }: { title: string }) {
   return <div className="text-xs font-semibold text-stone-400 uppercase tracking-widest mb-2">{title}</div>
+}
+
+const inputCls = "w-full bg-stone-800 border border-stone-600 text-stone-100 rounded px-2 py-0.5 text-xs focus:outline-none focus:border-amber-500 placeholder-stone-500"
+const inputActive = "w-full bg-stone-800 border border-amber-500 text-stone-100 rounded px-2 py-0.5 text-xs focus:outline-none"
+
+function CharmPanel({ categories, onChange, dragEnabled }: {
+  categories: CharmCategory[]
+  onChange: (c: CharmCategory[]) => void
+  dragEnabled: boolean
+}) {
+  const [expandedId, setExpandedId] = useState<string | null>(null)
+  const [addingCat, setAddingCat] = useState(false)
+  const [newCatName, setNewCatName] = useState('')
+  const [addingCharmCatId, setAddingCharmCatId] = useState<string | null>(null)
+  const [newCharmName, setNewCharmName] = useState('')
+  const [newCharmText, setNewCharmText] = useState('')
+  const [editingCatId, setEditingCatId] = useState<string | null>(null)
+  const [editCatName, setEditCatName] = useState('')
+  const [editingCharm, setEditingCharm] = useState<{ catId: string; charm: CharmEntry } | null>(null)
+  const [editCharmName, setEditCharmName] = useState('')
+  const [editCharmText, setEditCharmText] = useState('')
+  const [dropTargetCatId, setDropTargetCatId] = useState<string | null>(null)
+
+  const dragging = useRef<{ fromCatId: string; charmId: string } | null>(null)
+
+  function addCategory() {
+    if (!newCatName.trim()) return
+    onChange([...categories, { id: crypto.randomUUID(), name: newCatName.trim(), charms: [] }])
+    setNewCatName(''); setAddingCat(false)
+  }
+  function removeCategory(id: string) { onChange(categories.filter(c => c.id !== id)) }
+  function saveCategory() {
+    if (!editingCatId || !editCatName.trim()) return
+    onChange(categories.map(c => c.id === editingCatId ? { ...c, name: editCatName.trim() } : c))
+    setEditingCatId(null)
+  }
+  function addCharm(catId: string) {
+    if (!newCharmName.trim()) return
+    onChange(categories.map(c => c.id === catId
+      ? { ...c, charms: [...c.charms, { id: crypto.randomUUID(), name: newCharmName.trim(), text: newCharmText }] }
+      : c))
+    setNewCharmName(''); setNewCharmText(''); setAddingCharmCatId(null)
+  }
+  function removeCharm(catId: string, charmId: string) {
+    onChange(categories.map(c => c.id === catId ? { ...c, charms: c.charms.filter(ch => ch.id !== charmId) } : c))
+    if (expandedId === charmId) setExpandedId(null)
+  }
+  function saveCharm() {
+    if (!editingCharm || !editCharmName.trim()) return
+    onChange(categories.map(c => c.id === editingCharm.catId
+      ? { ...c, charms: c.charms.map(ch => ch.id === editingCharm.charm.id ? { ...ch, name: editCharmName.trim(), text: editCharmText } : ch) }
+      : c))
+    setEditingCharm(null)
+  }
+
+  function onCharmDragStart(e: React.DragEvent, fromCatId: string, charmId: string) {
+    dragging.current = { fromCatId, charmId }
+    e.dataTransfer.effectAllowed = 'move'
+  }
+  function onCharmDrop(e: React.DragEvent, toCatId: string, beforeCharmId?: string) {
+    e.preventDefault(); e.stopPropagation()
+    if (!dragging.current) return
+    const { fromCatId, charmId } = dragging.current
+    const charm = categories.find(c => c.id === fromCatId)?.charms.find(ch => ch.id === charmId)
+    if (!charm) return
+    onChange(categories.map(c => {
+      if (c.id === fromCatId && c.id === toCatId) {
+        const filtered = c.charms.filter(ch => ch.id !== charmId)
+        const idx = beforeCharmId ? filtered.findIndex(ch => ch.id === beforeCharmId) : filtered.length
+        filtered.splice(idx < 0 ? filtered.length : idx, 0, charm)
+        return { ...c, charms: filtered }
+      }
+      if (c.id === fromCatId) return { ...c, charms: c.charms.filter(ch => ch.id !== charmId) }
+      if (c.id === toCatId) {
+        const idx = beforeCharmId ? c.charms.findIndex(ch => ch.id === beforeCharmId) : c.charms.length
+        const next = [...c.charms]; next.splice(idx < 0 ? next.length : idx, 0, charm)
+        return { ...c, charms: next }
+      }
+      return c
+    }))
+    dragging.current = null; setDropTargetCatId(null)
+  }
+
+  const btnGhost = "text-stone-500 hover:text-amber-400 transition-colors text-xs"
+
+  return (
+    <div className="bg-stone-900 border border-stone-700 rounded-lg p-2 overflow-hidden h-full flex flex-col">
+      <div className="flex items-center justify-between mb-2 shrink-0">
+        <SectionHeader title="Charms" />
+        <button onClick={() => setAddingCat(v => !v)} className={btnGhost}>+ category</button>
+      </div>
+
+      {addingCat && (
+        <div className="flex gap-1 mb-2 shrink-0">
+          <input autoFocus type="text" value={newCatName} onChange={e => setNewCatName(e.target.value)}
+            onKeyDown={e => { if (e.key === 'Enter') addCategory(); if (e.key === 'Escape') setAddingCat(false) }}
+            placeholder="Category name…" className={inputCls} />
+          <button onClick={addCategory} className="bg-amber-600 hover:bg-amber-500 text-white rounded px-2 py-0.5 text-xs">✓</button>
+          <button onClick={() => setAddingCat(false)} className="text-stone-500 hover:text-stone-300 text-xs px-1">✕</button>
+        </div>
+      )}
+
+      <div className="space-y-2 overflow-y-auto flex-1">
+        {categories.length === 0 && <p className="text-xs text-stone-500">No categories yet.</p>}
+        {categories.map(cat => (
+          <div key={cat.id}
+            onDragOver={e => { e.preventDefault(); setDropTargetCatId(cat.id) }}
+            onDragLeave={e => { if (!e.currentTarget.contains(e.relatedTarget as Node)) setDropTargetCatId(null) }}
+            onDrop={e => onCharmDrop(e, cat.id)}
+            className={`rounded border transition-colors ${dropTargetCatId === cat.id ? 'border-amber-500/60 bg-amber-500/5' : 'border-stone-700/50'}`}
+          >
+            {/* Category header */}
+            <div className="flex items-center justify-between px-1.5 py-1">
+              {editingCatId === cat.id ? (
+                <div className="flex gap-1 flex-1">
+                  <input autoFocus type="text" value={editCatName} onChange={e => setEditCatName(e.target.value)}
+                    onKeyDown={e => { if (e.key === 'Enter') saveCategory(); if (e.key === 'Escape') setEditingCatId(null) }}
+                    className={inputActive} />
+                  <button onClick={saveCategory} className="bg-amber-600 hover:bg-amber-500 text-white rounded px-1.5 py-0.5 text-xs">✓</button>
+                  <button onClick={() => setEditingCatId(null)} className="text-stone-500 hover:text-stone-300 text-xs">✕</button>
+                </div>
+              ) : (
+                <>
+                  <span className="text-xs font-semibold text-amber-400/80 uppercase tracking-wider">{cat.name}</span>
+                  <div className="flex gap-2">
+                    <button onClick={() => setAddingCharmCatId(cat.id === addingCharmCatId ? null : cat.id)} className={btnGhost}>+ charm</button>
+                    <button onClick={() => { setEditingCatId(cat.id); setEditCatName(cat.name) }} className={btnGhost}>✎</button>
+                    <button onClick={() => removeCategory(cat.id)} className="text-stone-500 hover:text-red-400 transition-colors text-xs">✕</button>
+                  </div>
+                </>
+              )}
+            </div>
+
+            {/* Add charm form */}
+            {addingCharmCatId === cat.id && (
+              <div className="px-1.5 pb-1.5 space-y-1 border-t border-stone-700/50 pt-1">
+                <input autoFocus type="text" value={newCharmName} onChange={e => setNewCharmName(e.target.value)}
+                  placeholder="Charm name…" className={inputCls} />
+                <textarea value={newCharmText} onChange={e => setNewCharmText(e.target.value)}
+                  placeholder="Description…" rows={3}
+                  className="w-full bg-stone-800 border border-stone-600 text-stone-100 rounded px-2 py-1 text-xs focus:outline-none focus:border-amber-500 placeholder-stone-500 resize-none" />
+                <div className="flex gap-1 justify-end">
+                  <button onClick={() => addCharm(cat.id)} className="bg-amber-600 hover:bg-amber-500 text-white rounded px-2 py-0.5 text-xs">Add</button>
+                  <button onClick={() => { setAddingCharmCatId(null); setNewCharmName(''); setNewCharmText('') }} className="text-stone-500 hover:text-stone-300 text-xs px-1">Cancel</button>
+                </div>
+              </div>
+            )}
+
+            {/* Charm list */}
+            <div>
+              {cat.charms.length === 0 && addingCharmCatId !== cat.id && (
+                <p className="text-xs text-stone-600 px-1.5 pb-1">No charms.</p>
+              )}
+              {cat.charms.map(charm => (
+                <div key={charm.id}
+                  draggable={dragEnabled}
+                  onDragStart={e => dragEnabled && onCharmDragStart(e, cat.id, charm.id)}
+                  onDragOver={e => { e.preventDefault(); e.stopPropagation() }}
+                  onDrop={e => onCharmDrop(e, cat.id, charm.id)}
+                  className={`border-t border-stone-800 px-1.5 ${dragEnabled ? 'cursor-grab active:cursor-grabbing' : ''}`}
+                >
+                  <div className="flex items-center justify-between py-1 text-xs gap-1">
+                    <button onClick={() => setExpandedId(expandedId === charm.id ? null : charm.id)}
+                      className="text-left text-stone-200 hover:text-amber-300 transition-colors flex-1 min-w-0 truncate">
+                      {charm.name}
+                    </button>
+                    <div className="flex gap-1 shrink-0">
+                      <button onClick={() => { setEditingCharm({ catId: cat.id, charm }); setEditCharmName(charm.name); setEditCharmText(charm.text) }}
+                        className="text-stone-500 hover:text-amber-400 transition-colors">✎</button>
+                      <button onClick={() => removeCharm(cat.id, charm.id)}
+                        className="text-stone-500 hover:text-red-400 transition-colors">✕</button>
+                    </div>
+                  </div>
+
+                  {expandedId === charm.id && editingCharm?.charm.id !== charm.id && (
+                    <p className="text-xs text-stone-400 pb-1.5 whitespace-pre-wrap leading-relaxed">
+                      {charm.text || <em className="text-stone-600">No description.</em>}
+                    </p>
+                  )}
+
+                  {editingCharm?.charm.id === charm.id && (
+                    <div className="pb-1.5 space-y-1">
+                      <input type="text" value={editCharmName} onChange={e => setEditCharmName(e.target.value)}
+                        className={inputActive} />
+                      <textarea value={editCharmText} onChange={e => setEditCharmText(e.target.value)}
+                        rows={4}
+                        className="w-full bg-stone-800 border border-stone-600 text-stone-100 rounded px-2 py-1 text-xs focus:outline-none focus:border-amber-500 resize-none" />
+                      <div className="flex gap-1 justify-end">
+                        <button onClick={saveCharm} className="bg-amber-600 hover:bg-amber-500 text-white rounded px-2 py-0.5 text-xs">Save</button>
+                        <button onClick={() => setEditingCharm(null)} className="text-stone-500 hover:text-stone-300 text-xs px-1">Cancel</button>
+                      </div>
+                    </div>
+                  )}
+                </div>
+              ))}
+            </div>
+          </div>
+        ))}
+      </div>
+    </div>
+  )
 }
 
 const numInput = "w-[30px] text-center bg-stone-800 border border-stone-600 text-stone-100 rounded px-1 py-0.5 text-xs focus:outline-none focus:border-amber-500"
@@ -81,6 +284,7 @@ export default function SheetTab({ sheet, onChange }: Props) {
     motes: { ...def.motes, ...sheet.motes },
     health: sheet.health ?? DEFAULT_HEALTH.map(h => ({ ...h })),
     layout: sheet.layout ?? DEFAULT_LAYOUT.map(l => ({ ...l })),
+    charms: sheet.charms ?? [],
   }
 
   const [newLanguage, setNewLanguage] = useState('')
@@ -381,6 +585,14 @@ export default function SheetTab({ sheet, onChange }: Props) {
           <button onClick={addIntimacy} className="bg-stone-700 hover:bg-stone-600 text-white rounded px-2 py-0.5 text-xs transition-colors">+</button>
         </div>
       </div>
+    ),
+
+    charms: (
+      <CharmPanel
+        categories={data.charms}
+        onChange={c => update({ charms: c })}
+        dragEnabled={!editMode}
+      />
     ),
   }
 

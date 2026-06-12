@@ -9,7 +9,7 @@ import NotesTab from '../tabs/NotesTab'
 import CharactersTab from '../tabs/CharactersTab'
 
 const defaultData: CharacterData = {
-  sheet: { attributes: {}, abilities: {}, defenses: {}, languages: [], merits: [], intimacies: [], motes: { current: 0, committed: 0, total: 0 }, health: [], layout: [] },
+  sheet: { attributes: {}, abilities: {}, defenses: {}, languages: [], merits: [], intimacies: [], motes: { current: 0, committed: 0, total: 0 }, health: [], layout: [], charms: [] },
   milestones: [],
   notes: '',
   npcs: [],

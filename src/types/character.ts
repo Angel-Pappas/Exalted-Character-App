@@ -1,3 +1,15 @@
+export interface CharmEntry {
+  id: string
+  name: string
+  text: string
+}
+
+export interface CharmCategory {
+  id: string
+  name: string
+  charms: CharmEntry[]
+}
+
 export interface MilestoneTransaction {
   id: string
   kind: 'gain' | 'purchase'
@@ -67,6 +79,7 @@ export interface SheetData {
   motes: { current: number; committed: number; total: number }
   health: HealthBox[]
   layout: PanelLayout[]
+  charms: CharmCategory[]
 }
 
 export interface CharacterData {
