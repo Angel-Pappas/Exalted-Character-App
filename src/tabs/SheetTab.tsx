@@ -143,7 +143,7 @@ export default function SheetTab({ sheet, onChange }: Props) {
                       <span className="text-xs text-stone-200">{attr}</span>
                       <input type="number" min={0} max={10} value={data.attributes[attr] ?? 0}
                         onChange={e => setAttr(attr, parseInt(e.target.value) || 0)}
-                        className="w-12 text-center bg-stone-800 border border-stone-600 text-stone-100 rounded px-1 py-0.5 text-xs focus:outline-none focus:border-amber-500" />
+                        className="w-[30px] text-center bg-stone-800 border border-stone-600 text-stone-100 rounded px-1 py-0.5 text-xs focus:outline-none focus:border-amber-500" />
                     </div>
                   ))}
                 </div>
@@ -175,7 +175,7 @@ export default function SheetTab({ sheet, onChange }: Props) {
                       <td className="py-1 px-1 text-center">
                         <input type="number" min={0} max={10} value={ab.rating}
                           onChange={e => setAbility(ability, { rating: parseInt(e.target.value) || 0 })}
-                          className="w-10 text-center bg-stone-800 border border-stone-600 text-stone-100 rounded px-1 py-0.5 text-xs focus:outline-none focus:border-amber-500" />
+                          className="w-[30px] text-center bg-stone-800 border border-stone-600 text-stone-100 rounded px-1 py-0.5 text-xs focus:outline-none focus:border-amber-500" />
                       </td>
                       <td className="py-1 px-1">
                         <input type="text" value={ab.specialty}
@@ -208,7 +208,7 @@ export default function SheetTab({ sheet, onChange }: Props) {
                 <span className="text-xs text-stone-300">{def}</span>
                 <input type="number" min={0} value={data.defenses[def] ?? 0}
                   onChange={e => setDefense(def, parseInt(e.target.value) || 0)}
-                  className="w-12 text-center bg-stone-800 border border-stone-600 text-stone-100 rounded px-1 py-0.5 text-xs focus:outline-none focus:border-amber-500" />
+                  className="w-[30px] text-center bg-stone-800 border border-stone-600 text-stone-100 rounded px-1 py-0.5 text-xs focus:outline-none focus:border-amber-500" />
               </div>
             ))}
           </div>
@@ -222,7 +222,7 @@ export default function SheetTab({ sheet, onChange }: Props) {
                 <span className="text-xs text-stone-300 capitalize">{key}</span>
                 <input type="number" min={0} value={data.motes[key]}
                   onChange={e => update({ motes: { ...data.motes, [key]: parseInt(e.target.value) || 0 } })}
-                  className="w-12 text-center bg-stone-800 border border-stone-600 text-stone-100 rounded px-1 py-0.5 text-xs focus:outline-none focus:border-amber-500" />
+                  className="w-[30px] text-center bg-stone-800 border border-stone-600 text-stone-100 rounded px-1 py-0.5 text-xs focus:outline-none focus:border-amber-500" />
               </div>
             ))}
           </div>
