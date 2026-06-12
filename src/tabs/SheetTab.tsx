@@ -127,7 +127,7 @@ export default function SheetTab({ sheet, onChange }: Props) {
 
 // 36-unit grid: col1=6fr (attrs+abilities), col2=4fr (def+motes+health), col3=6fr (merits+lang+intimacies), col4=20fr (open)
   return (
-    <div className="p-3 h-full" style={{ display: 'grid', gridTemplateColumns: '3fr 4fr 6fr 23fr', gap: '12px', alignItems: 'start' }}>
+    <div className="p-3 h-full" style={{ display: 'grid', gridTemplateColumns: '4fr 4fr 6fr 22fr', gap: '12px', alignItems: 'start' }}>
 
       {/* COL 1 — Attributes + Abilities */}
       <div className="space-y-3">
