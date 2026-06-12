@@ -1,6 +1,9 @@
 import { useState, useRef } from 'react'
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 import { GridLayout, useContainerWidth, noCompactor } from 'react-grid-layout'
+// noCompactor has allowOverlap:false which causes panels to push each other during drag.
+// Override it so panels can freely overlap — no collision resolution, no compaction.
+const freeCompactor = { ...noCompactor, allowOverlap: true }
 import 'react-grid-layout/css/styles.css'
 import type { SheetData, AbilityData, MeritEntry, IntimacyEntry, HealthBox, PanelLayout, CharmCategory, CharmEntry } from '../types/character'
 
@@ -624,7 +627,7 @@ export default function SheetTab({ sheet, onChange }: Props) {
           gridConfig={{ cols: 128, rowHeight: 10, margin: [0, 0], containerPadding: [0, 0] }}
           dragConfig={{ enabled: editMode, handle: '.drag-handle' }}
           resizeConfig={{ enabled: editMode }}
-          compactor={noCompactor}
+          compactor={freeCompactor}
           layout={data.layout}
           onLayoutChange={(newLayout) => update({ layout: newLayout.map(({ i, x, y, w, h }) => ({ i, x, y, w, h })) })}
           autoSize={false}
