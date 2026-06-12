@@ -20,3 +20,25 @@ body {
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
 }
+
+/* Make the resize handle larger and amber-tinted so it's always easy to grab */
+.react-resizable-handle {
+  width: 20px !important;
+  height: 20px !important;
+  background-image: none !important;
+  background-color: rgba(251, 191, 36, 0.4);
+  border-radius: 2px 0 4px 0;
+  bottom: 0 !important;
+  right: 0 !important;
+  cursor: se-resize;
+}
+.react-resizable-handle::after {
+  content: '';
+  position: absolute;
+  right: 3px;
+  bottom: 3px;
+  width: 8px;
+  height: 8px;
+  border-right: 2px solid rgba(251, 191, 36, 0.9);
+  border-bottom: 2px solid rgba(251, 191, 36, 0.9);
+}

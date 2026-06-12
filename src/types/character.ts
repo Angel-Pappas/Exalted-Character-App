@@ -53,6 +53,8 @@ export interface PanelLayout {
   y: number
   w: number
   h: number
+  minW?: number
+  minH?: number
 }
 
 export interface SheetData {

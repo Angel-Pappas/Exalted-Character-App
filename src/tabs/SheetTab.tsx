@@ -1,11 +1,7 @@
-import { useState, useRef, useEffect } from 'react'
+import { useState } from 'react'
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
-import GridLayoutLib from 'react-grid-layout'
+import { GridLayout, useContainerWidth } from 'react-grid-layout'
 import 'react-grid-layout/css/styles.css'
-import 'react-resizable/css/styles.css'
-// v1 default export is the component; cast to any to avoid @types mismatch
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
-const GridLayout = GridLayoutLib as any
 import type { SheetData, AbilityData, MeritEntry, IntimacyEntry, HealthBox, PanelLayout } from '../types/character'
 
 const ATTRIBUTE_GROUPS = [
@@ -33,14 +29,14 @@ const DEFAULT_HEALTH: HealthBox[] = [
 ]
 
 const DEFAULT_LAYOUT: PanelLayout[] = [
-  { i: 'attributes', x: 0,  y: 0,  w: 8,  h: 22 },
-  { i: 'abilities',  x: 0,  y: 22, w: 8,  h: 38 },
-  { i: 'defenses',   x: 8,  y: 0,  w: 8,  h: 11 },
-  { i: 'motes',      x: 8,  y: 11, w: 8,  h: 8  },
-  { i: 'health',     x: 8,  y: 19, w: 8,  h: 8  },
-  { i: 'merits',     x: 16, y: 0,  w: 14, h: 18 },
-  { i: 'languages',  x: 16, y: 18, w: 14, h: 10 },
-  { i: 'intimacies', x: 16, y: 28, w: 14, h: 18 },
+  { i: 'attributes', x: 0,  y: 0,  w: 8,  h: 22, minW: 4, minH: 8 },
+  { i: 'abilities',  x: 0,  y: 22, w: 8,  h: 38, minW: 4, minH: 8 },
+  { i: 'defenses',   x: 8,  y: 0,  w: 8,  h: 11, minW: 4, minH: 8 },
+  { i: 'motes',      x: 8,  y: 11, w: 8,  h: 8,  minW: 4, minH: 8 },
+  { i: 'health',     x: 8,  y: 19, w: 8,  h: 8,  minW: 4, minH: 8 },
+  { i: 'merits',     x: 16, y: 0,  w: 14, h: 18, minW: 4, minH: 8 },
+  { i: 'languages',  x: 16, y: 18, w: 14, h: 10, minW: 4, minH: 8 },
+  { i: 'intimacies', x: 16, y: 28, w: 14, h: 18, minW: 4, minH: 8 },
 ]
 
 const defaultAbility: AbilityData = { rating: 0, specialty: '', excellency: false }
@@ -314,24 +310,10 @@ export default function SheetTab({ sheet, onChange }: Props) {
   }
 
   // Measure the grid container's exact pixel width so GridLayout snap points
-  // and the CSS background grid lines are always the same size.
-  const gridRef = useRef<HTMLDivElement>(null)
-  const [gridWidth, setGridWidth] = useState(0)
-  useEffect(() => {
-    const el = gridRef.current
-    if (!el) return
-    setGridWidth(el.getBoundingClientRect().width)
-    const obs = new ResizeObserver(() => setGridWidth(el.getBoundingClientRect().width))
-    obs.observe(el)
-    return () => obs.disconnect()
-  }, [])
-
-  const COL = 64
-  const ROW_H = 10
-  const colPx = gridWidth > 0 ? gridWidth / COL : 0
+  const { width, containerRef, mounted } = useContainerWidth()
 
   return (
-    <div className="relative">
+    <div className="relative" ref={containerRef}>
       {/* Edit layout toggle */}
       <div className="absolute top-2 right-4 z-10">
         <button
@@ -349,46 +331,33 @@ export default function SheetTab({ sheet, onChange }: Props) {
         </button>
       </div>
 
-      {/* ref div is what we measure; GridLayout gets the same width so snap = grid lines */}
-      <div
-        ref={gridRef}
-        style={editMode && colPx > 0 ? {
-          backgroundImage: 'linear-gradient(rgba(251,191,36,0.08) 1px, transparent 1px), linear-gradient(90deg, rgba(251,191,36,0.08) 1px, transparent 1px)',
-          backgroundSize: `${colPx}px ${ROW_H}px`,
-          backgroundPosition: '0 0',
-        } : undefined}
-      >
-        {gridWidth > 0 && (
-          <GridLayout
-            layout={data.layout}
-            cols={COL}
-            rowHeight={ROW_H}
-            width={gridWidth}
-            isDraggable={editMode}
-            isResizable={editMode}
-            onLayoutChange={(newLayout: PanelLayout[]) =>
-              update({ layout: newLayout.map(({ i, x, y, w, h }) => ({ i, x, y, w, h })) })
-            }
-            margin={[0, 0]}
-            containerPadding={[0, 0]}
-            draggableHandle=".drag-handle"
-            useCSSTransforms
-          >
-            {Object.entries(panels).map(([key, content]) => (
-              <div key={key} className="relative p-[2px]">
-                {editMode && (
-                  <div className="drag-handle absolute inset-x-0 top-0 h-5 bg-amber-500/20 hover:bg-amber-500/40 cursor-grab active:cursor-grabbing rounded-t-lg flex items-center justify-center z-10">
-                    <div className="flex gap-0.5">
-                      {[...Array(4)].map((_, i) => <div key={i} className="w-0.5 h-2.5 bg-amber-400/60 rounded" />)}
-                    </div>
+      {mounted && (
+        <GridLayout
+          width={width}
+          gridConfig={{ cols: 64, rowHeight: 10, margin: [0, 0], containerPadding: [0, 0] }}
+          dragConfig={{ enabled: editMode, handle: '.drag-handle' }}
+          resizeConfig={{ enabled: editMode }}
+          layout={data.layout}
+          onLayoutChange={(newLayout) => update({ layout: newLayout.map(({ i, x, y, w, h }) => ({ i, x, y, w, h })) })}
+          style={editMode ? {
+            backgroundImage: 'linear-gradient(rgba(251,191,36,0.08) 1px, transparent 1px), linear-gradient(90deg, rgba(251,191,36,0.08) 1px, transparent 1px)',
+            backgroundSize: `${width / 64}px 10px`,
+          } : undefined}
+        >
+          {Object.entries(panels).map(([key, content]) => (
+            <div key={key} className="relative p-[2px]">
+              {editMode && (
+                <div className="drag-handle absolute inset-x-0 top-0 h-5 bg-amber-500/20 hover:bg-amber-500/40 cursor-grab active:cursor-grabbing rounded-t-lg flex items-center justify-center z-10">
+                  <div className="flex gap-0.5">
+                    {[...Array(4)].map((_, i) => <div key={i} className="w-0.5 h-2.5 bg-amber-400/60 rounded" />)}
                   </div>
-                )}
-                {content}
-              </div>
-            ))}
-          </GridLayout>
-        )}
-      </div>
+                </div>
+              )}
+              {content}
+            </div>
+          ))}
+        </GridLayout>
+      )}
     </div>
   )
 }
