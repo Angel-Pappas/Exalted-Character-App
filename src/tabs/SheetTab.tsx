@@ -347,7 +347,7 @@ export default function SheetTab({ sheet, onChange }: Props) {
           {Object.entries(panels).map(([key, content]) => (
             <div key={key} className="relative p-[2px]">
               {editMode && (
-                <div className="drag-handle absolute inset-x-0 top-0 h-5 bg-amber-500/20 hover:bg-amber-500/40 cursor-grab active:cursor-grabbing rounded-t-lg flex items-center justify-center z-10">
+                <div className="drag-handle absolute inset-x-0 top-0 h-5 bg-amber-500/20 hover:bg-amber-500/40 cursor-grab active:cursor-grabbing rounded-t-lg flex items-center justify-center z-[5]">
                   <div className="flex gap-0.5">
                     {[...Array(4)].map((_, i) => <div key={i} className="w-0.5 h-2.5 bg-amber-400/60 rounded" />)}
                   </div>

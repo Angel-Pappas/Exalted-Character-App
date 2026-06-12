@@ -21,7 +21,7 @@ body {
   -moz-osx-font-smoothing: grayscale;
 }
 
-/* Make the resize handle larger and amber-tinted so it's always easy to grab */
+/* Resize handle: always on top of drag handle and panel content */
 .react-resizable-handle {
   width: 20px !important;
   height: 20px !important;
@@ -31,6 +31,7 @@ body {
   bottom: 0 !important;
   right: 0 !important;
   cursor: se-resize;
+  z-index: 50 !important;
 }
 .react-resizable-handle::after {
   content: '';
