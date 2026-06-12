@@ -1,4 +1,4 @@
-import { useState, useRef } from 'react'
+import { useState, useRef } from 'react' // useState used by CharmPanel and other local state
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 import { GridLayout, useContainerWidth, noCompactor } from 'react-grid-layout'
 // noCompactor has allowOverlap:false which causes panels to push each other during drag.
@@ -64,6 +64,7 @@ function defaultSheet(): SheetData {
 
 interface Props {
   sheet: SheetData
+  editMode: boolean
   onChange: (sheet: SheetData) => void
 }
 
@@ -274,8 +275,7 @@ function CharmPanel({ categories, onChange, dragEnabled }: {
 
 const numInput = "w-[30px] text-center bg-stone-800 border border-stone-600 text-stone-100 rounded px-1 py-0.5 text-xs focus:outline-none focus:border-amber-500"
 
-export default function SheetTab({ sheet, onChange }: Props) {
-  const [editMode, setEditMode] = useState(false)
+export default function SheetTab({ sheet, onChange, editMode }: Props) {
   const def = defaultSheet()
   const data: SheetData = {
     attributes: { ...def.attributes, ...sheet.attributes },
@@ -604,23 +604,6 @@ export default function SheetTab({ sheet, onChange }: Props) {
 
   return (
     <div className="relative" ref={containerRef}>
-      {/* Edit layout toggle */}
-      <div className="absolute top-2 right-4 z-10">
-        <button
-          onClick={() => setEditMode(v => !v)}
-          className={`flex items-center gap-1.5 px-3 py-1.5 rounded text-xs font-medium transition-colors ${
-            editMode
-              ? 'bg-amber-500 text-stone-950 hover:bg-amber-400'
-              : 'bg-stone-800 text-stone-400 hover:text-stone-200 border border-stone-600'
-          }`}
-        >
-          <svg xmlns="http://www.w3.org/2000/svg" className="w-3 h-3" viewBox="0 0 20 20" fill="currentColor">
-            <path d="M5 3a2 2 0 00-2 2v2a2 2 0 002 2h2a2 2 0 002-2V5a2 2 0 00-2-2H5zM5 11a2 2 0 00-2 2v2a2 2 0 002 2h2a2 2 0 002-2v-2a2 2 0 00-2-2H5zM11 5a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2h-2a2 2 0 01-2-2V5zM11 13a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2h-2a2 2 0 01-2-2v-2z" />
-          </svg>
-          {editMode ? 'Done' : 'Edit Layout'}
-        </button>
-      </div>
-
       {mounted && (
         <GridLayout
           width={width}

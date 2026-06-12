@@ -21,6 +21,7 @@ export default function CharacterPage() {
   const [character, setCharacter] = useState<Character | null>(null)
   const [data, setData] = useState<CharacterData>(defaultData)
   const [activeTab, setActiveTab] = useState('sheet')
+  const [sheetEditMode, setSheetEditMode] = useState(false)
   const [saving, setSaving] = useState(false)
   const [saveTimeout, setSaveTimeout] = useState<ReturnType<typeof setTimeout> | null>(null)
 
@@ -69,7 +70,24 @@ export default function CharacterPage() {
           <button onClick={() => navigate('/')} className="text-stone-400 hover:text-stone-200 text-sm">← Back</button>
           <h1 className="text-amber-400 font-semibold">{character.name}</h1>
         </div>
-        {saving && <span className="text-xs text-stone-500">Saving…</span>}
+        <div className="flex items-center gap-3">
+          {saving && <span className="text-xs text-stone-500">Saving…</span>}
+          {activeTab === 'sheet' && (
+            <button
+              onClick={() => setSheetEditMode(v => !v)}
+              className={`flex items-center gap-1.5 px-3 py-1.5 rounded text-xs font-medium transition-colors ${
+                sheetEditMode
+                  ? 'bg-amber-500 text-stone-950 hover:bg-amber-400'
+                  : 'bg-stone-800 text-stone-400 hover:text-stone-200 border border-stone-600'
+              }`}
+            >
+              <svg xmlns="http://www.w3.org/2000/svg" className="w-3 h-3" viewBox="0 0 20 20" fill="currentColor">
+                <path d="M5 3a2 2 0 00-2 2v2a2 2 0 002 2h2a2 2 0 002-2V5a2 2 0 00-2-2H5zM5 11a2 2 0 00-2 2v2a2 2 0 002 2h2a2 2 0 002-2v-2a2 2 0 00-2-2H5zM11 5a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2h-2a2 2 0 01-2-2V5zM11 13a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2h-2a2 2 0 01-2-2v-2z" />
+              </svg>
+              {sheetEditMode ? 'Done' : 'Edit Layout'}
+            </button>
+          )}
+        </div>
       </header>
 
       <TabBar active={activeTab} onChange={setActiveTab} />
@@ -79,6 +97,7 @@ export default function CharacterPage() {
           <SheetTab
             sheet={data.sheet}
             onChange={sheet => updateData({ sheet })}
+            editMode={sheetEditMode}
           />
         )}
         {activeTab === 'milestones' && (
