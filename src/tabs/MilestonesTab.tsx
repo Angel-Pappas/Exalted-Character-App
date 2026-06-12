@@ -185,7 +185,6 @@ export default function MilestonesTab({ milestones, onChange }: Props) {
           <table className="w-full text-sm">
             <thead>
               <tr className="text-xs text-stone-400 border-b border-stone-700">
-                <th className="text-left py-2 pr-3 font-medium">Date</th>
                 <th className="text-left py-2 pr-3 font-medium">Type</th>
                 <th className="text-center py-2 px-2 font-medium">Personal</th>
                 <th className="text-center py-2 px-2 font-medium">Exalted</th>
@@ -198,9 +197,6 @@ export default function MilestonesTab({ milestones, onChange }: Props) {
             <tbody>
               {sorted.map(tx => (
                 <tr key={tx.id} className="border-b border-stone-800 hover:bg-stone-900/50">
-                  <td className="py-2 pr-3 text-xs text-stone-500 whitespace-nowrap">
-                    {new Date(tx.date).toLocaleDateString()}
-                  </td>
                   <td className="py-2 pr-3">
                     <span className={`text-xs font-semibold px-1.5 py-0.5 rounded ${
                       tx.kind === 'gain' ? 'bg-emerald-900 text-emerald-300' : 'bg-red-900 text-red-300'
