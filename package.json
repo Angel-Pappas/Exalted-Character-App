@@ -13,7 +13,7 @@
     "@supabase/supabase-js": "^2.108.1",
     "react": "^19.2.6",
     "react-dom": "^19.2.6",
-    "react-grid-layout": "^2.2.3",
+    "react-grid-layout": "^1.5.3",
     "react-resizable": "^4.0.1",
     "react-router-dom": "^7.17.0"
   },

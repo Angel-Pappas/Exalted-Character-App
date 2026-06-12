@@ -1,8 +1,11 @@
-import { useState } from 'react'
-import { GridLayout, useContainerWidth } from 'react-grid-layout'
-import { GridBackground } from 'react-grid-layout/extras'
+import { useState, useRef, useEffect } from 'react'
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+import GridLayoutLib from 'react-grid-layout'
 import 'react-grid-layout/css/styles.css'
 import 'react-resizable/css/styles.css'
+// v1 default export is the component; cast to any to avoid @types mismatch
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+const GridLayout = GridLayoutLib as any
 import type { SheetData, AbilityData, MeritEntry, IntimacyEntry, HealthBox, PanelLayout } from '../types/character'
 
 const ATTRIBUTE_GROUPS = [
@@ -310,10 +313,25 @@ export default function SheetTab({ sheet, onChange }: Props) {
     ),
   }
 
-  const { width, containerRef, mounted } = useContainerWidth()
+  // Measure the grid container's exact pixel width so GridLayout snap points
+  // and the CSS background grid lines are always the same size.
+  const gridRef = useRef<HTMLDivElement>(null)
+  const [gridWidth, setGridWidth] = useState(0)
+  useEffect(() => {
+    const el = gridRef.current
+    if (!el) return
+    setGridWidth(el.getBoundingClientRect().width)
+    const obs = new ResizeObserver(() => setGridWidth(el.getBoundingClientRect().width))
+    obs.observe(el)
+    return () => obs.disconnect()
+  }, [])
+
+  const COL = 64
+  const ROW_H = 10
+  const colPx = gridWidth > 0 ? gridWidth / COL : 0
 
   return (
-    <div className="relative" ref={containerRef}>
+    <div className="relative">
       {/* Edit layout toggle */}
       <div className="absolute top-2 right-4 z-10">
         <button
@@ -331,28 +349,30 @@ export default function SheetTab({ sheet, onChange }: Props) {
         </button>
       </div>
 
-      {mounted && (
-        <>
-          {editMode && (
-            <GridBackground
-              width={width}
-              cols={64}
-              rowHeight={10}
-              margin={[0, 0]}
-              rows="auto"
-              color="rgba(251,191,36,0.08)"
-              borderRadius={0}
-              style={{ position: 'absolute', top: 0, left: 0, zIndex: 0 }}
-            />
-          )}
+      {/* ref div is what we measure; GridLayout gets the same width so snap = grid lines */}
+      <div
+        ref={gridRef}
+        style={editMode && colPx > 0 ? {
+          backgroundImage: 'linear-gradient(rgba(251,191,36,0.08) 1px, transparent 1px), linear-gradient(90deg, rgba(251,191,36,0.08) 1px, transparent 1px)',
+          backgroundSize: `${colPx}px ${ROW_H}px`,
+          backgroundPosition: '0 0',
+        } : undefined}
+      >
+        {gridWidth > 0 && (
           <GridLayout
-            width={width}
-            gridConfig={{ cols: 64, rowHeight: 10, margin: [0, 0], containerPadding: [0, 0] }}
-            dragConfig={{ enabled: editMode, handle: '.drag-handle' }}
-            resizeConfig={{ enabled: editMode }}
             layout={data.layout}
-            onLayoutChange={(newLayout) => update({ layout: newLayout.map(({ i, x, y, w, h }) => ({ i, x, y, w, h })) })}
-            style={{ position: 'relative', zIndex: 1 }}
+            cols={COL}
+            rowHeight={ROW_H}
+            width={gridWidth}
+            isDraggable={editMode}
+            isResizable={editMode}
+            onLayoutChange={(newLayout: PanelLayout[]) =>
+              update({ layout: newLayout.map(({ i, x, y, w, h }) => ({ i, x, y, w, h })) })
+            }
+            margin={[0, 0]}
+            containerPadding={[0, 0]}
+            draggableHandle=".drag-handle"
+            useCSSTransforms
           >
             {Object.entries(panels).map(([key, content]) => (
               <div key={key} className="relative p-[2px]">
@@ -367,8 +387,8 @@ export default function SheetTab({ sheet, onChange }: Props) {
               </div>
             ))}
           </GridLayout>
-        </>
-      )}
+        )}
+      </div>
     </div>
   )
 }
