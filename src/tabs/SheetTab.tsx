@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useState, useRef, useEffect } from 'react'
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 import GridLayoutRaw from 'react-grid-layout'
 const GridLayout = GridLayoutRaw as any
@@ -311,10 +311,19 @@ export default function SheetTab({ sheet, onChange }: Props) {
     ),
   }
 
-  const containerWidth = typeof window !== 'undefined' ? window.innerWidth - 32 : 1200
+  const containerRef = useRef<HTMLDivElement>(null)
+  const [containerWidth, setContainerWidth] = useState(1200)
+  useEffect(() => {
+    if (!containerRef.current) return
+    const obs = new ResizeObserver(entries => {
+      setContainerWidth(entries[0].contentRect.width)
+    })
+    obs.observe(containerRef.current)
+    return () => obs.disconnect()
+  }, [])
 
   return (
-    <div className="relative">
+    <div className="relative" ref={containerRef}>
       {/* Edit layout toggle */}
       <div className="absolute top-2 right-4 z-10">
         <button
@@ -336,7 +345,7 @@ export default function SheetTab({ sheet, onChange }: Props) {
         className="pt-2"
         style={editMode ? {
           backgroundImage: 'linear-gradient(rgba(251,191,36,0.07) 1px, transparent 1px), linear-gradient(90deg, rgba(251,191,36,0.07) 1px, transparent 1px)',
-          backgroundSize: `${containerWidth / 64}px 10px`,
+          backgroundSize: `calc(100% / 64) 10px`,
         } : undefined}
       >
         <GridLayout
