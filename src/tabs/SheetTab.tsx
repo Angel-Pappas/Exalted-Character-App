@@ -29,14 +29,14 @@ const DEFAULT_HEALTH: HealthBox[] = [
 ]
 
 const DEFAULT_LAYOUT: PanelLayout[] = [
-  { i: 'attributes', x: 0,  y: 0,  w: 8,  h: 22, minW: 4, minH: 8 },
-  { i: 'abilities',  x: 0,  y: 22, w: 8,  h: 38, minW: 4, minH: 8 },
-  { i: 'defenses',   x: 8,  y: 0,  w: 8,  h: 11, minW: 4, minH: 8 },
-  { i: 'motes',      x: 8,  y: 11, w: 8,  h: 8,  minW: 4, minH: 8 },
-  { i: 'health',     x: 8,  y: 19, w: 8,  h: 8,  minW: 4, minH: 8 },
-  { i: 'merits',     x: 16, y: 0,  w: 14, h: 18, minW: 4, minH: 8 },
-  { i: 'languages',  x: 16, y: 18, w: 14, h: 10, minW: 4, minH: 8 },
-  { i: 'intimacies', x: 16, y: 28, w: 14, h: 18, minW: 4, minH: 8 },
+  { i: 'attributes', x: 0,  y: 0,  w: 16, h: 22, minW: 4, minH: 8 },
+  { i: 'abilities',  x: 0,  y: 22, w: 16, h: 38, minW: 4, minH: 8 },
+  { i: 'defenses',   x: 16, y: 0,  w: 16, h: 11, minW: 4, minH: 8 },
+  { i: 'motes',      x: 16, y: 11, w: 16, h: 8,  minW: 4, minH: 8 },
+  { i: 'health',     x: 16, y: 19, w: 16, h: 8,  minW: 4, minH: 8 },
+  { i: 'merits',     x: 32, y: 0,  w: 28, h: 18, minW: 4, minH: 8 },
+  { i: 'languages',  x: 32, y: 18, w: 28, h: 10, minW: 4, minH: 8 },
+  { i: 'intimacies', x: 32, y: 28, w: 28, h: 18, minW: 4, minH: 8 },
 ]
 
 const defaultAbility: AbilityData = { rating: 0, specialty: '', excellency: false }
@@ -334,7 +334,7 @@ export default function SheetTab({ sheet, onChange }: Props) {
       {mounted && (
         <GridLayout
           width={width}
-          gridConfig={{ cols: 64, rowHeight: 10, margin: [0, 0], containerPadding: [0, 0] }}
+          gridConfig={{ cols: 128, rowHeight: 10, margin: [0, 0], containerPadding: [0, 0] }}
           dragConfig={{ enabled: editMode, handle: '.drag-handle' }}
           resizeConfig={{ enabled: editMode }}
           compactor={noCompactor}
@@ -345,7 +345,7 @@ export default function SheetTab({ sheet, onChange }: Props) {
             minHeight: '2000px',
             ...(editMode ? {
               backgroundImage: 'linear-gradient(rgba(251,191,36,0.08) 1px, transparent 1px), linear-gradient(90deg, rgba(251,191,36,0.08) 1px, transparent 1px)',
-              backgroundSize: `${width / 64}px 10px`,
+              backgroundSize: `${width / 128}px 10px`,
             } : {}),
           }}
         >
