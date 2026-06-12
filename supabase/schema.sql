@@ -1,0 +1,41 @@
+-- Characters table
+create table if not exists public.characters (
+  id uuid primary key default gen_random_uuid(),
+  user_id uuid references auth.users(id) on delete cascade not null,
+  name text not null,
+  data jsonb not null default '{}',
+  created_at timestamptz default now(),
+  updated_at timestamptz default now()
+);
+
+-- Row-level security: users can only see/edit their own characters
+alter table public.characters enable row level security;
+
+create policy "Users can read own characters"
+  on public.characters for select
+  using (auth.uid() = user_id);
+
+create policy "Users can insert own characters"
+  on public.characters for insert
+  with check (auth.uid() = user_id);
+
+create policy "Users can update own characters"
+  on public.characters for update
+  using (auth.uid() = user_id);
+
+create policy "Users can delete own characters"
+  on public.characters for delete
+  using (auth.uid() = user_id);
+
+-- Auto-update updated_at
+create or replace function public.set_updated_at()
+returns trigger language plpgsql as $$
+begin
+  new.updated_at = now();
+  return new;
+end;
+$$;
+
+create trigger characters_updated_at
+  before update on public.characters
+  for each row execute function public.set_updated_at();
