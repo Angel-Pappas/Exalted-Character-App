@@ -1,10 +1,11 @@
-export type MilestoneType = 'personal' | 'exalted' | 'minor' | 'major'
-
-export interface MilestoneEntry {
+export interface MilestoneTransaction {
   id: string
-  type: MilestoneType
+  kind: 'gain' | 'purchase'
+  personal: number
+  exalted: number
+  minor: number
+  major: number
   description: string
-  amount: number
   date: string
 }
 
@@ -25,7 +26,7 @@ export interface Character {
 
 export interface CharacterData {
   sheet: Record<string, unknown>
-  milestones: MilestoneEntry[]
+  milestones: MilestoneTransaction[]
   notes: string
   npcs: NpcEntry[]
 }
