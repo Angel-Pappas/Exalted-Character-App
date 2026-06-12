@@ -30,9 +30,32 @@ export interface AbilityData {
   excellency: boolean
 }
 
+export interface MeritEntry {
+  id: string
+  type: 'Primary' | 'Secondary' | 'Tertiary'
+  name: string
+}
+
+export interface IntimacyEntry {
+  id: string
+  intensity: 'Minor' | 'Major' | 'Defining'
+  description: string
+}
+
+export interface HealthBox {
+  penalty: string
+  checked: boolean
+}
+
 export interface SheetData {
   attributes: Record<string, number>
   abilities: Record<string, AbilityData>
+  defenses: Record<string, number>
+  languages: string[]
+  merits: MeritEntry[]
+  intimacies: IntimacyEntry[]
+  motes: { current: number; committed: number; total: number }
+  health: HealthBox[]
 }
 
 export interface CharacterData {
