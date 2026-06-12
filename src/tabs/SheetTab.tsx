@@ -1,6 +1,6 @@
 import { useState } from 'react'
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
-import { GridLayout, useContainerWidth } from 'react-grid-layout'
+import { GridLayout, useContainerWidth, noCompactor } from 'react-grid-layout'
 import 'react-grid-layout/css/styles.css'
 import type { SheetData, AbilityData, MeritEntry, IntimacyEntry, HealthBox, PanelLayout } from '../types/character'
 
@@ -337,6 +337,7 @@ export default function SheetTab({ sheet, onChange }: Props) {
           gridConfig={{ cols: 64, rowHeight: 10, margin: [0, 0], containerPadding: [0, 0] }}
           dragConfig={{ enabled: editMode, handle: '.drag-handle' }}
           resizeConfig={{ enabled: editMode }}
+          compactor={noCompactor}
           layout={data.layout}
           onLayoutChange={(newLayout) => update({ layout: newLayout.map(({ i, x, y, w, h }) => ({ i, x, y, w, h })) })}
           style={editMode ? {
