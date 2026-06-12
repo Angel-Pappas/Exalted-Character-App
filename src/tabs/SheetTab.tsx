@@ -96,8 +96,34 @@ function CharmPanel({ categories, onChange, dragEnabled }: {
   const [editCharmName, setEditCharmName] = useState('')
   const [editCharmText, setEditCharmText] = useState('')
   const [dropTargetCatId, setDropTargetCatId] = useState<string | null>(null)
+  const [catDropBeforeId, setCatDropBeforeId] = useState<string | null>(null)
 
   const dragging = useRef<{ fromCatId: string; charmId: string } | null>(null)
+  const draggingCat = useRef<string | null>(null)
+
+  function onCatDragStart(e: React.DragEvent, catId: string) {
+    draggingCat.current = catId
+    dragging.current = null
+    e.dataTransfer.effectAllowed = 'move'
+    e.stopPropagation()
+  }
+  function onCatDragOver(e: React.DragEvent, catId: string) {
+    if (!draggingCat.current || draggingCat.current === catId) return
+    e.preventDefault(); e.stopPropagation()
+    setCatDropBeforeId(catId)
+  }
+  function onCatDrop(e: React.DragEvent, beforeCatId: string) {
+    e.preventDefault(); e.stopPropagation()
+    if (!draggingCat.current || draggingCat.current === beforeCatId) { draggingCat.current = null; setCatDropBeforeId(null); return }
+    const fromId = draggingCat.current
+    const next = categories.filter(c => c.id !== fromId)
+    const moving = categories.find(c => c.id === fromId)!
+    const idx = next.findIndex(c => c.id === beforeCatId)
+    next.splice(idx < 0 ? next.length : idx, 0, moving)
+    onChange(next)
+    draggingCat.current = null; setCatDropBeforeId(null)
+  }
+  function onCatDragEnd() { draggingCat.current = null; setCatDropBeforeId(null) }
 
   function addCategory() {
     if (!newCatName.trim()) return
@@ -180,13 +206,18 @@ function CharmPanel({ categories, onChange, dragEnabled }: {
         {categories.length === 0 && <p className="text-xs text-stone-500">No categories yet.</p>}
         {categories.map(cat => (
           <div key={cat.id}
-            onDragOver={e => { e.preventDefault(); setDropTargetCatId(cat.id) }}
-            onDragLeave={e => { if (!e.currentTarget.contains(e.relatedTarget as Node)) setDropTargetCatId(null) }}
-            onDrop={e => onCharmDrop(e, cat.id)}
-            className={`rounded border transition-colors ${dropTargetCatId === cat.id ? 'border-amber-500/60 bg-amber-500/5' : 'border-stone-700/50'}`}
+            onDragOver={e => { if (draggingCat.current) onCatDragOver(e, cat.id); else { e.preventDefault(); setDropTargetCatId(cat.id) } }}
+            onDragLeave={e => { if (!e.currentTarget.contains(e.relatedTarget as Node)) { setDropTargetCatId(null); setCatDropBeforeId(null) } }}
+            onDrop={e => { if (draggingCat.current) onCatDrop(e, cat.id); else onCharmDrop(e, cat.id) }}
+            onDragEnd={onCatDragEnd}
+            className={`rounded border transition-colors ${catDropBeforeId === cat.id ? 'border-amber-400 border-t-2' : dropTargetCatId === cat.id ? 'border-amber-500/60 bg-amber-500/5' : 'border-stone-700/50'}`}
           >
             {/* Category header */}
-            <div className="flex items-center justify-between px-1.5 py-1">
+            <div
+              draggable={dragEnabled}
+              onDragStart={e => dragEnabled && onCatDragStart(e, cat.id)}
+              className={`flex items-center justify-between px-1.5 py-1 ${dragEnabled ? 'cursor-grab active:cursor-grabbing' : ''}`}
+            >
               {editingCatId === cat.id ? (
                 <div className="flex gap-1 flex-1">
                   <input autoFocus type="text" value={editCatName} onChange={e => setEditCatName(e.target.value)}
@@ -295,7 +326,20 @@ function EffectPanel({ categories, onChange, dragEnabled }: {
   const [editEffectName, setEditEffectName] = useState('')
   const [editEffectText, setEditEffectText] = useState('')
   const [dropTargetCatId, setDropTargetCatId] = useState<string | null>(null)
+  const [catDropBeforeId, setCatDropBeforeId] = useState<string | null>(null)
   const dragging = useRef<{ fromCatId: string; effectId: string } | null>(null)
+  const draggingCat = useRef<string | null>(null)
+
+  function onCatDragStart(e: React.DragEvent, catId: string) { draggingCat.current = catId; dragging.current = null; e.dataTransfer.effectAllowed = 'move'; e.stopPropagation() }
+  function onCatDragOver(e: React.DragEvent, catId: string) { if (!draggingCat.current || draggingCat.current === catId) return; e.preventDefault(); e.stopPropagation(); setCatDropBeforeId(catId) }
+  function onCatDrop(e: React.DragEvent, beforeCatId: string) {
+    e.preventDefault(); e.stopPropagation()
+    if (!draggingCat.current || draggingCat.current === beforeCatId) { draggingCat.current = null; setCatDropBeforeId(null); return }
+    const fromId = draggingCat.current; const next = categories.filter(c => c.id !== fromId); const moving = categories.find(c => c.id === fromId)!
+    const idx = next.findIndex(c => c.id === beforeCatId); next.splice(idx < 0 ? next.length : idx, 0, moving); onChange(next)
+    draggingCat.current = null; setCatDropBeforeId(null)
+  }
+  function onCatDragEnd() { draggingCat.current = null; setCatDropBeforeId(null) }
 
   function addCat() { if (!newCatName.trim()) return; onChange([...categories, { id: crypto.randomUUID(), name: newCatName.trim(), effects: [] }]); setNewCatName(''); setAddingCat(false) }
   function removeCat(id: string) { onChange(categories.filter(c => c.id !== id)) }
@@ -335,8 +379,18 @@ function EffectPanel({ categories, onChange, dragEnabled }: {
       <div className="space-y-2 overflow-y-auto flex-1">
         {categories.length === 0 && <p className="text-xs text-stone-500">No categories yet.</p>}
         {categories.map(cat => (
-          <div key={cat.id} onDragOver={e => { e.preventDefault(); setDropTargetCatId(cat.id) }} onDragLeave={e => { if (!e.currentTarget.contains(e.relatedTarget as Node)) setDropTargetCatId(null) }} onDrop={e => onDrop(e, cat.id)} className={`rounded border transition-colors ${dropTargetCatId === cat.id ? 'border-amber-500/60 bg-amber-500/5' : 'border-stone-700/50'}`}>
-            <div className="flex items-center justify-between px-1.5 py-1">
+          <div key={cat.id}
+            onDragOver={e => { if (draggingCat.current) onCatDragOver(e, cat.id); else { e.preventDefault(); setDropTargetCatId(cat.id) } }}
+            onDragLeave={e => { if (!e.currentTarget.contains(e.relatedTarget as Node)) { setDropTargetCatId(null); setCatDropBeforeId(null) } }}
+            onDrop={e => { if (draggingCat.current) onCatDrop(e, cat.id); else onDrop(e, cat.id) }}
+            onDragEnd={onCatDragEnd}
+            className={`rounded border transition-colors ${catDropBeforeId === cat.id ? 'border-amber-400 border-t-2' : dropTargetCatId === cat.id ? 'border-amber-500/60 bg-amber-500/5' : 'border-stone-700/50'}`}
+          >
+            <div
+              draggable={dragEnabled}
+              onDragStart={e => dragEnabled && onCatDragStart(e, cat.id)}
+              className={`flex items-center justify-between px-1.5 py-1 ${dragEnabled ? 'cursor-grab active:cursor-grabbing' : ''}`}
+            >
               {editingCatId === cat.id ? <div className="flex gap-1 flex-1"><input autoFocus type="text" value={editCatName} onChange={e => setEditCatName(e.target.value)} onKeyDown={e => { if (e.key === 'Enter') saveCat(); if (e.key === 'Escape') setEditingCatId(null) }} className={inputActive} /><button onClick={saveCat} className="bg-amber-600 hover:bg-amber-500 text-white rounded px-1.5 py-0.5 text-xs">✓</button><button onClick={() => setEditingCatId(null)} className="text-stone-500 hover:text-stone-300 text-xs">✕</button></div>
               : <><span className="text-xs font-semibold text-amber-400/80 uppercase tracking-wider">{cat.name}</span><div className="flex gap-2"><button onClick={() => setAddingEffectCatId(cat.id === addingEffectCatId ? null : cat.id)} className={g}>+ effect</button><button onClick={() => { setEditingCatId(cat.id); setEditCatName(cat.name) }} className={g}>✎</button><button onClick={() => removeCat(cat.id)} className="text-stone-500 hover:text-red-400 transition-colors text-xs">✕</button></div></>}
             </div>
