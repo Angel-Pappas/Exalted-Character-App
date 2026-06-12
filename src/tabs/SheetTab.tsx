@@ -9,7 +9,7 @@ const ATTRIBUTE_GROUPS = [
 const ABILITIES = [
   'Athletics',
   'Awareness',
-  'Close Combat [Unarmed]',
+  'Close Combat',
   'Craft',
   'Embassy',
   'Integrity',
