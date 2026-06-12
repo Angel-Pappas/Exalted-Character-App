@@ -10,6 +10,29 @@ export interface CharmCategory {
   charms: CharmEntry[]
 }
 
+export interface EffectEntry {
+  id: string
+  name: string
+  text: string
+}
+
+export interface EffectCategory {
+  id: string
+  name: string
+  effects: EffectEntry[]
+}
+
+export interface InventoryItem {
+  id: string
+  name: string
+}
+
+export interface InventoryCategory {
+  id: string
+  name: string
+  items: InventoryItem[]
+}
+
 export interface MilestoneTransaction {
   id: string
   kind: 'gain' | 'purchase'
@@ -80,6 +103,8 @@ export interface SheetData {
   health: HealthBox[]
   layout: PanelLayout[]
   charms: CharmCategory[]
+  effects: EffectCategory[]
+  inventory: InventoryCategory[]
 }
 
 export interface CharacterData {

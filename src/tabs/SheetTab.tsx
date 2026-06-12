@@ -5,7 +5,7 @@ import { GridLayout, useContainerWidth, noCompactor } from 'react-grid-layout'
 // Override it so panels can freely overlap — no collision resolution, no compaction.
 const freeCompactor = { ...noCompactor, allowOverlap: true }
 import 'react-grid-layout/css/styles.css'
-import type { SheetData, AbilityData, MeritEntry, IntimacyEntry, HealthBox, PanelLayout, CharmCategory, CharmEntry } from '../types/character'
+import type { SheetData, AbilityData, MeritEntry, IntimacyEntry, HealthBox, PanelLayout, CharmCategory, CharmEntry, EffectCategory, EffectEntry, InventoryCategory, InventoryItem } from '../types/character'
 
 const ATTRIBUTE_GROUPS = [
   { label: 'Physical', attrs: ['Strength', 'Dexterity', 'Stamina'] },
@@ -41,6 +41,8 @@ const DEFAULT_LAYOUT: PanelLayout[] = [
   { i: 'languages',  x: 32, y: 18, w: 28, h: 10, minW: 4, minH: 8 },
   { i: 'intimacies', x: 32, y: 28, w: 28, h: 18, minW: 4, minH: 8 },
   { i: 'charms',     x: 60, y: 0,  w: 40, h: 46, minW: 4, minH: 8 },
+  { i: 'effects',    x: 60, y: 46, w: 40, h: 40, minW: 4, minH: 8 },
+  { i: 'inventory',  x: 100, y: 0, w: 28, h: 40, minW: 4, minH: 8 },
 ]
 
 const defaultAbility: AbilityData = { rating: 0, specialty: '', excellency: false }
@@ -59,6 +61,8 @@ function defaultSheet(): SheetData {
     health: DEFAULT_HEALTH.map(h => ({ ...h })),
     layout: DEFAULT_LAYOUT.map(l => ({ ...l })),
     charms: [],
+    effects: [],
+    inventory: [],
   }
 }
 
@@ -273,6 +277,168 @@ function CharmPanel({ categories, onChange, dragEnabled }: {
   )
 }
 
+// EffectPanel — same structure as CharmPanel (categories + entries with name & description)
+function EffectPanel({ categories, onChange, dragEnabled }: {
+  categories: EffectCategory[]
+  onChange: (c: EffectCategory[]) => void
+  dragEnabled: boolean
+}) {
+  const [expandedId, setExpandedId] = useState<string | null>(null)
+  const [addingCat, setAddingCat] = useState(false)
+  const [newCatName, setNewCatName] = useState('')
+  const [addingEffectCatId, setAddingEffectCatId] = useState<string | null>(null)
+  const [newEffectName, setNewEffectName] = useState('')
+  const [newEffectText, setNewEffectText] = useState('')
+  const [editingCatId, setEditingCatId] = useState<string | null>(null)
+  const [editCatName, setEditCatName] = useState('')
+  const [editingEffect, setEditingEffect] = useState<{ catId: string; effect: EffectEntry } | null>(null)
+  const [editEffectName, setEditEffectName] = useState('')
+  const [editEffectText, setEditEffectText] = useState('')
+  const [dropTargetCatId, setDropTargetCatId] = useState<string | null>(null)
+  const dragging = useRef<{ fromCatId: string; effectId: string } | null>(null)
+
+  function addCat() { if (!newCatName.trim()) return; onChange([...categories, { id: crypto.randomUUID(), name: newCatName.trim(), effects: [] }]); setNewCatName(''); setAddingCat(false) }
+  function removeCat(id: string) { onChange(categories.filter(c => c.id !== id)) }
+  function saveCat() { if (!editingCatId || !editCatName.trim()) return; onChange(categories.map(c => c.id === editingCatId ? { ...c, name: editCatName.trim() } : c)); setEditingCatId(null) }
+  function addEffect(catId: string) {
+    if (!newEffectName.trim()) return
+    onChange(categories.map(c => c.id === catId ? { ...c, effects: [...c.effects, { id: crypto.randomUUID(), name: newEffectName.trim(), text: newEffectText }] } : c))
+    setNewEffectName(''); setNewEffectText(''); setAddingEffectCatId(null)
+  }
+  function removeEffect(catId: string, effectId: string) { onChange(categories.map(c => c.id === catId ? { ...c, effects: c.effects.filter(e => e.id !== effectId) } : c)); if (expandedId === effectId) setExpandedId(null) }
+  function saveEffect() {
+    if (!editingEffect || !editEffectName.trim()) return
+    onChange(categories.map(c => c.id === editingEffect.catId ? { ...c, effects: c.effects.map(e => e.id === editingEffect.effect.id ? { ...e, name: editEffectName.trim(), text: editEffectText } : e) } : c))
+    setEditingEffect(null)
+  }
+  function onDragStart(e: React.DragEvent, fromCatId: string, effectId: string) { dragging.current = { fromCatId, effectId }; e.dataTransfer.effectAllowed = 'move' }
+  function onDrop(e: React.DragEvent, toCatId: string, beforeId?: string) {
+    e.preventDefault(); e.stopPropagation()
+    if (!dragging.current) return
+    const { fromCatId, effectId } = dragging.current
+    const effect = categories.find(c => c.id === fromCatId)?.effects.find(e => e.id === effectId)
+    if (!effect) return
+    onChange(categories.map(c => {
+      if (c.id === fromCatId && c.id === toCatId) { const f = c.effects.filter(e => e.id !== effectId); const i = beforeId ? f.findIndex(e => e.id === beforeId) : f.length; f.splice(i < 0 ? f.length : i, 0, effect); return { ...c, effects: f } }
+      if (c.id === fromCatId) return { ...c, effects: c.effects.filter(e => e.id !== effectId) }
+      if (c.id === toCatId) { const i = beforeId ? c.effects.findIndex(e => e.id === beforeId) : c.effects.length; const n = [...c.effects]; n.splice(i < 0 ? n.length : i, 0, effect); return { ...c, effects: n } }
+      return c
+    }))
+    dragging.current = null; setDropTargetCatId(null)
+  }
+
+  const g = "text-stone-500 hover:text-amber-400 transition-colors text-xs"
+  return (
+    <div className="bg-stone-900 border border-stone-700 rounded-lg p-2 overflow-hidden h-full flex flex-col">
+      <div className="flex items-center justify-between mb-2 shrink-0"><SectionHeader title="Effects" /><button onClick={() => setAddingCat(v => !v)} className={g}>+ category</button></div>
+      {addingCat && <div className="flex gap-1 mb-2 shrink-0"><input autoFocus type="text" value={newCatName} onChange={e => setNewCatName(e.target.value)} onKeyDown={e => { if (e.key === 'Enter') addCat(); if (e.key === 'Escape') setAddingCat(false) }} placeholder="Category name…" className={inputCls} /><button onClick={addCat} className="bg-amber-600 hover:bg-amber-500 text-white rounded px-2 py-0.5 text-xs">✓</button><button onClick={() => setAddingCat(false)} className="text-stone-500 hover:text-stone-300 text-xs px-1">✕</button></div>}
+      <div className="space-y-2 overflow-y-auto flex-1">
+        {categories.length === 0 && <p className="text-xs text-stone-500">No categories yet.</p>}
+        {categories.map(cat => (
+          <div key={cat.id} onDragOver={e => { e.preventDefault(); setDropTargetCatId(cat.id) }} onDragLeave={e => { if (!e.currentTarget.contains(e.relatedTarget as Node)) setDropTargetCatId(null) }} onDrop={e => onDrop(e, cat.id)} className={`rounded border transition-colors ${dropTargetCatId === cat.id ? 'border-amber-500/60 bg-amber-500/5' : 'border-stone-700/50'}`}>
+            <div className="flex items-center justify-between px-1.5 py-1">
+              {editingCatId === cat.id ? <div className="flex gap-1 flex-1"><input autoFocus type="text" value={editCatName} onChange={e => setEditCatName(e.target.value)} onKeyDown={e => { if (e.key === 'Enter') saveCat(); if (e.key === 'Escape') setEditingCatId(null) }} className={inputActive} /><button onClick={saveCat} className="bg-amber-600 hover:bg-amber-500 text-white rounded px-1.5 py-0.5 text-xs">✓</button><button onClick={() => setEditingCatId(null)} className="text-stone-500 hover:text-stone-300 text-xs">✕</button></div>
+              : <><span className="text-xs font-semibold text-amber-400/80 uppercase tracking-wider">{cat.name}</span><div className="flex gap-2"><button onClick={() => setAddingEffectCatId(cat.id === addingEffectCatId ? null : cat.id)} className={g}>+ effect</button><button onClick={() => { setEditingCatId(cat.id); setEditCatName(cat.name) }} className={g}>✎</button><button onClick={() => removeCat(cat.id)} className="text-stone-500 hover:text-red-400 transition-colors text-xs">✕</button></div></>}
+            </div>
+            {addingEffectCatId === cat.id && <div className="px-1.5 pb-1.5 space-y-1 border-t border-stone-700/50 pt-1"><input autoFocus type="text" value={newEffectName} onChange={e => setNewEffectName(e.target.value)} placeholder="Effect name…" className={inputCls} /><textarea value={newEffectText} onChange={e => setNewEffectText(e.target.value)} placeholder="Description…" rows={3} className="w-full bg-stone-800 border border-stone-600 text-stone-100 rounded px-2 py-1 text-xs focus:outline-none focus:border-amber-500 placeholder-stone-500 resize-none" /><div className="flex gap-1 justify-end"><button onClick={() => addEffect(cat.id)} className="bg-amber-600 hover:bg-amber-500 text-white rounded px-2 py-0.5 text-xs">Add</button><button onClick={() => { setAddingEffectCatId(null); setNewEffectName(''); setNewEffectText('') }} className="text-stone-500 hover:text-stone-300 text-xs px-1">Cancel</button></div></div>}
+            <div>
+              {cat.effects.length === 0 && addingEffectCatId !== cat.id && <p className="text-xs text-stone-600 px-1.5 pb-1">No effects.</p>}
+              {cat.effects.map(effect => (
+                <div key={effect.id} draggable={dragEnabled} onDragStart={e => dragEnabled && onDragStart(e, cat.id, effect.id)} onDragOver={e => { e.preventDefault(); e.stopPropagation() }} onDrop={e => onDrop(e, cat.id, effect.id)} className={`border-t border-stone-800 px-1.5 ${dragEnabled ? 'cursor-grab active:cursor-grabbing' : ''}`}>
+                  <div className="flex items-center justify-between py-1 text-xs gap-1">
+                    <button onClick={() => setExpandedId(expandedId === effect.id ? null : effect.id)} className="text-left text-stone-200 hover:text-amber-300 transition-colors flex-1 min-w-0 truncate">{effect.name}</button>
+                    <div className="flex gap-1 shrink-0"><button onClick={() => { setEditingEffect({ catId: cat.id, effect }); setEditEffectName(effect.name); setEditEffectText(effect.text) }} className="text-stone-500 hover:text-amber-400 transition-colors">✎</button><button onClick={() => removeEffect(cat.id, effect.id)} className="text-stone-500 hover:text-red-400 transition-colors">✕</button></div>
+                  </div>
+                  {expandedId === effect.id && editingEffect?.effect.id !== effect.id && <p className="text-xs text-stone-400 pb-1.5 whitespace-pre-wrap leading-relaxed">{effect.text || <em className="text-stone-600">No description.</em>}</p>}
+                  {editingEffect?.effect.id === effect.id && <div className="pb-1.5 space-y-1"><input type="text" value={editEffectName} onChange={e => setEditEffectName(e.target.value)} className={inputActive} /><textarea value={editEffectText} onChange={e => setEditEffectText(e.target.value)} rows={4} className="w-full bg-stone-800 border border-stone-600 text-stone-100 rounded px-2 py-1 text-xs focus:outline-none focus:border-amber-500 resize-none" /><div className="flex gap-1 justify-end"><button onClick={saveEffect} className="bg-amber-600 hover:bg-amber-500 text-white rounded px-2 py-0.5 text-xs">Save</button><button onClick={() => setEditingEffect(null)} className="text-stone-500 hover:text-stone-300 text-xs px-1">Cancel</button></div></div>}
+                </div>
+              ))}
+            </div>
+          </div>
+        ))}
+      </div>
+    </div>
+  )
+}
+
+// InventoryPanel — categories + items (name only for now)
+function InventoryPanel({ categories, onChange, dragEnabled }: {
+  categories: InventoryCategory[]
+  onChange: (c: InventoryCategory[]) => void
+  dragEnabled: boolean
+}) {
+  const [addingCat, setAddingCat] = useState(false)
+  const [newCatName, setNewCatName] = useState('')
+  const [addingItemCatId, setAddingItemCatId] = useState<string | null>(null)
+  const [newItemName, setNewItemName] = useState('')
+  const [editingCatId, setEditingCatId] = useState<string | null>(null)
+  const [editCatName, setEditCatName] = useState('')
+  const [editingItem, setEditingItem] = useState<{ catId: string; itemId: string } | null>(null)
+  const [editItemName, setEditItemName] = useState('')
+  const [dropTargetCatId, setDropTargetCatId] = useState<string | null>(null)
+  const dragging = useRef<{ fromCatId: string; itemId: string } | null>(null)
+
+  function addCat() { if (!newCatName.trim()) return; onChange([...categories, { id: crypto.randomUUID(), name: newCatName.trim(), items: [] }]); setNewCatName(''); setAddingCat(false) }
+  function removeCat(id: string) { onChange(categories.filter(c => c.id !== id)) }
+  function saveCat() { if (!editingCatId || !editCatName.trim()) return; onChange(categories.map(c => c.id === editingCatId ? { ...c, name: editCatName.trim() } : c)); setEditingCatId(null) }
+  function addItem(catId: string) {
+    if (!newItemName.trim()) return
+    onChange(categories.map(c => c.id === catId ? { ...c, items: [...c.items, { id: crypto.randomUUID(), name: newItemName.trim() }] } : c))
+    setNewItemName(''); setAddingItemCatId(null)
+  }
+  function removeItem(catId: string, itemId: string) { onChange(categories.map(c => c.id === catId ? { ...c, items: c.items.filter(i => i.id !== itemId) } : c)) }
+  function saveItem() {
+    if (!editingItem || !editItemName.trim()) return
+    onChange(categories.map(c => c.id === editingItem.catId ? { ...c, items: c.items.map(i => i.id === editingItem.itemId ? { ...i, name: editItemName.trim() } : i) } : c))
+    setEditingItem(null)
+  }
+  function onDragStart(e: React.DragEvent, fromCatId: string, itemId: string) { dragging.current = { fromCatId, itemId }; e.dataTransfer.effectAllowed = 'move' }
+  function onDrop(e: React.DragEvent, toCatId: string, beforeId?: string) {
+    e.preventDefault(); e.stopPropagation()
+    if (!dragging.current) return
+    const { fromCatId, itemId } = dragging.current
+    const item = categories.find(c => c.id === fromCatId)?.items.find(i => i.id === itemId)
+    if (!item) return
+    onChange(categories.map(c => {
+      if (c.id === fromCatId && c.id === toCatId) { const f = c.items.filter(i => i.id !== itemId); const idx = beforeId ? f.findIndex(i => i.id === beforeId) : f.length; f.splice(idx < 0 ? f.length : idx, 0, item); return { ...c, items: f } }
+      if (c.id === fromCatId) return { ...c, items: c.items.filter(i => i.id !== itemId) }
+      if (c.id === toCatId) { const idx = beforeId ? c.items.findIndex(i => i.id === beforeId) : c.items.length; const n = [...c.items]; n.splice(idx < 0 ? n.length : idx, 0, item); return { ...c, items: n } }
+      return c
+    }))
+    dragging.current = null; setDropTargetCatId(null)
+  }
+
+  const g = "text-stone-500 hover:text-amber-400 transition-colors text-xs"
+  return (
+    <div className="bg-stone-900 border border-stone-700 rounded-lg p-2 overflow-hidden h-full flex flex-col">
+      <div className="flex items-center justify-between mb-2 shrink-0"><SectionHeader title="Inventory" /><button onClick={() => setAddingCat(v => !v)} className={g}>+ category</button></div>
+      {addingCat && <div className="flex gap-1 mb-2 shrink-0"><input autoFocus type="text" value={newCatName} onChange={e => setNewCatName(e.target.value)} onKeyDown={e => { if (e.key === 'Enter') addCat(); if (e.key === 'Escape') setAddingCat(false) }} placeholder="Category name…" className={inputCls} /><button onClick={addCat} className="bg-amber-600 hover:bg-amber-500 text-white rounded px-2 py-0.5 text-xs">✓</button><button onClick={() => setAddingCat(false)} className="text-stone-500 hover:text-stone-300 text-xs px-1">✕</button></div>}
+      <div className="space-y-2 overflow-y-auto flex-1">
+        {categories.length === 0 && <p className="text-xs text-stone-500">No categories yet.</p>}
+        {categories.map(cat => (
+          <div key={cat.id} onDragOver={e => { e.preventDefault(); setDropTargetCatId(cat.id) }} onDragLeave={e => { if (!e.currentTarget.contains(e.relatedTarget as Node)) setDropTargetCatId(null) }} onDrop={e => onDrop(e, cat.id)} className={`rounded border transition-colors ${dropTargetCatId === cat.id ? 'border-amber-500/60 bg-amber-500/5' : 'border-stone-700/50'}`}>
+            <div className="flex items-center justify-between px-1.5 py-1">
+              {editingCatId === cat.id ? <div className="flex gap-1 flex-1"><input autoFocus type="text" value={editCatName} onChange={e => setEditCatName(e.target.value)} onKeyDown={e => { if (e.key === 'Enter') saveCat(); if (e.key === 'Escape') setEditingCatId(null) }} className={inputActive} /><button onClick={saveCat} className="bg-amber-600 hover:bg-amber-500 text-white rounded px-1.5 py-0.5 text-xs">✓</button><button onClick={() => setEditingCatId(null)} className="text-stone-500 hover:text-stone-300 text-xs">✕</button></div>
+              : <><span className="text-xs font-semibold text-amber-400/80 uppercase tracking-wider">{cat.name}</span><div className="flex gap-2"><button onClick={() => setAddingItemCatId(cat.id === addingItemCatId ? null : cat.id)} className={g}>+ item</button><button onClick={() => { setEditingCatId(cat.id); setEditCatName(cat.name) }} className={g}>✎</button><button onClick={() => removeCat(cat.id)} className="text-stone-500 hover:text-red-400 transition-colors text-xs">✕</button></div></>}
+            </div>
+            {addingItemCatId === cat.id && <div className="px-1.5 pb-1.5 border-t border-stone-700/50 pt-1 flex gap-1"><input autoFocus type="text" value={newItemName} onChange={e => setNewItemName(e.target.value)} onKeyDown={e => { if (e.key === 'Enter') addItem(cat.id); if (e.key === 'Escape') { setAddingItemCatId(null); setNewItemName('') } }} placeholder="Item name…" className={inputCls} /><button onClick={() => addItem(cat.id)} className="bg-amber-600 hover:bg-amber-500 text-white rounded px-2 py-0.5 text-xs shrink-0">Add</button></div>}
+            <div>
+              {cat.items.length === 0 && addingItemCatId !== cat.id && <p className="text-xs text-stone-600 px-1.5 pb-1">No items.</p>}
+              {cat.items.map(item => (
+                <div key={item.id} draggable={dragEnabled} onDragStart={e => dragEnabled && onDragStart(e, cat.id, item.id)} onDragOver={e => { e.preventDefault(); e.stopPropagation() }} onDrop={e => onDrop(e, cat.id, item.id)} className={`border-t border-stone-800 px-1.5 ${dragEnabled ? 'cursor-grab active:cursor-grabbing' : ''}`}>
+                  {editingItem?.itemId === item.id
+                    ? <div className="flex gap-1 py-1"><input autoFocus type="text" value={editItemName} onChange={e => setEditItemName(e.target.value)} onKeyDown={e => { if (e.key === 'Enter') saveItem(); if (e.key === 'Escape') setEditingItem(null) }} className={inputActive} /><button onClick={saveItem} className="bg-amber-600 hover:bg-amber-500 text-white rounded px-1.5 py-0.5 text-xs shrink-0">✓</button><button onClick={() => setEditingItem(null)} className="text-stone-500 text-xs px-1">✕</button></div>
+                    : <div className="flex items-center justify-between py-1 text-xs gap-1"><span className="text-stone-200 flex-1 min-w-0 truncate">{item.name}</span><div className="flex gap-1 shrink-0"><button onClick={() => { setEditingItem({ catId: cat.id, itemId: item.id }); setEditItemName(item.name) }} className="text-stone-500 hover:text-amber-400 transition-colors">✎</button><button onClick={() => removeItem(cat.id, item.id)} className="text-stone-500 hover:text-red-400 transition-colors">✕</button></div></div>}
+                </div>
+              ))}
+            </div>
+          </div>
+        ))}
+      </div>
+    </div>
+  )
+}
+
 const numInput = "w-[30px] text-center bg-stone-800 border border-stone-600 text-stone-100 rounded px-1 py-0.5 text-xs focus:outline-none focus:border-amber-500"
 
 export default function SheetTab({ sheet, onChange, editMode }: Props) {
@@ -286,8 +452,15 @@ export default function SheetTab({ sheet, onChange, editMode }: Props) {
     intimacies: sheet.intimacies ?? [],
     motes: { ...def.motes, ...sheet.motes },
     health: sheet.health ?? DEFAULT_HEALTH.map(h => ({ ...h })),
-    layout: sheet.layout ?? DEFAULT_LAYOUT.map(l => ({ ...l })),
+    layout: (() => {
+      const base = sheet.layout?.length ? sheet.layout.map(l => ({ ...l })) : DEFAULT_LAYOUT.map(l => ({ ...l }))
+      const existingIds = new Set(base.map(l => l.i))
+      const missing = DEFAULT_LAYOUT.filter(l => !existingIds.has(l.i))
+      return [...base, ...missing]
+    })(),
     charms: sheet.charms ?? [],
+    effects: sheet.effects ?? [],
+    inventory: sheet.inventory ?? [],
   }
 
   const [newLanguage, setNewLanguage] = useState('')
@@ -594,6 +767,22 @@ export default function SheetTab({ sheet, onChange, editMode }: Props) {
       <CharmPanel
         categories={data.charms}
         onChange={c => update({ charms: c })}
+        dragEnabled={!editMode}
+      />
+    ),
+
+    effects: (
+      <EffectPanel
+        categories={data.effects}
+        onChange={c => update({ effects: c })}
+        dragEnabled={!editMode}
+      />
+    ),
+
+    inventory: (
+      <InventoryPanel
+        categories={data.inventory}
+        onChange={c => update({ inventory: c })}
         dragEnabled={!editMode}
       />
     ),
