@@ -24,8 +24,19 @@ export interface Character {
   updated_at: string
 }
 
+export interface AbilityData {
+  rating: number
+  specialty: string
+  excellency: boolean
+}
+
+export interface SheetData {
+  attributes: Record<string, number>
+  abilities: Record<string, AbilityData>
+}
+
 export interface CharacterData {
-  sheet: Record<string, unknown>
+  sheet: SheetData
   milestones: MilestoneTransaction[]
   notes: string
   npcs: NpcEntry[]

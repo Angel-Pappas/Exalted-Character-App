@@ -9,7 +9,7 @@ import NotesTab from '../tabs/NotesTab'
 import CharactersTab from '../tabs/CharactersTab'
 
 const defaultData: CharacterData = {
-  sheet: {},
+  sheet: { attributes: {}, abilities: {} },
   milestones: [],
   notes: '',
   npcs: [],
@@ -75,7 +75,12 @@ export default function CharacterPage() {
       <TabBar active={activeTab} onChange={setActiveTab} />
 
       <div className="flex-1 overflow-auto">
-        {activeTab === 'sheet' && <SheetTab />}
+        {activeTab === 'sheet' && (
+          <SheetTab
+            sheet={data.sheet}
+            onChange={sheet => updateData({ sheet })}
+          />
+        )}
         {activeTab === 'milestones' && (
           <MilestonesTab
             milestones={data.milestones}
