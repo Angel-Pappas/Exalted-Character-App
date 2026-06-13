@@ -854,7 +854,14 @@ function InventoryPanel({ items, onChange, dragEnabled, gameData }: {
   const [foiModalId, setFoiModalId] = useState<string | null>(null)
   const [dropBeforeId, setDropBeforeId] = useState<string | null>(null)
   const [foi, setFoi] = useState<Record<string, FoiState>>({})
+  const [expanded, setExpanded] = useState<Record<string, boolean>>({})
   const dragging = useRef<string | null>(null)
+
+  const weightBadgeCls: Record<string, string> = {
+    L: 'bg-blue-600 text-white',
+    M: 'bg-green-600 text-white',
+    H: 'bg-yellow-500 text-stone-900',
+  }
 
   function getFoi(id: string): FoiState { return foi[id] ?? { active: false, weight: null, tag: null } }
 
@@ -944,6 +951,9 @@ function InventoryPanel({ items, onChange, dragEnabled, gameData }: {
                     const f = getFoi(item.id)
                     const isUnarmed = item.kind === 'weapon' && item.weight === 'Unarmed'
                     const foiTagEntry = f.tag ? foiTags.find(t => t.name === f.tag) : null
+                    const isExpanded = expanded[item.id] ?? false
+                    const wLetter = f.weight?.[0]?.toUpperCase() ?? ''
+                    const wBadge = weightBadgeCls[wLetter] ?? 'bg-stone-600 text-stone-100'
                     return (
                       <div key={item.id}
                         draggable={dragEnabled}
@@ -951,37 +961,74 @@ function InventoryPanel({ items, onChange, dragEnabled, gameData }: {
                         onDragOver={e => dragEnabled && onDragOver(e, item.id)}
                         onDrop={e => onDrop(e, kind, item.id)}
                         onDragEnd={onDragEnd}
-                        className={`border-t border-stone-800 px-1.5 py-1 flex items-center gap-1.5 transition-colors ${dropBeforeId === item.id ? 'border-t-amber-400' : ''} ${dragEnabled ? 'cursor-grab active:cursor-grabbing' : ''}`}
+                        className={`border-t border-stone-800 transition-colors ${dropBeforeId === item.id ? 'border-t-amber-400' : ''}`}
                       >
-                        <button onClick={() => toggleEquipped(item.id)}
-                          className={`w-3.5 h-3.5 rounded border shrink-0 flex items-center justify-center transition-colors ${item.equipped ? (item.artifact && item.artifactColor ? artifactCheckboxCls[item.artifactColor] : 'bg-amber-500 border-amber-500') : 'border-stone-500 hover:border-amber-500'}`}>
-                          {item.equipped && <span className="text-[8px] text-stone-950 font-bold">✓</span>}
-                        </button>
-                        <button onClick={() => setModal(item)}
-                          className={`text-xs hover:brightness-125 transition-all flex-1 min-w-0 truncate text-left rounded px-0.5 ${item.artifact && item.artifactColor ? artifactColorCls[item.artifactColor] : 'text-stone-200'}`}>
-                          {item.name}
-                        </button>
-                        {/* FoI active indicators */}
-                        {isUnarmed && f.active && f.weight && (
-                          <span className="text-[9px] text-orange-400/70 shrink-0">as {f.weight}</span>
-                        )}
-                        {isUnarmed && f.active && foiTagEntry && (
-                          <span title={foiTagEntry.description}
-                            className="text-[9px] px-1 py-0.5 rounded bg-orange-900/40 border border-orange-600/50 text-orange-300 cursor-help shrink-0">
-                            {foiTagEntry.name}
-                          </span>
-                        )}
-                        <div className="flex gap-1 shrink-0">
-                          {isUnarmed && (
-                            <button onClick={() => setFoiModalId(item.id)}
-                              title="Fists of Iron Technique"
-                              className={`text-[9px] px-1 py-0.5 rounded border transition-colors ${f.active ? 'bg-orange-600/30 border-orange-500 text-orange-300' : 'border-stone-600 text-stone-500 hover:border-orange-500 hover:text-orange-400'}`}>
-                              FoI
-                            </button>
+                        {/* Main row */}
+                        <div className={`px-1.5 py-1 flex items-center gap-1.5 ${dragEnabled ? 'cursor-grab active:cursor-grabbing' : ''}`}>
+                          <button onClick={() => toggleEquipped(item.id)}
+                            className={`w-3.5 h-3.5 rounded border shrink-0 flex items-center justify-center transition-colors ${item.equipped ? (item.artifact && item.artifactColor ? artifactCheckboxCls[item.artifactColor] : 'bg-amber-500 border-amber-500') : 'border-stone-500 hover:border-amber-500'}`}>
+                            {item.equipped && <span className="text-[8px] text-stone-950 font-bold">✓</span>}
+                          </button>
+                          <button
+                            onClick={() => item.kind === 'other'
+                              ? setExpanded(e => ({ ...e, [item.id]: !e[item.id] }))
+                              : setModal(item)}
+                            className={`text-xs hover:brightness-125 transition-all flex-1 min-w-0 truncate text-left rounded px-0.5 ${item.artifact && item.artifactColor ? artifactColorCls[item.artifactColor] : 'text-stone-200'}`}>
+                            {item.kind === 'other' && <span className="mr-0.5 text-stone-500">{isExpanded ? '▾' : '▸'}</span>}
+                            {item.name}
+                          </button>
+
+                          {/* Weapon stats */}
+                          {item.kind === 'weapon' && (
+                            <span className="text-[9px] text-stone-500 shrink-0 flex gap-1.5">
+                              {([['Ac', item.accuracy], ['Da', item.damage], ['De', item.defense], ['Ov', item.overwhelming]] as [string, number|undefined][]).map(([l, v]) => (
+                                <span key={l}><span className="text-stone-600">{l} </span>{v ?? 0}</span>
+                              ))}
+                            </span>
                           )}
-                          <button onClick={() => setModal(item)} className="text-stone-500 hover:text-amber-400 transition-colors text-xs">✎</button>
-                          <button onClick={() => removeItem(item.id)} className="text-stone-500 hover:text-red-400 transition-colors text-xs">✕</button>
+
+                          {/* Armor stats */}
+                          {item.kind === 'armor' && (
+                            <span className="text-[9px] text-stone-500 shrink-0 flex gap-1.5">
+                              {([['So', item.soak], ['MP', item.mobilityPen], ['Ha', item.hardness]] as [string, number|undefined][]).map(([l, v]) => (
+                                <span key={l}><span className="text-stone-600">{l} </span>{v ?? 0}</span>
+                              ))}
+                            </span>
+                          )}
+
+                          {/* FoI active: weight badge + tag chip */}
+                          {isUnarmed && f.active && f.weight && (
+                            <span className={`text-[9px] w-4 h-4 rounded flex items-center justify-center font-bold shrink-0 ${wBadge}`}>
+                              {wLetter}
+                            </span>
+                          )}
+                          {isUnarmed && f.active && foiTagEntry && (
+                            <span title={foiTagEntry.description}
+                              className="text-[9px] px-1 py-0.5 rounded bg-orange-900/40 border border-orange-600/50 text-orange-300 cursor-help shrink-0">
+                              {foiTagEntry.name}
+                            </span>
+                          )}
+
+                          <div className="flex gap-1 shrink-0">
+                            {isUnarmed && (
+                              <button onClick={() => setFoiModalId(item.id)}
+                                title="Fists of Iron Technique"
+                                className={`text-[9px] px-1 py-0.5 rounded border transition-colors ${f.active ? 'bg-orange-600/30 border-orange-500 text-orange-300' : 'border-stone-600 text-stone-500 hover:border-orange-500 hover:text-orange-400'}`}>
+                                FoI
+                              </button>
+                            )}
+                            <button onClick={() => setModal(item)} className="text-stone-500 hover:text-amber-400 transition-colors text-xs">✎</button>
+                            <button onClick={() => removeItem(item.id)} className="text-stone-500 hover:text-red-400 transition-colors text-xs">✕</button>
+                          </div>
                         </div>
+
+                        {/* Other: expanded notes */}
+                        {item.kind === 'other' && isExpanded && (
+                          <div className="px-3 pb-2 space-y-0.5">
+                            {item.type && <p className="text-[9px] uppercase tracking-wider text-stone-500">{item.type}</p>}
+                            <p className="text-xs text-stone-400 leading-relaxed whitespace-pre-wrap">{item.notes || '—'}</p>
+                          </div>
+                        )}
                       </div>
                     )
                   })}
