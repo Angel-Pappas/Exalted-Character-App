@@ -1455,7 +1455,7 @@ export default function SheetTab({ sheet, onChange, editMode, gameData: gd }: Pr
             <span className="text-xs font-semibold uppercase tracking-wider text-stone-400">Motes</span>
             <button onClick={resetMotes} className="text-[10px] text-stone-500 hover:text-amber-400 transition-colors px-1.5 py-0.5 rounded border border-stone-700 hover:border-amber-500">Reset</button>
           </div>
-          <div className="flex flex-col items-center mb-3">
+          <div className="flex flex-col items-center mb-1.5">
             <span className="text-[10px] text-stone-500">Total</span>
             <span className="text-stone-300 font-semibold text-2xl">{totalMotes}</span>
           </div>
