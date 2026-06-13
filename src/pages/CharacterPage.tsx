@@ -53,9 +53,10 @@ export default function CharacterPage() {
       .then(({ data: row }) => {
         if (row?.data) {
           setGameData({
-            weapons:   row.data.weapons   ?? DEFAULT_GAME_DATA.weapons,
-            armor:     row.data.armor     ?? DEFAULT_GAME_DATA.armor,
-            tagGroups: row.data.tagGroups ?? DEFAULT_GAME_DATA.tagGroups,
+            weapons:      row.data.weapons      ?? DEFAULT_GAME_DATA.weapons,
+            armor:        row.data.armor        ?? DEFAULT_GAME_DATA.armor,
+            tagGroups:    row.data.tagGroups    ?? DEFAULT_GAME_DATA.tagGroups,
+            essenceMotes: row.data.essenceMotes ?? DEFAULT_GAME_DATA.essenceMotes,
           })
         }
       })

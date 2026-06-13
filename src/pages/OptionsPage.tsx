@@ -2,7 +2,7 @@ import { useEffect, useState, useCallback } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { supabase } from '../lib/supabase'
 import { useAuth } from '../contexts/AuthContext'
-import type { GameData, WeaponTableRow, ArmorTableRow, TagEntry } from '../types/character'
+import type { GameData, WeaponTableRow, ArmorTableRow, TagEntry, EssenceMoteRow } from '../types/character'
 import { DEFAULT_GAME_DATA } from '../types/character'
 
 const TABS = ['Information'] as const
@@ -64,7 +64,8 @@ export default function OptionsPage() {
           setData({
             weapons:   row.data.weapons   ?? DEFAULT_GAME_DATA.weapons,
             armor:     row.data.armor     ?? DEFAULT_GAME_DATA.armor,
-            tagGroups: row.data.tagGroups ?? DEFAULT_GAME_DATA.tagGroups,
+            tagGroups:    row.data.tagGroups    ?? DEFAULT_GAME_DATA.tagGroups,
+            essenceMotes: row.data.essenceMotes ?? DEFAULT_GAME_DATA.essenceMotes,
           })
         }
         setLoaded(true)
@@ -102,6 +103,16 @@ export default function OptionsPage() {
   }
   function removeArmorRow(idx: number) {
     update({ ...data, armor: data.armor.filter((_, i) => i !== idx) })
+  }
+
+  function updateEssenceMote(idx: number, patch: Partial<EssenceMoteRow>) {
+    update({ ...data, essenceMotes: data.essenceMotes.map((r, i) => i === idx ? { ...r, ...patch } : r) })
+  }
+  function addEssenceMoteRow() {
+    update({ ...data, essenceMotes: [...data.essenceMotes, { essence: 0, motes: 0 }] })
+  }
+  function removeEssenceMoteRow(idx: number) {
+    update({ ...data, essenceMotes: data.essenceMotes.filter((_, i) => i !== idx) })
   }
 
   function updateTag(gIdx: number, tIdx: number, patch: Partial<TagEntry>) {
@@ -203,6 +214,29 @@ export default function OptionsPage() {
                 {data.armor.length === 0 && <p className="text-xs text-stone-600 px-3 py-2">No rows.</p>}
               </div>
               <p className="text-xs text-stone-600 mt-1.5">Values shown as modifiers. Hover column headers for descriptions.</p>
+            </section>
+
+            {/* ── Essence & Motes ── */}
+            <section>
+              <div className="flex items-center justify-between mb-3">
+                <h2 className="text-base font-semibold text-amber-400">Essence &amp; Motes</h2>
+                <button onClick={addEssenceMoteRow} className="text-xs text-stone-500 hover:text-amber-400 transition-colors">+ row</button>
+              </div>
+              <div className="rounded-lg border border-stone-700 overflow-hidden">
+                <div className="grid grid-cols-[1fr_4rem_1.5rem] gap-2 px-3 py-2 bg-stone-800 border-b border-stone-700">
+                  <span className="text-[10px] font-bold uppercase tracking-wider text-stone-400">Essence</span>
+                  <span className="text-[10px] font-bold uppercase tracking-wider text-stone-400">Motes</span>
+                  <span />
+                </div>
+                {(data.essenceMotes ?? DEFAULT_GAME_DATA.essenceMotes).map((row, idx) => (
+                  <div key={idx} className="grid grid-cols-[1fr_4rem_1.5rem] gap-2 px-3 py-1.5 items-center border-b border-stone-800 last:border-0">
+                    <input type="number" value={row.essence} onChange={e => updateEssenceMote(idx, { essence: parseInt(e.target.value) || 0 })} className={numInput} />
+                    <input type="number" value={row.motes}   onChange={e => updateEssenceMote(idx, { motes:   parseInt(e.target.value) || 0 })} className={numInput} />
+                    <button onClick={() => removeEssenceMoteRow(idx)} className="text-stone-600 hover:text-red-400 transition-colors text-xs text-center">✕</button>
+                  </div>
+                ))}
+                {(data.essenceMotes ?? []).length === 0 && <p className="text-xs text-stone-600 px-3 py-2">No rows.</p>}
+              </div>
             </section>
 
             {/* ── Equipment Tags ── */}

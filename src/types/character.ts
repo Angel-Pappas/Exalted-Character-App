@@ -169,10 +169,16 @@ export interface TagGroup {
   tags: TagEntry[]
 }
 
+export interface EssenceMoteRow {
+  essence: number
+  motes: number
+}
+
 export interface GameData {
   weapons: WeaponTableRow[]
   armor: ArmorTableRow[]
   tagGroups: TagGroup[]
+  essenceMotes: EssenceMoteRow[]
 }
 
 export const DEFAULT_GAME_DATA: GameData = {
@@ -238,5 +244,12 @@ export const DEFAULT_GAME_DATA: GameData = {
         { name: 'Powerful',   description: "Enables a point-blank attack for ranged weapons. Decrease the wielder's Defense by 1 until the start of her next turn. Gain two bonus dice to withering attacks or decrease an opponent's Hardness by 1 for the purpose of making decisive attacks." },
       ],
     },
+  ],
+  essenceMotes: [
+    { essence: 1, motes: 5 },
+    { essence: 2, motes: 7 },
+    { essence: 3, motes: 10 },
+    { essence: 4, motes: 12 },
+    { essence: 5, motes: 15 },
   ],
 }

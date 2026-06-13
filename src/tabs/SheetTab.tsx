@@ -1427,21 +1427,56 @@ export default function SheetTab({ sheet, onChange, editMode, gameData: gd }: Pr
       </div>
     ),
 
-    motes: (
-      <div className={panelBase}>
-        <SectionHeader title="Motes" />
-        <div className="space-y-1">
-          {(['current', 'committed', 'total'] as const).map(key => (
-            <div key={key} className="flex items-center justify-between">
-              <span className="text-xs text-stone-300 capitalize">{key}</span>
-              <input type="number" min={0} value={data.motes[key]}
-                onChange={e => update({ motes: { ...data.motes, [key]: parseInt(e.target.value) || 0 } })}
-                className={numInput} />
+    motes: (() => {
+      const essence = data.essence ?? 1
+      const moteTable = gameData.essenceMotes ?? DEFAULT_GAME_DATA.essenceMotes
+      const totalMotes = moteTable.find(r => r.essence === essence)?.motes
+        ?? moteTable.reduce((best, r) => r.essence <= essence ? r : best, moteTable[0])?.motes
+        ?? 0
+      const current   = data.motes.current
+      const committed = data.motes.committed
+      const resetMotes = () => update({ motes: { current: totalMotes, committed: 0, total: totalMotes } })
+      const setCommitted = (delta: number) => {
+        const newCommitted = committed + delta
+        if (newCommitted < 0) return
+        const newCurrent = current - delta
+        if (newCurrent < 0) return
+        update({ motes: { ...data.motes, committed: newCommitted, current: newCurrent } })
+      }
+      const setCurrent = (delta: number) => {
+        const newCurrent = current + delta
+        if (newCurrent < 0 || newCurrent > totalMotes) return
+        update({ motes: { ...data.motes, current: newCurrent } })
+      }
+      const counterBtn = "w-5 h-5 flex items-center justify-center rounded text-stone-400 hover:text-stone-100 hover:bg-stone-700 transition-colors text-sm font-bold shrink-0"
+      return (
+        <div className={panelBase}>
+          <div className="flex items-center justify-between mb-2">
+            <span className="text-xs font-semibold uppercase tracking-wider text-stone-400">Motes</span>
+            <button onClick={resetMotes} className="text-[10px] text-stone-500 hover:text-amber-400 transition-colors px-1.5 py-0.5 rounded border border-stone-700 hover:border-amber-500">Reset</button>
+          </div>
+          <p className="text-center text-[10px] text-stone-500 mb-3">Total <span className="text-stone-300 font-semibold">{totalMotes}</span></p>
+          <div className="flex justify-around items-start gap-2">
+            <div className="flex flex-col items-center gap-1">
+              <span className="text-[10px] uppercase tracking-wider text-stone-500">Current</span>
+              <div className="flex items-center gap-1">
+                <button onClick={() => setCurrent(-1)} className={counterBtn}>−</button>
+                <span className="text-xl font-bold text-stone-100 w-8 text-center">{current}</span>
+                <button onClick={() => setCurrent(+1)} className={counterBtn}>+</button>
+              </div>
             </div>
-          ))}
+            <div className="flex flex-col items-center gap-1">
+              <span className="text-[10px] uppercase tracking-wider text-stone-500">Committed</span>
+              <div className="flex items-center gap-1">
+                <button onClick={() => setCommitted(-1)} className={counterBtn}>−</button>
+                <span className="text-xl font-bold text-stone-100 w-8 text-center">{committed}</span>
+                <button onClick={() => setCommitted(+1)} className={counterBtn}>+</button>
+              </div>
+            </div>
+          </div>
         </div>
-      </div>
-    ),
+      )
+    })(),
 
     health: (
       <div className={panelBase}>
