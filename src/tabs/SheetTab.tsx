@@ -773,6 +773,77 @@ const INVENTORY_KINDS: { kind: InventoryItemKind; label: string }[] = [
 
 interface FoiState { active: boolean; weight: string | null; tag: string | null }
 
+function FoiModal({ current, foiWeights, foiTags, onSave, onDeactivate, onClose }: {
+  current: FoiState
+  foiWeights: import('../types/character').WeaponTableRow[]
+  foiTags: import('../types/character').TagEntry[]
+  onSave: (s: FoiState) => void
+  onDeactivate: () => void
+  onClose: () => void
+}) {
+  const [weight, setWeight] = useState<string | null>(current.weight)
+  const [tag, setTag] = useState<string | null>(current.tag)
+  const canSave = !!weight && !!tag
+
+  return (
+    <div className="fixed inset-0 z-[100] flex items-center justify-center bg-black/60 p-4" onClick={onClose}>
+      <div className="bg-stone-900 border border-orange-700/60 rounded-xl w-[420px] shadow-2xl flex flex-col max-h-full" onClick={e => e.stopPropagation()}>
+        <div className="flex items-center justify-between px-4 py-3 border-b border-stone-700 shrink-0">
+          <div>
+            <p className="text-sm font-semibold text-orange-300">Fists of Iron Technique</p>
+            <p className="text-[10px] text-stone-500 mt-0.5">Choose weight and one tag for unarmed attacks</p>
+          </div>
+          <button onClick={onClose} className="text-stone-500 hover:text-stone-300 text-sm">✕</button>
+        </div>
+
+        <div className="px-4 py-3 space-y-3 overflow-y-auto no-scrollbar flex-1">
+          {/* Weight */}
+          <div className="space-y-1">
+            <p className="text-[10px] uppercase tracking-wider text-stone-400">Count as</p>
+            <div className="flex flex-wrap gap-1">
+              {foiWeights.map(w => (
+                <button key={w.category} onClick={() => setWeight(w.category)}
+                  className={`px-2 py-0.5 rounded text-xs transition-colors ${weight === w.category ? 'bg-orange-600 text-white' : 'bg-stone-700 text-stone-400 hover:bg-stone-600'}`}>
+                  {w.category}
+                </button>
+              ))}
+            </div>
+          </div>
+
+          {/* Tag — single select */}
+          <div className="space-y-1">
+            <p className="text-[10px] uppercase tracking-wider text-stone-400">Tag</p>
+            <div className="flex flex-wrap gap-1">
+              {foiTags.map(t => (
+                <button key={t.name} title={t.description} onClick={() => setTag(tag === t.name ? null : t.name)}
+                  className={`px-1.5 py-0.5 rounded text-[10px] transition-colors border ${tag === t.name ? 'bg-orange-600/30 border-orange-500 text-orange-300' : 'bg-stone-800 border-stone-600 text-stone-400 hover:border-orange-400'}`}>
+                  {t.name}
+                </button>
+              ))}
+            </div>
+            {tag && (() => { const entry = foiTags.find(t => t.name === tag); return entry ? (
+              <p className="text-[10px] text-stone-400 leading-relaxed pt-0.5">{entry.description}</p>
+            ) : null })()}
+          </div>
+        </div>
+
+        <div className="flex items-center justify-between px-4 py-3 border-t border-stone-700 shrink-0">
+          {current.active
+            ? <button onClick={onDeactivate} className="text-xs text-stone-500 hover:text-red-400 transition-colors">Deactivate</button>
+            : <span />}
+          <div className="flex gap-2">
+            <button onClick={onClose} className="px-3 py-1 text-xs text-stone-400 hover:text-stone-200 transition-colors">Cancel</button>
+            <button onClick={() => canSave && onSave({ active: true, weight, tag })} disabled={!canSave}
+              className={`px-3 py-1 text-xs rounded transition-colors ${canSave ? 'bg-orange-600 hover:bg-orange-500 text-white' : 'bg-stone-700 text-stone-500 cursor-not-allowed'}`}>
+              Activate
+            </button>
+          </div>
+        </div>
+      </div>
+    </div>
+  )
+}
+
 function InventoryPanel({ items, onChange, dragEnabled, gameData }: {
   items: InventoryItem[]
   onChange: (items: InventoryItem[]) => void
@@ -780,12 +851,12 @@ function InventoryPanel({ items, onChange, dragEnabled, gameData }: {
   gameData: GameData
 }) {
   const [modal, setModal] = useState<Partial<InventoryItem> & { kind: InventoryItemKind } | null>(null)
+  const [foiModalId, setFoiModalId] = useState<string | null>(null)
   const [dropBeforeId, setDropBeforeId] = useState<string | null>(null)
   const [foi, setFoi] = useState<Record<string, FoiState>>({})
   const dragging = useRef<string | null>(null)
 
   function getFoi(id: string): FoiState { return foi[id] ?? { active: false, weight: null, tag: null } }
-  function patchFoi(id: string, patch: Partial<FoiState>) { setFoi(f => ({ ...f, [id]: { ...getFoi(id), ...patch } })) }
 
   // All tags available for FoI: Universal + Melee, excluding Artifact
   const foiTags = gameData.tagGroups
@@ -839,6 +910,16 @@ function InventoryPanel({ items, onChange, dragEnabled, gameData }: {
   return (
     <>
       {modal && <ItemModal item={modal} onSave={saveItem} onClose={() => setModal(null)} gameData={gameData} />}
+      {foiModalId && (
+        <FoiModal
+          current={getFoi(foiModalId)}
+          foiWeights={foiWeights}
+          foiTags={foiTags}
+          onSave={s => { setFoi(f => ({ ...f, [foiModalId]: s })); setFoiModalId(null) }}
+          onDeactivate={() => { setFoi(f => ({ ...f, [foiModalId]: { active: false, weight: null, tag: null } })); setFoiModalId(null) }}
+          onClose={() => setFoiModalId(null)}
+        />
+      )}
       <div className="bg-stone-900 border border-stone-700 rounded-lg p-2 overflow-hidden h-full flex flex-col">
         <div className="flex items-center justify-between mb-2 shrink-0">
           <SectionHeader title="Inventory" />
@@ -870,68 +951,37 @@ function InventoryPanel({ items, onChange, dragEnabled, gameData }: {
                         onDragOver={e => dragEnabled && onDragOver(e, item.id)}
                         onDrop={e => onDrop(e, kind, item.id)}
                         onDragEnd={onDragEnd}
-                        className={`border-t border-stone-800 transition-colors ${dropBeforeId === item.id ? 'border-t-amber-400' : ''}`}
+                        className={`border-t border-stone-800 px-1.5 py-1 flex items-center gap-1.5 transition-colors ${dropBeforeId === item.id ? 'border-t-amber-400' : ''} ${dragEnabled ? 'cursor-grab active:cursor-grabbing' : ''}`}
                       >
-                        {/* Main row */}
-                        <div className={`px-1.5 py-1 flex items-center gap-1.5 ${dragEnabled ? 'cursor-grab active:cursor-grabbing' : ''}`}>
-                          <button onClick={() => toggleEquipped(item.id)}
-                            className={`w-3.5 h-3.5 rounded border shrink-0 flex items-center justify-center transition-colors ${item.equipped ? (item.artifact && item.artifactColor ? artifactCheckboxCls[item.artifactColor] : 'bg-amber-500 border-amber-500') : 'border-stone-500 hover:border-amber-500'}`}>
-                            {item.equipped && <span className="text-[8px] text-stone-950 font-bold">✓</span>}
-                          </button>
-                          <button onClick={() => setModal(item)}
-                            className={`text-xs hover:brightness-125 transition-all flex-1 min-w-0 truncate text-left rounded px-0.5 ${item.artifact && item.artifactColor ? artifactColorCls[item.artifactColor] : 'text-stone-200'}`}>
-                            {item.name}
-                          </button>
-                          {/* FoI active tag chip */}
-                          {isUnarmed && f.active && foiTagEntry && (
-                            <span title={foiTagEntry.description}
-                              className="text-[9px] px-1 py-0.5 rounded bg-orange-900/40 border border-orange-600/50 text-orange-300 cursor-help shrink-0">
-                              {foiTagEntry.name}
-                            </span>
-                          )}
-                          <div className="flex gap-1 shrink-0">
-                            {/* FoI toggle */}
-                            {isUnarmed && (
-                              <button onClick={() => patchFoi(item.id, { active: !f.active })}
-                                title="Fists of Iron Technique"
-                                className={`text-[9px] px-1 py-0.5 rounded border transition-colors ${f.active ? 'bg-orange-600/30 border-orange-500 text-orange-300' : 'border-stone-600 text-stone-500 hover:border-orange-500 hover:text-orange-400'}`}>
-                                FoI
-                              </button>
-                            )}
-                            <button onClick={() => setModal(item)} className="text-stone-500 hover:text-amber-400 transition-colors text-xs">✎</button>
-                            <button onClick={() => removeItem(item.id)} className="text-stone-500 hover:text-red-400 transition-colors text-xs">✕</button>
-                          </div>
-                        </div>
-                        {/* FoI expanded sub-row */}
-                        {isUnarmed && f.active && (
-                          <div className="px-2 pb-2 space-y-1.5 bg-orange-950/20 border-t border-orange-900/30">
-                            {/* Weight picker */}
-                            <div className="flex items-center gap-1.5 pt-1.5">
-                              <span className="text-[9px] text-orange-400/70 uppercase tracking-wider shrink-0">As</span>
-                              <div className="flex flex-wrap gap-1">
-                                {foiWeights.map(w => (
-                                  <button key={w.category} onClick={() => patchFoi(item.id, { weight: w.category })}
-                                    className={`px-1.5 py-0.5 rounded text-[10px] transition-colors ${f.weight === w.category ? 'bg-orange-600 text-white' : 'bg-stone-700 text-stone-400 hover:bg-stone-600'}`}>
-                                    {w.category}
-                                  </button>
-                                ))}
-                              </div>
-                            </div>
-                            {/* Tag picker — single select */}
-                            <div className="flex items-start gap-1.5">
-                              <span className="text-[9px] text-orange-400/70 uppercase tracking-wider shrink-0 pt-0.5">Tag</span>
-                              <div className="flex flex-wrap gap-1">
-                                {foiTags.map(tag => (
-                                  <button key={tag.name} title={tag.description}
-                                    onClick={() => patchFoi(item.id, { tag: f.tag === tag.name ? null : tag.name })}
-                                    className={`px-1.5 py-0.5 rounded text-[10px] transition-colors border ${f.tag === tag.name ? 'bg-orange-600/30 border-orange-500 text-orange-300' : 'bg-stone-800 border-stone-600 text-stone-400 hover:border-orange-400'}`}>
-                                    {tag.name}
-                                  </button>
-                                ))}
-                              </div>
-                            </div>
-                          </div>
+                        <button onClick={() => toggleEquipped(item.id)}
+                          className={`w-3.5 h-3.5 rounded border shrink-0 flex items-center justify-center transition-colors ${item.equipped ? (item.artifact && item.artifactColor ? artifactCheckboxCls[item.artifactColor] : 'bg-amber-500 border-amber-500') : 'border-stone-500 hover:border-amber-500'}`}>
+                          {item.equipped && <span className="text-[8px] text-stone-950 font-bold">✓</span>}
+                        </button>
+                        <button onClick={() => setModal(item)}
+                          className={`text-xs hover:brightness-125 transition-all flex-1 min-w-0 truncate text-left rounded px-0.5 ${item.artifact && item.artifactColor ? artifactColorCls[item.artifactColor] : 'text-stone-200'}`}>
+                          {item.name}
+                        </button>
+                        {/* FoI active indicators */}
+                        {isUnarmed && f.active && f.weight && (
+                          <span className="text-[9px] text-orange-400/70 shrink-0">as {f.weight}</span>
                         )}
+                        {isUnarmed && f.active && foiTagEntry && (
+                          <span title={foiTagEntry.description}
+                            className="text-[9px] px-1 py-0.5 rounded bg-orange-900/40 border border-orange-600/50 text-orange-300 cursor-help shrink-0">
+                            {foiTagEntry.name}
+                          </span>
+                        )}
+                        <div className="flex gap-1 shrink-0">
+                          {isUnarmed && (
+                            <button onClick={() => setFoiModalId(item.id)}
+                              title="Fists of Iron Technique"
+                              className={`text-[9px] px-1 py-0.5 rounded border transition-colors ${f.active ? 'bg-orange-600/30 border-orange-500 text-orange-300' : 'border-stone-600 text-stone-500 hover:border-orange-500 hover:text-orange-400'}`}>
+                              FoI
+                            </button>
+                          )}
+                          <button onClick={() => setModal(item)} className="text-stone-500 hover:text-amber-400 transition-colors text-xs">✎</button>
+                          <button onClick={() => removeItem(item.id)} className="text-stone-500 hover:text-red-400 transition-colors text-xs">✕</button>
+                        </div>
                       </div>
                     )
                   })}
