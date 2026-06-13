@@ -150,8 +150,16 @@ export interface WeaponTableRow {
   overwhelming: number
 }
 
+export interface ArmorTableRow {
+  category: string
+  soak: number
+  mobilityPenalty: number
+  hardness: number
+}
+
 export interface GameData {
   weapons: WeaponTableRow[]
+  armor: ArmorTableRow[]
 }
 
 export const DEFAULT_GAME_DATA: GameData = {
@@ -160,5 +168,9 @@ export const DEFAULT_GAME_DATA: GameData = {
     { category: 'Medium',  accuracy: 1, damage: 1, defense: 1, overwhelming: 1 },
     { category: 'Heavy',   accuracy: 0, damage: 2, defense: 1, overwhelming: 1 },
     { category: 'Unarmed', accuracy: 2, damage: 0, defense: 1, overwhelming: 1 },
+  ],
+  armor: [
+    { category: 'Light Armor', soak: 1, mobilityPenalty:  0, hardness: 0 },
+    { category: 'Heavy Armor', soak: 2, mobilityPenalty: -1, hardness: 0 },
   ],
 }

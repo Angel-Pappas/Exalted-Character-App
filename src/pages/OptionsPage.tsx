@@ -2,11 +2,46 @@ import { useEffect, useState, useCallback } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { supabase } from '../lib/supabase'
 import { useAuth } from '../contexts/AuthContext'
-import type { GameData, WeaponTableRow } from '../types/character'
+import type { GameData, WeaponTableRow, ArmorTableRow } from '../types/character'
 import { DEFAULT_GAME_DATA } from '../types/character'
 
 const TABS = ['Information'] as const
 type Tab = typeof TABS[number]
+
+// Tooltip shown on column header hover
+function Tooltip({ text }: { text: string }) {
+  return (
+    <div className="absolute z-50 bottom-full left-1/2 -translate-x-1/2 mb-2 w-56 bg-stone-800 border border-stone-600 rounded-lg px-3 py-2 text-xs text-stone-300 leading-relaxed shadow-xl pointer-events-none">
+      {text}
+      <div className="absolute top-full left-1/2 -translate-x-1/2 border-4 border-transparent border-t-stone-600" />
+    </div>
+  )
+}
+
+function ColHeader({ label, tip }: { label: string; tip?: string }) {
+  const [show, setShow] = useState(false)
+  return (
+    <div
+      className="relative inline-flex items-center gap-1 cursor-default select-none"
+      onMouseEnter={() => tip && setShow(true)}
+      onMouseLeave={() => setShow(false)}
+    >
+      <span className="text-[10px] font-bold uppercase tracking-wider text-stone-400">{label}</span>
+      {tip && <span className="text-stone-600 text-[9px]">?</span>}
+      {show && tip && <Tooltip text={tip} />}
+    </div>
+  )
+}
+
+const STAT_TIPS: Record<string, string> = {
+  Accuracy: "A weapon's accuracy adds successes to the attack roll.",
+  Damage: "A weapon's damage adds successes to the damage roll.",
+  Defense: "A weapon's defense increases the character's Defense by its rating when taking the defend other or full defense actions.",
+  Overwhelming: "A weapon's Overwhelming is the minimum Power generated through a withering attack's extra successes (even if the attack misses). Overwhelming cannot exceed 4 through any combination of effects.",
+  Soak: "An armor's Soak value adds to the character's Soak, which subtracts successes from incoming damage rolls.",
+  'Mobility Penalty': "Mobility penalties are success-based and apply to Athletics or Stealth rolls involving movement and Physique rolls where enduring fatigue or the environment apply.",
+  Hardness: "An armor's Hardness increases the amount of Power required for a character to make a decisive attack against the wearer.",
+}
 
 export default function OptionsPage() {
   const { user } = useAuth()
@@ -26,10 +61,10 @@ export default function OptionsPage() {
       .maybeSingle()
       .then(({ data: row }) => {
         if (row?.data) {
-          const merged: GameData = {
+          setData({
             weapons: row.data.weapons ?? DEFAULT_GAME_DATA.weapons,
-          }
-          setData(merged)
+            armor:   row.data.armor   ?? DEFAULT_GAME_DATA.armor,
+          })
         }
         setLoaded(true)
       })
@@ -38,9 +73,7 @@ export default function OptionsPage() {
   const save = useCallback(async (next: GameData) => {
     if (!user) return
     setSaving(true)
-    await supabase
-      .from('game_data')
-      .upsert({ user_id: user.id, data: next }, { onConflict: 'user_id' })
+    await supabase.from('game_data').upsert({ user_id: user.id, data: next }, { onConflict: 'user_id' })
     setSaving(false)
   }, [user])
 
@@ -51,24 +84,30 @@ export default function OptionsPage() {
   }
 
   function updateWeapon(idx: number, patch: Partial<WeaponTableRow>) {
-    const weapons = data.weapons.map((r, i) => i === idx ? { ...r, ...patch } : r)
-    update({ ...data, weapons })
+    update({ ...data, weapons: data.weapons.map((r, i) => i === idx ? { ...r, ...patch } : r) })
   }
-
   function addWeaponRow() {
     update({ ...data, weapons: [...data.weapons, { category: '', accuracy: 0, damage: 0, defense: 0, overwhelming: 1 }] })
   }
-
   function removeWeaponRow(idx: number) {
     update({ ...data, weapons: data.weapons.filter((_, i) => i !== idx) })
   }
 
-  const input = "bg-stone-800 border border-stone-700 text-stone-100 rounded px-2 py-1 text-xs focus:outline-none focus:border-amber-500 w-full"
-  const numInput = "bg-stone-800 border border-stone-700 text-stone-100 rounded px-1 py-1 text-xs focus:outline-none focus:border-amber-500 text-center w-14"
+  function updateArmor(idx: number, patch: Partial<ArmorTableRow>) {
+    update({ ...data, armor: data.armor.map((r, i) => i === idx ? { ...r, ...patch } : r) })
+  }
+  function addArmorRow() {
+    update({ ...data, armor: [...data.armor, { category: '', soak: 0, mobilityPenalty: 0, hardness: 0 }] })
+  }
+  function removeArmorRow(idx: number) {
+    update({ ...data, armor: data.armor.filter((_, i) => i !== idx) })
+  }
+
+  const textInput = "bg-stone-800 border border-stone-700 text-stone-100 rounded px-2 py-1 text-xs focus:outline-none focus:border-amber-500 w-full"
+  const numInput  = "bg-stone-800 border border-stone-700 text-stone-100 rounded px-1 py-1 text-xs focus:outline-none focus:border-amber-500 text-center w-14"
 
   return (
     <div className="min-h-screen bg-stone-950 text-stone-100 flex flex-col">
-      {/* Header */}
       <header className="flex items-center justify-between px-4 py-3 border-b border-stone-700 shrink-0">
         <div className="flex items-center gap-3">
           <button onClick={() => navigate(-1)} className="text-stone-400 hover:text-stone-200 text-sm">← Back</button>
@@ -77,86 +116,69 @@ export default function OptionsPage() {
         {saving && <span className="text-xs text-stone-500">Saving…</span>}
       </header>
 
-      {/* Tab bar */}
       <div className="flex border-b border-stone-700 px-4 shrink-0">
         {TABS.map(tab => (
-          <button
-            key={tab}
-            onClick={() => setActiveTab(tab)}
-            className={`px-4 py-2 text-sm font-medium border-b-2 transition-colors -mb-px ${
-              activeTab === tab
-                ? 'border-amber-400 text-amber-400'
-                : 'border-transparent text-stone-400 hover:text-stone-200'
-            }`}
-          >
+          <button key={tab} onClick={() => setActiveTab(tab)}
+            className={`px-4 py-2 text-sm font-medium border-b-2 transition-colors -mb-px ${activeTab === tab ? 'border-amber-400 text-amber-400' : 'border-transparent text-stone-400 hover:text-stone-200'}`}>
             {tab}
           </button>
         ))}
       </div>
 
-      {/* Content */}
       <div className="flex-1 overflow-auto p-6">
-        {!loaded ? (
-          <p className="text-stone-500 text-sm">Loading…</p>
-        ) : activeTab === 'Information' ? (
-          <div className="max-w-2xl space-y-8">
+        {!loaded ? <p className="text-stone-500 text-sm">Loading…</p> : activeTab === 'Information' ? (
+          <div className="max-w-2xl space-y-10">
 
-            {/* Weapons table */}
+            {/* ── Weapons ── */}
             <section>
               <div className="flex items-center justify-between mb-3">
                 <h2 className="text-base font-semibold text-amber-400">Weapons</h2>
-                <button
-                  onClick={addWeaponRow}
-                  className="text-xs text-stone-500 hover:text-amber-400 transition-colors"
-                >
-                  + row
-                </button>
+                <button onClick={addWeaponRow} className="text-xs text-stone-500 hover:text-amber-400 transition-colors">+ row</button>
               </div>
-
-              <div className="rounded-lg border border-stone-700 overflow-hidden">
-                {/* Table header */}
-                <div className="grid grid-cols-[1fr_4rem_4rem_4rem_5rem_1.5rem] gap-2 px-3 py-2 bg-stone-800 border-b border-stone-700">
-                  {['Category', 'Accuracy', 'Damage', 'Defense', 'Overwhelming', ''].map(h => (
-                    <span key={h} className="text-[10px] font-bold uppercase tracking-wider text-stone-400">{h}</span>
+              <div className="rounded-lg border border-stone-700 overflow-visible">
+                <div className="grid grid-cols-[1fr_4rem_4rem_4rem_5.5rem_1.5rem] gap-2 px-3 py-2 bg-stone-800 border-b border-stone-700">
+                  {(['Category', 'Accuracy', 'Damage', 'Defense', 'Overwhelming', ''] as const).map(h => (
+                    <ColHeader key={h} label={h} tip={STAT_TIPS[h]} />
                   ))}
                 </div>
-
-                {/* Rows */}
                 {data.weapons.map((row, idx) => (
-                  <div
-                    key={idx}
-                    className="grid grid-cols-[1fr_4rem_4rem_4rem_5rem_1.5rem] gap-2 px-3 py-1.5 items-center border-b border-stone-800 last:border-0"
-                  >
-                    <input
-                      type="text"
-                      value={row.category}
-                      onChange={e => updateWeapon(idx, { category: e.target.value })}
-                      placeholder="Category…"
-                      className={input}
-                    />
-                    {(['accuracy', 'damage', 'defense', 'overwhelming'] as const).map(field => (
-                      <input
-                        key={field}
-                        type="number"
-                        value={row[field]}
-                        onChange={e => updateWeapon(idx, { [field]: parseInt(e.target.value) || 0 })}
-                        className={numInput}
-                      />
+                  <div key={idx} className="grid grid-cols-[1fr_4rem_4rem_4rem_5.5rem_1.5rem] gap-2 px-3 py-1.5 items-center border-b border-stone-800 last:border-0">
+                    <input type="text" value={row.category} onChange={e => updateWeapon(idx, { category: e.target.value })} placeholder="Category…" className={textInput} />
+                    {(['accuracy', 'damage', 'defense', 'overwhelming'] as const).map(f => (
+                      <input key={f} type="number" value={row[f]} onChange={e => updateWeapon(idx, { [f]: parseInt(e.target.value) || 0 })} className={numInput} />
                     ))}
-                    <button
-                      onClick={() => removeWeaponRow(idx)}
-                      className="text-stone-600 hover:text-red-400 transition-colors text-xs text-center"
-                    >
-                      ✕
-                    </button>
+                    <button onClick={() => removeWeaponRow(idx)} className="text-stone-600 hover:text-red-400 transition-colors text-xs text-center">✕</button>
                   </div>
                 ))}
-
-                {data.weapons.length === 0 && (
-                  <p className="text-xs text-stone-600 px-3 py-2">No rows. Add one above.</p>
-                )}
+                {data.weapons.length === 0 && <p className="text-xs text-stone-600 px-3 py-2">No rows.</p>}
               </div>
-              <p className="text-xs text-stone-600 mt-1.5">Values shown as modifiers (e.g. +2 Accuracy).</p>
+              <p className="text-xs text-stone-600 mt-1.5">Values shown as modifiers. Hover column headers for descriptions.</p>
+            </section>
+
+            {/* ── Armor ── */}
+            <section>
+              <div className="flex items-center justify-between mb-3">
+                <h2 className="text-base font-semibold text-amber-400">Armor</h2>
+                <button onClick={addArmorRow} className="text-xs text-stone-500 hover:text-amber-400 transition-colors">+ row</button>
+              </div>
+              <div className="rounded-lg border border-stone-700 overflow-visible">
+                <div className="grid grid-cols-[1fr_4rem_5.5rem_4rem_1.5rem] gap-2 px-3 py-2 bg-stone-800 border-b border-stone-700">
+                  {(['Category', 'Soak', 'Mobility Penalty', 'Hardness', ''] as const).map(h => (
+                    <ColHeader key={h} label={h} tip={STAT_TIPS[h]} />
+                  ))}
+                </div>
+                {data.armor.map((row, idx) => (
+                  <div key={idx} className="grid grid-cols-[1fr_4rem_5.5rem_4rem_1.5rem] gap-2 px-3 py-1.5 items-center border-b border-stone-800 last:border-0">
+                    <input type="text" value={row.category} onChange={e => updateArmor(idx, { category: e.target.value })} placeholder="Category…" className={textInput} />
+                    {(['soak', 'mobilityPenalty', 'hardness'] as const).map(f => (
+                      <input key={f} type="number" value={row[f]} onChange={e => updateArmor(idx, { [f]: parseInt(e.target.value) || 0 })} className={numInput} />
+                    ))}
+                    <button onClick={() => removeArmorRow(idx)} className="text-stone-600 hover:text-red-400 transition-colors text-xs text-center">✕</button>
+                  </div>
+                ))}
+                {data.armor.length === 0 && <p className="text-xs text-stone-600 px-3 py-2">No rows.</p>}
+              </div>
+              <p className="text-xs text-stone-600 mt-1.5">Values shown as modifiers. Hover column headers for descriptions.</p>
             </section>
 
           </div>
