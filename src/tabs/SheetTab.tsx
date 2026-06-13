@@ -513,9 +513,29 @@ function ItemModal({ item, onSave, onClose, gameData }: {
     set({ tags: next ? [...base, next === 'melee' ? 'Melee' : 'Ranged'] : base })
   }
 
+  function toggleArtifact() {
+    const on = !form.artifact
+    const delta = on ? 1 : -1
+    const patch: Partial<InventoryItem> = {
+      artifact: on,
+      artifactColor: on ? (form.artifactColor ?? 'gold') : undefined,
+    }
+    if (form.kind === 'weapon') {
+      patch.accuracy    = (form.accuracy    ?? 0) + delta
+      patch.damage      = (form.damage      ?? 0) + delta
+      patch.defense     = (form.defense     ?? 0) + delta
+      patch.overwhelming = (form.overwhelming ?? 0) + delta
+    } else if (form.kind === 'armor') {
+      patch.soak     = (form.soak     ?? 0) + delta
+      patch.hardness = (form.hardness ?? 0) + delta
+    }
+    set(patch)
+  }
+
   function renderTagPicker() {
     const visibleGroups = gameData.tagGroups.filter(g => {
       const name = g.group.toLowerCase()
+      if (name.includes('type')) return false   // Artifact/Melee/Ranged handled by UI controls
       if (form.kind === 'weapon') {
         if (name.includes('armor')) return false
         if (name.includes('melee')) return weaponCombatType === 'melee'
@@ -613,39 +633,29 @@ function ItemModal({ item, onSave, onClose, gameData }: {
               </div>
             </div>
 
-            {/* Melee / Ranged */}
+            {/* Combat Type + Artifact inline */}
             <div className="space-y-1">
-              <span className={lbl}>Combat Type</span>
-              <div className="flex gap-1">
-                {(['melee', 'ranged'] as const).map(ct => (
-                  <button key={ct} onClick={() => selectCombatType(ct)}
-                    className={`px-2 py-0.5 rounded text-xs capitalize transition-colors ${weaponCombatType === ct ? 'bg-amber-600 text-white' : 'bg-stone-700 text-stone-400 hover:bg-stone-600'}`}>
-                    {ct}
-                  </button>
-                ))}
-              </div>
-            </div>
-
-            {/* Artifact + color */}
-            <div className="space-y-1.5">
               <div className={row}>
-                <span className={lbl}>Artifact</span>
-                <button onClick={() => set({ artifact: !form.artifact, artifactColor: !form.artifact ? (form.artifactColor ?? 'gold') : undefined })}
-                  className={`w-3.5 h-3.5 rounded border flex items-center justify-center transition-colors ${form.artifact ? 'bg-amber-500 border-amber-500' : 'border-stone-500 hover:border-amber-500'}`}>
-                  {form.artifact && <span className="text-[8px] text-stone-950 font-bold">✓</span>}
-                </button>
-              </div>
-              {form.artifact && (
-                <div className={row}>
-                  <span className={lbl}>Color</span>
-                  <div className="flex gap-1.5">
-                    {ARTIFACT_COLORS.map(c => (
-                      <button key={c.value} title={c.label} onClick={() => set({ artifactColor: c.value })}
-                        className={`w-4 h-4 rounded-full ${c.bg} transition-all ${form.artifactColor === c.value ? `ring-2 ${c.ring} ring-offset-1 ring-offset-stone-900` : 'opacity-60 hover:opacity-100'}`} />
+                <span className={lbl}>Combat Type</span>
+                <div className="flex items-center gap-2">
+                  <div className="flex gap-1">
+                    {(['melee', 'ranged'] as const).map(ct => (
+                      <button key={ct} onClick={() => selectCombatType(ct)}
+                        className={`px-2 py-0.5 rounded text-xs capitalize transition-colors ${weaponCombatType === ct ? 'bg-amber-600 text-white' : 'bg-stone-700 text-stone-400 hover:bg-stone-600'}`}>
+                        {ct}
+                      </button>
                     ))}
                   </div>
+                  <button onClick={toggleArtifact} title="Artifact (+1 to all stats)"
+                    className={`px-2 py-0.5 rounded text-xs transition-colors border ${form.artifact ? 'bg-amber-600/30 border-amber-500 text-amber-300' : 'bg-stone-700 border-stone-600 text-stone-400 hover:border-stone-400'}`}>
+                    Artifact
+                  </button>
+                  {form.artifact && ARTIFACT_COLORS.map(c => (
+                    <button key={c.value} title={c.label} onClick={() => set({ artifactColor: c.value })}
+                      className={`w-4 h-4 rounded-full ${c.bg} transition-all ${form.artifactColor === c.value ? `ring-2 ${c.ring} ring-offset-1 ring-offset-stone-900` : 'opacity-60 hover:opacity-100'}`} />
+                  ))}
                 </div>
-              )}
+              </div>
             </div>
 
             {/* Scores */}
@@ -667,16 +677,28 @@ function ItemModal({ item, onSave, onClose, gameData }: {
 
           {/* Armor fields */}
           {form.kind === 'armor' && <>
-            {/* Category — buttons from gameData */}
+            {/* Category + Artifact inline */}
             <div className="space-y-1">
-              <span className={lbl}>Category</span>
-              <div className="flex flex-wrap gap-1">
-                {gameData.armor.map(a => (
-                  <button key={a.category} onClick={() => selectArmorRow(a.category)}
-                    className={`px-2 py-0.5 rounded text-xs transition-colors ${form.type === a.category ? 'bg-amber-600 text-white' : 'bg-stone-700 text-stone-400 hover:bg-stone-600'}`}>
-                    {a.category}
+              <div className={row}>
+                <span className={lbl}>Category</span>
+                <div className="flex items-center gap-2 flex-wrap">
+                  <div className="flex flex-wrap gap-1">
+                    {gameData.armor.map(a => (
+                      <button key={a.category} onClick={() => selectArmorRow(a.category)}
+                        className={`px-2 py-0.5 rounded text-xs transition-colors ${form.type === a.category ? 'bg-amber-600 text-white' : 'bg-stone-700 text-stone-400 hover:bg-stone-600'}`}>
+                        {a.category}
+                      </button>
+                    ))}
+                  </div>
+                  <button onClick={toggleArtifact} title="Artifact (+1 Soak & Hardness)"
+                    className={`px-2 py-0.5 rounded text-xs transition-colors border ${form.artifact ? 'bg-amber-600/30 border-amber-500 text-amber-300' : 'bg-stone-700 border-stone-600 text-stone-400 hover:border-stone-400'}`}>
+                    Artifact
                   </button>
-                ))}
+                  {form.artifact && ARTIFACT_COLORS.map(c => (
+                    <button key={c.value} title={c.label} onClick={() => set({ artifactColor: c.value })}
+                      className={`w-4 h-4 rounded-full ${c.bg} transition-all ${form.artifactColor === c.value ? `ring-2 ${c.ring} ring-offset-1 ring-offset-stone-900` : 'opacity-60 hover:opacity-100'}`} />
+                  ))}
+                </div>
               </div>
             </div>
 
