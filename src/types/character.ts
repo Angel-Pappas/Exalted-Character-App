@@ -24,13 +24,19 @@ export interface EffectCategory {
 
 export type InventoryItemKind = 'weapon' | 'armor' | 'other'
 
+export type WeaponWeight = 'Light' | 'Medium' | 'Heavy'
+export type ArtifactColor = 'red' | 'green' | 'blue' | 'white' | 'silver' | 'gold'
+
 export interface InventoryItem {
   id: string
   kind: InventoryItemKind
   name: string
-  type: string
+  type: string          // used by armor + other; not shown for weapons
   equipped: boolean
-  // weapon fields
+  // weapon-specific
+  weight?: WeaponWeight
+  artifact?: boolean
+  artifactColor?: ArtifactColor
   accuracy?: number
   damage?: number
   defense?: number

@@ -5,7 +5,7 @@ import { GridLayout, useContainerWidth, noCompactor } from 'react-grid-layout'
 // Override it so panels can freely overlap — no collision resolution, no compaction.
 const freeCompactor = { ...noCompactor, allowOverlap: true }
 import 'react-grid-layout/css/styles.css'
-import type { SheetData, AbilityData, MeritEntry, IntimacyEntry, HealthBox, PanelLayout, CharmCategory, CharmEntry, EffectCategory, EffectEntry, InventoryItem, InventoryItemKind } from '../types/character'
+import type { SheetData, AbilityData, MeritEntry, IntimacyEntry, HealthBox, PanelLayout, CharmCategory, CharmEntry, EffectCategory, EffectEntry, InventoryItem, InventoryItemKind, WeaponWeight, ArtifactColor } from '../types/character'
 
 const ATTRIBUTE_GROUPS = [
   { label: 'Physical', attrs: ['Strength', 'Dexterity', 'Stamina'] },
@@ -429,6 +429,9 @@ function ItemModal({ item, onSave, onClose }: {
     name: item.name ?? '',
     type: item.type ?? '',
     equipped: item.equipped ?? false,
+    weight: item.weight ?? 'Medium',
+    artifact: item.artifact ?? false,
+    artifactColor: item.artifactColor,
     accuracy: item.accuracy ?? 0,
     damage: item.damage ?? 0,
     defense: item.defense ?? 0,
@@ -445,6 +448,15 @@ function ItemModal({ item, onSave, onClose }: {
   const nfNum = "w-16 text-center bg-stone-800 border border-stone-600 text-stone-100 rounded px-1 py-1 text-xs focus:outline-none focus:border-amber-500"
   const row = "flex items-center justify-between gap-2"
   const lbl = "text-xs text-stone-400 shrink-0"
+
+  const ARTIFACT_COLORS: { value: ArtifactColor; bg: string; ring: string; label: string }[] = [
+    { value: 'red',    bg: 'bg-red-500',    ring: 'ring-red-400',    label: 'Red' },
+    { value: 'green',  bg: 'bg-green-500',  ring: 'ring-green-400',  label: 'Green' },
+    { value: 'blue',   bg: 'bg-blue-500',   ring: 'ring-blue-400',   label: 'Blue' },
+    { value: 'white',  bg: 'bg-white',      ring: 'ring-white',      label: 'White' },
+    { value: 'silver', bg: 'bg-slate-300',  ring: 'ring-slate-300',  label: 'Silver' },
+    { value: 'gold',   bg: 'bg-amber-400',  ring: 'ring-amber-400',  label: 'Gold' },
+  ]
 
   const kindBadge: Record<InventoryItemKind, string> = {
     weapon: 'bg-red-900/60 text-red-300',
@@ -484,14 +496,42 @@ function ItemModal({ item, onSave, onClose }: {
             <input autoFocus type="text" value={form.name} onChange={e => set({ name: e.target.value })} placeholder="Item name…" className={nf} />
           </div>
 
-          {/* Type */}
-          <div className="space-y-0.5">
-            <span className={lbl}>Type</span>
-            <input type="text" value={form.type} onChange={e => set({ type: e.target.value })} placeholder={form.kind === 'weapon' ? 'e.g. Sword, Bow…' : form.kind === 'armor' ? 'e.g. Light, Heavy…' : 'e.g. Tool, Artifact…'} className={nf} />
-          </div>
-
           {/* Weapon fields */}
           {form.kind === 'weapon' && <>
+            {/* Weight dropdown */}
+            <div className={row}>
+              <span className={lbl}>Weight</span>
+              <select value={form.weight ?? 'Medium'} onChange={e => set({ weight: e.target.value as WeaponWeight })}
+                className="bg-stone-800 border border-stone-600 text-stone-100 rounded px-2 py-1 text-xs focus:outline-none focus:border-amber-500">
+                <option>Light</option>
+                <option>Medium</option>
+                <option>Heavy</option>
+              </select>
+            </div>
+
+            {/* Artifact + color */}
+            <div className="space-y-1.5">
+              <div className={row}>
+                <span className={lbl}>Artifact</span>
+                <button onClick={() => set({ artifact: !form.artifact, artifactColor: !form.artifact ? (form.artifactColor ?? 'gold') : undefined })}
+                  className={`w-3.5 h-3.5 rounded border flex items-center justify-center transition-colors ${form.artifact ? 'bg-amber-500 border-amber-500' : 'border-stone-500 hover:border-amber-500'}`}>
+                  {form.artifact && <span className="text-[8px] text-stone-950 font-bold">✓</span>}
+                </button>
+              </div>
+              {form.artifact && (
+                <div className={row}>
+                  <span className={lbl}>Color</span>
+                  <div className="flex gap-1.5">
+                    {ARTIFACT_COLORS.map(c => (
+                      <button key={c.value} title={c.label} onClick={() => set({ artifactColor: c.value })}
+                        className={`w-4 h-4 rounded-full ${c.bg} transition-all ${form.artifactColor === c.value ? `ring-2 ${c.ring} ring-offset-1 ring-offset-stone-900` : 'opacity-60 hover:opacity-100'}`} />
+                    ))}
+                  </div>
+                </div>
+              )}
+            </div>
+
+            {/* Scores */}
             <div className="grid grid-cols-2 gap-2">
               {([['accuracy', 'Accuracy'], ['damage', 'Damage'], ['defense', 'Defense'], ['overwhelming', 'Overwhlm.']] as const).map(([k, label]) => (
                 <div key={k} className={row}>
@@ -508,6 +548,10 @@ function ItemModal({ item, onSave, onClose }: {
 
           {/* Armor fields */}
           {form.kind === 'armor' && <>
+            <div className="space-y-0.5">
+              <span className={lbl}>Type</span>
+              <input type="text" value={form.type} onChange={e => set({ type: e.target.value })} placeholder="e.g. Light, Heavy…" className={nf} />
+            </div>
             <div className="grid grid-cols-2 gap-2">
               {([['soak', 'Soak'], ['mobilityPen', 'Mobility Pen'], ['hardness', 'Hardness']] as const).map(([k, label]) => (
                 <div key={k} className={row}>
@@ -523,12 +567,16 @@ function ItemModal({ item, onSave, onClose }: {
           </>}
 
           {/* Other fields */}
-          {form.kind === 'other' && (
+          {form.kind === 'other' && <>
+            <div className="space-y-0.5">
+              <span className={lbl}>Type</span>
+              <input type="text" value={form.type} onChange={e => set({ type: e.target.value })} placeholder="e.g. Tool, Artifact…" className={nf} />
+            </div>
             <div className="space-y-0.5">
               <span className={lbl}>Notes</span>
               <textarea value={form.notes ?? ''} onChange={e => set({ notes: e.target.value })} rows={3} placeholder="Description…" className={`${nf} resize-none`} />
             </div>
-          )}
+          </>}
 
           {/* Equipped */}
           <div className={row}>
@@ -591,6 +639,15 @@ function InventoryPanel({ items, onChange, dragEnabled }: {
   }
   function onDragEnd() { dragging.current = null; setDropBeforeId(null) }
 
+  const artifactColorCls: Record<ArtifactColor, string> = {
+    red:    'text-red-400 bg-red-900/20',
+    green:  'text-green-400 bg-green-900/20',
+    blue:   'text-blue-400 bg-blue-900/20',
+    white:  'text-white bg-stone-700/30',
+    silver: 'text-slate-300 bg-slate-700/20',
+    gold:   'text-amber-400 bg-amber-900/20',
+  }
+
   return (
     <>
       {modal && <ItemModal item={modal} onSave={saveItem} onClose={() => setModal(null)} />}
@@ -628,7 +685,10 @@ function InventoryPanel({ items, onChange, dragEnabled }: {
                         {item.equipped && <span className="text-[8px] text-stone-950 font-bold">✓</span>}
                       </button>
                       <span className={`text-[9px] font-bold uppercase px-1 py-0.5 rounded shrink-0 ${badge}`}>{kind[0].toUpperCase()}</span>
-                      <button onClick={() => setModal(item)} className="text-xs text-stone-200 hover:text-amber-300 transition-colors flex-1 min-w-0 truncate text-left">{item.name}</button>
+                      <button onClick={() => setModal(item)}
+                        className={`text-xs hover:brightness-125 transition-all flex-1 min-w-0 truncate text-left rounded px-0.5 ${item.artifact && item.artifactColor ? artifactColorCls[item.artifactColor] : 'text-stone-200'}`}>
+                        {item.name}
+                      </button>
                       <div className="flex gap-1 shrink-0">
                         <button onClick={() => setModal(item)} className="text-stone-500 hover:text-amber-400 transition-colors text-xs">✎</button>
                         <button onClick={() => removeItem(item.id)} className="text-stone-500 hover:text-red-400 transition-colors text-xs">✕</button>
