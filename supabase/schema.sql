@@ -39,3 +39,29 @@ $$;
 create trigger characters_updated_at
   before update on public.characters
   for each row execute function public.set_updated_at();
+
+-- Game data table (character-independent reference tables per user)
+create table if not exists public.game_data (
+  id uuid primary key default gen_random_uuid(),
+  user_id uuid references auth.users(id) on delete cascade not null unique,
+  data jsonb not null default '{}',
+  updated_at timestamptz default now()
+);
+
+alter table public.game_data enable row level security;
+
+create policy "Users can read own game data"
+  on public.game_data for select
+  using (auth.uid() = user_id);
+
+create policy "Users can insert own game data"
+  on public.game_data for insert
+  with check (auth.uid() = user_id);
+
+create policy "Users can update own game data"
+  on public.game_data for update
+  using (auth.uid() = user_id);
+
+create trigger game_data_updated_at
+  before update on public.game_data
+  for each row execute function public.set_updated_at();

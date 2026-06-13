@@ -43,6 +43,9 @@ export default function CharacterListPage() {
         <h1 className="text-2xl font-bold text-amber-400">Exalted</h1>
         <div className="flex items-center gap-4">
           <span className="text-stone-400 text-sm hidden sm:block">{user?.email}</span>
+          <button onClick={() => navigate('/options')} className="text-sm text-stone-400 hover:text-stone-200 transition-colors">
+            Options
+          </button>
           <button onClick={signOut} className="text-sm text-stone-400 hover:text-stone-200 transition-colors">
             Sign out
           </button>

@@ -24,7 +24,7 @@ export interface EffectCategory {
 
 export type InventoryItemKind = 'weapon' | 'armor' | 'other'
 
-export type WeaponWeight = 'Light' | 'Medium' | 'Heavy'
+export type WeaponWeight = 'Light' | 'Medium' | 'Heavy' | 'Unarmed'
 export type ArtifactColor = 'red' | 'green' | 'blue' | 'white' | 'silver' | 'gold'
 
 export interface InventoryItem {
@@ -138,4 +138,27 @@ export interface CharacterData {
   milestones: MilestoneTransaction[]
   notes: string
   npcs: NpcEntry[]
+}
+
+// ── Game Data (character-independent reference tables) ──────────────────────
+
+export interface WeaponTableRow {
+  category: string   // e.g. Light, Medium, Heavy, Unarmed — editable label
+  accuracy: number
+  damage: number
+  defense: number
+  overwhelming: number
+}
+
+export interface GameData {
+  weapons: WeaponTableRow[]
+}
+
+export const DEFAULT_GAME_DATA: GameData = {
+  weapons: [
+    { category: 'Light',   accuracy: 2, damage: 0, defense: 1, overwhelming: 1 },
+    { category: 'Medium',  accuracy: 1, damage: 1, defense: 1, overwhelming: 1 },
+    { category: 'Heavy',   accuracy: 0, damage: 2, defense: 1, overwhelming: 1 },
+    { category: 'Unarmed', accuracy: 2, damage: 0, defense: 1, overwhelming: 1 },
+  ],
 }
