@@ -22,9 +22,27 @@ export interface EffectCategory {
   effects: EffectEntry[]
 }
 
+export type InventoryItemKind = 'weapon' | 'armor' | 'other'
+
 export interface InventoryItem {
   id: string
+  kind: InventoryItemKind
   name: string
+  type: string
+  equipped: boolean
+  // weapon fields
+  accuracy?: number
+  damage?: number
+  defense?: number
+  overwhelming?: number
+  // armor fields
+  soak?: number
+  mobilityPen?: number
+  hardness?: number
+  // weapon + armor
+  tags?: string
+  // other
+  notes?: string
 }
 
 export interface InventoryCategory {

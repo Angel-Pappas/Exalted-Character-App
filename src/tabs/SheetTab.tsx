@@ -5,7 +5,7 @@ import { GridLayout, useContainerWidth, noCompactor } from 'react-grid-layout'
 // Override it so panels can freely overlap — no collision resolution, no compaction.
 const freeCompactor = { ...noCompactor, allowOverlap: true }
 import 'react-grid-layout/css/styles.css'
-import type { SheetData, AbilityData, MeritEntry, IntimacyEntry, HealthBox, PanelLayout, CharmCategory, CharmEntry, EffectCategory, EffectEntry, InventoryCategory} from '../types/character'
+import type { SheetData, AbilityData, MeritEntry, IntimacyEntry, HealthBox, PanelLayout, CharmCategory, CharmEntry, EffectCategory, EffectEntry, InventoryCategory, InventoryItem, InventoryItemKind } from '../types/character'
 
 const ATTRIBUTE_GROUPS = [
   { label: 'Physical', attrs: ['Strength', 'Dexterity', 'Stamina'] },
@@ -416,7 +416,142 @@ function EffectPanel({ categories, onChange, dragEnabled }: {
   )
 }
 
-// InventoryPanel — categories + items (name only for now)
+// Item modal — shown when creating or editing an inventory item
+function ItemModal({ item, onSave, onClose }: {
+  item: Partial<InventoryItem> & { kind: InventoryItemKind }
+  onSave: (item: InventoryItem) => void
+  onClose: () => void
+}) {
+  const [form, setForm] = useState<InventoryItem>({
+    id: item.id ?? crypto.randomUUID(),
+    kind: item.kind,
+    name: item.name ?? '',
+    type: item.type ?? '',
+    equipped: item.equipped ?? false,
+    accuracy: item.accuracy ?? 0,
+    damage: item.damage ?? 0,
+    defense: item.defense ?? 0,
+    overwhelming: item.overwhelming ?? 1,
+    soak: item.soak ?? 0,
+    mobilityPen: item.mobilityPen ?? 0,
+    hardness: item.hardness ?? 0,
+    tags: item.tags ?? '',
+    notes: item.notes ?? '',
+  })
+
+  const set = (patch: Partial<InventoryItem>) => setForm(f => ({ ...f, ...patch }))
+  const nf = "w-full bg-stone-800 border border-stone-600 text-stone-100 rounded px-2 py-1 text-xs focus:outline-none focus:border-amber-500 placeholder-stone-500"
+  const nfNum = "w-16 text-center bg-stone-800 border border-stone-600 text-stone-100 rounded px-1 py-1 text-xs focus:outline-none focus:border-amber-500"
+  const row = "flex items-center justify-between gap-2"
+  const lbl = "text-xs text-stone-400 shrink-0"
+
+  const kindBadge: Record<InventoryItemKind, string> = {
+    weapon: 'bg-red-900/60 text-red-300',
+    armor: 'bg-blue-900/60 text-blue-300',
+    other: 'bg-stone-700 text-stone-300',
+  }
+
+  return (
+    <div className="fixed inset-0 z-[100] flex items-center justify-center bg-black/60" onClick={onClose}>
+      <div className="bg-stone-900 border border-stone-600 rounded-xl w-80 shadow-2xl" onClick={e => e.stopPropagation()}>
+        {/* Header */}
+        <div className="flex items-center justify-between px-4 py-3 border-b border-stone-700">
+          <div className="flex items-center gap-2">
+            <span className={`text-[10px] font-bold uppercase px-1.5 py-0.5 rounded ${kindBadge[form.kind]}`}>{form.kind}</span>
+            <span className="text-sm font-semibold text-stone-100">{form.name || 'New Item'}</span>
+          </div>
+          <button onClick={onClose} className="text-stone-500 hover:text-stone-300 text-sm">✕</button>
+        </div>
+
+        <div className="px-4 py-3 space-y-2.5">
+          {/* Kind selector */}
+          <div className={row}>
+            <span className={lbl}>Kind</span>
+            <div className="flex gap-1">
+              {(['weapon', 'armor', 'other'] as InventoryItemKind[]).map(k => (
+                <button key={k} onClick={() => set({ kind: k })}
+                  className={`px-2 py-0.5 rounded text-xs capitalize transition-colors ${form.kind === k ? 'bg-amber-600 text-white' : 'bg-stone-700 text-stone-400 hover:bg-stone-600'}`}>
+                  {k}
+                </button>
+              ))}
+            </div>
+          </div>
+
+          {/* Name */}
+          <div className="space-y-0.5">
+            <span className={lbl}>Name</span>
+            <input autoFocus type="text" value={form.name} onChange={e => set({ name: e.target.value })} placeholder="Item name…" className={nf} />
+          </div>
+
+          {/* Type */}
+          <div className="space-y-0.5">
+            <span className={lbl}>Type</span>
+            <input type="text" value={form.type} onChange={e => set({ type: e.target.value })} placeholder={form.kind === 'weapon' ? 'e.g. Sword, Bow…' : form.kind === 'armor' ? 'e.g. Light, Heavy…' : 'e.g. Tool, Artifact…'} className={nf} />
+          </div>
+
+          {/* Weapon fields */}
+          {form.kind === 'weapon' && <>
+            <div className="grid grid-cols-2 gap-2">
+              {([['accuracy', 'Accuracy'], ['damage', 'Damage'], ['defense', 'Defense'], ['overwhelming', 'Overwhlm.']] as const).map(([k, label]) => (
+                <div key={k} className={row}>
+                  <span className={lbl}>{label}</span>
+                  <input type="number" value={form[k] ?? 0} onChange={e => set({ [k]: parseInt(e.target.value) || 0 })} className={nfNum} />
+                </div>
+              ))}
+            </div>
+            <div className="space-y-0.5">
+              <span className={lbl}>Tags</span>
+              <input type="text" value={form.tags ?? ''} onChange={e => set({ tags: e.target.value })} placeholder="e.g. Lethal, Bashing…" className={nf} />
+            </div>
+          </>}
+
+          {/* Armor fields */}
+          {form.kind === 'armor' && <>
+            <div className="grid grid-cols-2 gap-2">
+              {([['soak', 'Soak'], ['mobilityPen', 'Mobility Pen'], ['hardness', 'Hardness']] as const).map(([k, label]) => (
+                <div key={k} className={row}>
+                  <span className={lbl}>{label}</span>
+                  <input type="number" value={form[k] ?? 0} onChange={e => set({ [k]: parseInt(e.target.value) || 0 })} className={nfNum} />
+                </div>
+              ))}
+            </div>
+            <div className="space-y-0.5">
+              <span className={lbl}>Tags</span>
+              <input type="text" value={form.tags ?? ''} onChange={e => set({ tags: e.target.value })} placeholder="e.g. Artifact, Magical…" className={nf} />
+            </div>
+          </>}
+
+          {/* Other fields */}
+          {form.kind === 'other' && (
+            <div className="space-y-0.5">
+              <span className={lbl}>Notes</span>
+              <textarea value={form.notes ?? ''} onChange={e => set({ notes: e.target.value })} rows={3} placeholder="Description…" className={`${nf} resize-none`} />
+            </div>
+          )}
+
+          {/* Equipped */}
+          <div className={row}>
+            <span className={lbl}>Equipped</span>
+            <button onClick={() => set({ equipped: !form.equipped })}
+              className={`w-8 h-4 rounded-full transition-colors relative ${form.equipped ? 'bg-amber-500' : 'bg-stone-600'}`}>
+              <span className={`absolute top-0.5 w-3 h-3 rounded-full bg-white transition-all ${form.equipped ? 'left-4' : 'left-0.5'}`} />
+            </button>
+          </div>
+        </div>
+
+        {/* Footer */}
+        <div className="flex justify-end gap-2 px-4 py-3 border-t border-stone-700">
+          <button onClick={onClose} className="px-3 py-1 text-xs text-stone-400 hover:text-stone-200 transition-colors">Cancel</button>
+          <button onClick={() => { if (form.name.trim()) onSave(form) }}
+            className="px-3 py-1 text-xs bg-amber-600 hover:bg-amber-500 text-white rounded transition-colors">
+            Save
+          </button>
+        </div>
+      </div>
+    </div>
+  )
+}
+
 function InventoryPanel({ categories, onChange, dragEnabled }: {
   categories: InventoryCategory[]
   onChange: (c: InventoryCategory[]) => void
@@ -424,29 +559,29 @@ function InventoryPanel({ categories, onChange, dragEnabled }: {
 }) {
   const [addingCat, setAddingCat] = useState(false)
   const [newCatName, setNewCatName] = useState('')
-  const [addingItemCatId, setAddingItemCatId] = useState<string | null>(null)
-  const [newItemName, setNewItemName] = useState('')
   const [editingCatId, setEditingCatId] = useState<string | null>(null)
   const [editCatName, setEditCatName] = useState('')
-  const [editingItem, setEditingItem] = useState<{ catId: string; itemId: string } | null>(null)
-  const [editItemName, setEditItemName] = useState('')
   const [dropTargetCatId, setDropTargetCatId] = useState<string | null>(null)
   const dragging = useRef<{ fromCatId: string; itemId: string } | null>(null)
+  // modal state: null = closed, { catId, item } = open
+  const [modal, setModal] = useState<{ catId: string; item: Partial<InventoryItem> & { kind: InventoryItemKind } } | null>(null)
 
   function addCat() { if (!newCatName.trim()) return; onChange([...categories, { id: crypto.randomUUID(), name: newCatName.trim(), items: [] }]); setNewCatName(''); setAddingCat(false) }
   function removeCat(id: string) { onChange(categories.filter(c => c.id !== id)) }
   function saveCat() { if (!editingCatId || !editCatName.trim()) return; onChange(categories.map(c => c.id === editingCatId ? { ...c, name: editCatName.trim() } : c)); setEditingCatId(null) }
-  function addItem(catId: string) {
-    if (!newItemName.trim()) return
-    onChange(categories.map(c => c.id === catId ? { ...c, items: [...c.items, { id: crypto.randomUUID(), name: newItemName.trim() }] } : c))
-    setNewItemName(''); setAddingItemCatId(null)
-  }
   function removeItem(catId: string, itemId: string) { onChange(categories.map(c => c.id === catId ? { ...c, items: c.items.filter(i => i.id !== itemId) } : c)) }
-  function saveItem() {
-    if (!editingItem || !editItemName.trim()) return
-    onChange(categories.map(c => c.id === editingItem.catId ? { ...c, items: c.items.map(i => i.id === editingItem.itemId ? { ...i, name: editItemName.trim() } : i) } : c))
-    setEditingItem(null)
+  function toggleEquipped(catId: string, itemId: string) {
+    onChange(categories.map(c => c.id === catId ? { ...c, items: c.items.map(i => i.id === itemId ? { ...i, equipped: !i.equipped } : i) } : c))
   }
+  function saveItem(catId: string, item: InventoryItem) {
+    onChange(categories.map(c => {
+      if (c.id !== catId) return c
+      const exists = c.items.some(i => i.id === item.id)
+      return { ...c, items: exists ? c.items.map(i => i.id === item.id ? item : i) : [...c.items, item] }
+    }))
+    setModal(null)
+  }
+
   function onDragStart(e: React.DragEvent, fromCatId: string, itemId: string) { dragging.current = { fromCatId, itemId }; e.dataTransfer.effectAllowed = 'move' }
   function onDrop(e: React.DragEvent, toCatId: string, beforeId?: string) {
     e.preventDefault(); e.stopPropagation()
@@ -463,34 +598,74 @@ function InventoryPanel({ categories, onChange, dragEnabled }: {
     dragging.current = null; setDropTargetCatId(null)
   }
 
+  const kindBadge: Record<InventoryItemKind, string> = {
+    weapon: 'bg-red-900/60 text-red-300',
+    armor: 'bg-blue-900/60 text-blue-300',
+    other: 'bg-stone-700 text-stone-300',
+  }
   const g = "text-stone-500 hover:text-amber-400 transition-colors text-xs"
+
   return (
-    <div className="bg-stone-900 border border-stone-700 rounded-lg p-2 overflow-hidden h-full flex flex-col">
-      <div className="flex items-center justify-between mb-2 shrink-0"><SectionHeader title="Inventory" /><button onClick={() => setAddingCat(v => !v)} className={g}>+ category</button></div>
-      {addingCat && <div className="flex gap-1 mb-2 shrink-0"><input autoFocus type="text" value={newCatName} onChange={e => setNewCatName(e.target.value)} onKeyDown={e => { if (e.key === 'Enter') addCat(); if (e.key === 'Escape') setAddingCat(false) }} placeholder="Category name…" className={inputCls} /><button onClick={addCat} className="bg-amber-600 hover:bg-amber-500 text-white rounded px-2 py-0.5 text-xs">✓</button><button onClick={() => setAddingCat(false)} className="text-stone-500 hover:text-stone-300 text-xs px-1">✕</button></div>}
-      <div className="space-y-2 overflow-y-auto no-scrollbar flex-1">
-        {categories.length === 0 && <p className="text-xs text-stone-500">No categories yet.</p>}
-        {categories.map(cat => (
-          <div key={cat.id} onDragOver={e => { e.preventDefault(); setDropTargetCatId(cat.id) }} onDragLeave={e => { if (!e.currentTarget.contains(e.relatedTarget as Node)) setDropTargetCatId(null) }} onDrop={e => onDrop(e, cat.id)} className={`rounded border transition-colors ${dropTargetCatId === cat.id ? 'border-amber-500/60 bg-amber-500/5' : 'border-stone-700/50'}`}>
-            <div className="flex items-center justify-between px-1.5 py-1">
-              {editingCatId === cat.id ? <div className="flex gap-1 flex-1"><input autoFocus type="text" value={editCatName} onChange={e => setEditCatName(e.target.value)} onKeyDown={e => { if (e.key === 'Enter') saveCat(); if (e.key === 'Escape') setEditingCatId(null) }} className={inputActive} /><button onClick={saveCat} className="bg-amber-600 hover:bg-amber-500 text-white rounded px-1.5 py-0.5 text-xs">✓</button><button onClick={() => setEditingCatId(null)} className="text-stone-500 hover:text-stone-300 text-xs">✕</button></div>
-              : <><span className="text-xs font-semibold text-amber-400/80 uppercase tracking-wider">{cat.name}</span><div className="flex gap-2"><button onClick={() => setAddingItemCatId(cat.id === addingItemCatId ? null : cat.id)} className={g}>+ item</button><button onClick={() => { setEditingCatId(cat.id); setEditCatName(cat.name) }} className={g}>✎</button><button onClick={() => removeCat(cat.id)} className="text-stone-500 hover:text-red-400 transition-colors text-xs">✕</button></div></>}
+    <>
+      {modal && (
+        <ItemModal
+          item={modal.item}
+          onSave={item => saveItem(modal.catId, item)}
+          onClose={() => setModal(null)}
+        />
+      )}
+      <div className="bg-stone-900 border border-stone-700 rounded-lg p-2 overflow-hidden h-full flex flex-col">
+        <div className="flex items-center justify-between mb-2 shrink-0">
+          <SectionHeader title="Inventory" />
+          <button onClick={() => setAddingCat(v => !v)} className={g}>+ category</button>
+        </div>
+        {addingCat && <div className="flex gap-1 mb-2 shrink-0"><input autoFocus type="text" value={newCatName} onChange={e => setNewCatName(e.target.value)} onKeyDown={e => { if (e.key === 'Enter') addCat(); if (e.key === 'Escape') setAddingCat(false) }} placeholder="Category name…" className={inputCls} /><button onClick={addCat} className="bg-amber-600 hover:bg-amber-500 text-white rounded px-2 py-0.5 text-xs">✓</button><button onClick={() => setAddingCat(false)} className="text-stone-500 hover:text-stone-300 text-xs px-1">✕</button></div>}
+        <div className="space-y-2 overflow-y-auto no-scrollbar flex-1">
+          {categories.length === 0 && <p className="text-xs text-stone-500">No categories yet.</p>}
+          {categories.map(cat => (
+            <div key={cat.id}
+              onDragOver={e => { e.preventDefault(); setDropTargetCatId(cat.id) }}
+              onDragLeave={e => { if (!e.currentTarget.contains(e.relatedTarget as Node)) setDropTargetCatId(null) }}
+              onDrop={e => onDrop(e, cat.id)}
+              className={`rounded border transition-colors ${dropTargetCatId === cat.id ? 'border-amber-500/60 bg-amber-500/5' : 'border-stone-700/50'}`}
+            >
+              <div className="flex items-center justify-between px-1.5 py-1">
+                {editingCatId === cat.id
+                  ? <div className="flex gap-1 flex-1"><input autoFocus type="text" value={editCatName} onChange={e => setEditCatName(e.target.value)} onKeyDown={e => { if (e.key === 'Enter') saveCat(); if (e.key === 'Escape') setEditingCatId(null) }} className={inputActive} /><button onClick={saveCat} className="bg-amber-600 hover:bg-amber-500 text-white rounded px-1.5 py-0.5 text-xs">✓</button><button onClick={() => setEditingCatId(null)} className="text-stone-500 hover:text-stone-300 text-xs">✕</button></div>
+                  : <><span className="text-xs font-semibold text-amber-400/80 uppercase tracking-wider">{cat.name}</span><div className="flex gap-2"><button onClick={() => setModal({ catId: cat.id, item: { kind: 'weapon' } })} className={g}>+ item</button><button onClick={() => { setEditingCatId(cat.id); setEditCatName(cat.name) }} className={g}>✎</button><button onClick={() => removeCat(cat.id)} className="text-stone-500 hover:text-red-400 transition-colors text-xs">✕</button></div></>}
+              </div>
+              <div>
+                {cat.items.length === 0 && <p className="text-xs text-stone-600 px-1.5 pb-1">No items.</p>}
+                {cat.items.map(item => (
+                  <div key={item.id}
+                    draggable={dragEnabled}
+                    onDragStart={e => dragEnabled && onDragStart(e, cat.id, item.id)}
+                    onDragOver={e => { e.preventDefault(); e.stopPropagation() }}
+                    onDrop={e => onDrop(e, cat.id, item.id)}
+                    className={`border-t border-stone-800 px-1.5 py-1 flex items-center gap-1.5 ${dragEnabled ? 'cursor-grab active:cursor-grabbing' : ''}`}
+                  >
+                    {/* Equipped checkbox */}
+                    <button onClick={() => toggleEquipped(cat.id, item.id)}
+                      className={`w-3.5 h-3.5 rounded border shrink-0 flex items-center justify-center transition-colors ${item.equipped ? 'bg-amber-500 border-amber-500' : 'border-stone-500 hover:border-amber-500'}`}>
+                      {item.equipped && <span className="text-[8px] text-stone-950 font-bold">✓</span>}
+                    </button>
+                    {/* Kind badge */}
+                    <span className={`text-[9px] font-bold uppercase px-1 py-0.5 rounded shrink-0 ${kindBadge[item.kind ?? 'other']}`}>{(item.kind ?? 'other')[0].toUpperCase()}</span>
+                    {/* Name */}
+                    <span className="text-xs text-stone-200 flex-1 min-w-0 truncate">{item.name}</span>
+                    {/* Actions */}
+                    <div className="flex gap-1 shrink-0">
+                      <button onClick={() => setModal({ catId: cat.id, item })} className="text-stone-500 hover:text-amber-400 transition-colors text-xs">✎</button>
+                      <button onClick={() => removeItem(cat.id, item.id)} className="text-stone-500 hover:text-red-400 transition-colors text-xs">✕</button>
+                    </div>
+                  </div>
+                ))}
+              </div>
             </div>
-            {addingItemCatId === cat.id && <div className="px-1.5 pb-1.5 border-t border-stone-700/50 pt-1 flex gap-1"><input autoFocus type="text" value={newItemName} onChange={e => setNewItemName(e.target.value)} onKeyDown={e => { if (e.key === 'Enter') addItem(cat.id); if (e.key === 'Escape') { setAddingItemCatId(null); setNewItemName('') } }} placeholder="Item name…" className={inputCls} /><button onClick={() => addItem(cat.id)} className="bg-amber-600 hover:bg-amber-500 text-white rounded px-2 py-0.5 text-xs shrink-0">Add</button></div>}
-            <div>
-              {cat.items.length === 0 && addingItemCatId !== cat.id && <p className="text-xs text-stone-600 px-1.5 pb-1">No items.</p>}
-              {cat.items.map(item => (
-                <div key={item.id} draggable={dragEnabled} onDragStart={e => dragEnabled && onDragStart(e, cat.id, item.id)} onDragOver={e => { e.preventDefault(); e.stopPropagation() }} onDrop={e => onDrop(e, cat.id, item.id)} className={`border-t border-stone-800 px-1.5 ${dragEnabled ? 'cursor-grab active:cursor-grabbing' : ''}`}>
-                  {editingItem?.itemId === item.id
-                    ? <div className="flex gap-1 py-1"><input autoFocus type="text" value={editItemName} onChange={e => setEditItemName(e.target.value)} onKeyDown={e => { if (e.key === 'Enter') saveItem(); if (e.key === 'Escape') setEditingItem(null) }} className={inputActive} /><button onClick={saveItem} className="bg-amber-600 hover:bg-amber-500 text-white rounded px-1.5 py-0.5 text-xs shrink-0">✓</button><button onClick={() => setEditingItem(null)} className="text-stone-500 text-xs px-1">✕</button></div>
-                    : <div className="flex items-center justify-between py-1 text-xs gap-1"><span className="text-stone-200 flex-1 min-w-0 truncate">{item.name}</span><div className="flex gap-1 shrink-0"><button onClick={() => { setEditingItem({ catId: cat.id, itemId: item.id }); setEditItemName(item.name) }} className="text-stone-500 hover:text-amber-400 transition-colors">✎</button><button onClick={() => removeItem(cat.id, item.id)} className="text-stone-500 hover:text-red-400 transition-colors">✕</button></div></div>}
-                </div>
-              ))}
-            </div>
-          </div>
-        ))}
+          ))}
+        </div>
       </div>
-    </div>
+    </>
   )
 }
 
