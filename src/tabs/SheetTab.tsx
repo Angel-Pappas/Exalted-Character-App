@@ -60,7 +60,7 @@ function defaultSheet(): SheetData {
     attributes, abilities, defenses,
     defenseOther: false, fullDefense: false,
     essence: 1,
-    defenseBonus: { parry: 0, evasion: 0, soak: 0, hardness: 0 },
+    defenseBonus: { parry: 0, evasion: 0, soak: 0, hardness: 0, resolve: 0 },
     languages: [], merits: [], intimacies: [],
     motes: { current: 0, committed: 0, total: 0 },
     health: DEFAULT_HEALTH.map(h => ({ ...h })),
@@ -1364,7 +1364,7 @@ export default function SheetTab({ sheet, onChange, editMode, gameData: gd }: Pr
       const evasionBase  = Math.ceil((dex + ath) / 2)
       const soakBase     = 1 + (phys >= 3 ? 1 : 0)
       const hardnessBase = 2 + (data.essence ?? 1)
-      const resolveBase  = integ >= 3 ? 4 : integ >= 1 ? 3 : 2
+      const resolveBase  = (integ >= 3 ? 4 : integ >= 1 ? 3 : 2) + (db.resolve ?? 0)
       const parry    = parryBase    + bestWpnDef    + (db.parry    ?? 0)
       const evasion  = evasionBase                  + (db.evasion  ?? 0)
       const soak     = soakBase     + totalArmorSoak + (db.soak     ?? 0)
@@ -1386,17 +1386,6 @@ export default function SheetTab({ sheet, onChange, editMode, gameData: gd }: Pr
           </div>
         </div>
       )
-      const tipRow = (label: string, total: number, tip: string) => (
-        <div className="flex items-center gap-1.5 group/row relative">
-          <span className="text-xs text-stone-400 w-16 shrink-0">{label}</span>
-          <span className="text-sm font-semibold text-stone-100 flex-1 cursor-default">{total}</span>
-          <div className="absolute bottom-full left-0 mb-1.5 z-50 pointer-events-none opacity-0 group-hover/row:opacity-100 transition-opacity">
-            <div className="bg-stone-800 border border-stone-600 rounded-lg px-3 py-1.5 text-xs text-stone-300 whitespace-nowrap shadow-xl">
-              {tip}
-            </div>
-          </div>
-        </div>
-      )
       return (
         <div className="bg-stone-900 border border-stone-700 rounded-lg p-2 overflow-visible h-full" data-tooltip-panel>
           <SectionHeader title="Defenses" />
@@ -1405,7 +1394,7 @@ export default function SheetTab({ sheet, onChange, editMode, gameData: gd }: Pr
             {calcRow('Evasion',  evasion,  `(Dexterity ${dex} + Athletics ${ath}) / 2 + Bonus ${db.evasion ?? 0}`, bonusInput('evasion'))}
             {calcRow('Soak',     soak,     `${soakBase} base + Armor ${totalArmorSoak} + Bonus ${db.soak ?? 0}`, bonusInput('soak'))}
             {calcRow('Hardness', hardness, `${hardnessBase} base (2 + Essence ${data.essence ?? 1}) + Armor ${totalArmorHard} + Bonus ${db.hardness ?? 0}`, bonusInput('hardness'))}
-            {tipRow('Resolve', resolveBase, `2 base + Integrity ${integ} bonus`)}
+            {calcRow('Resolve', resolveBase, `2 base + Integrity ${integ} bonus`, bonusInput('resolve'))}
             <div className="border-t border-stone-700 pt-1 mt-1 space-y-1">
               {([['defenseOther', 'Defend Other'], ['fullDefense', 'Full Defense']] as const).map(([key, label]) => (
                 <div key={key} className="flex items-center justify-between">

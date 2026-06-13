@@ -123,7 +123,7 @@ export interface SheetData {
   defenseOther: boolean
   fullDefense: boolean
   essence: number
-  defenseBonus: { parry: number; evasion: number; soak: number; hardness: number }
+  defenseBonus: { parry: number; evasion: number; soak: number; hardness: number; resolve: number }
   languages: string[]
   merits: MeritEntry[]
   intimacies: IntimacyEntry[]
