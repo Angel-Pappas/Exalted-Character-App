@@ -1271,7 +1271,7 @@ export default function SheetTab({ sheet, onChange, editMode, gameData: gd }: Pr
             </div>
           ))}
           <div className="border-t border-stone-700 pt-1 mt-1 space-y-1">
-            {([['defenseOther', 'Defense Other'], ['fullDefense', 'Full Defense']] as const).map(([key, label]) => (
+            {([['defenseOther', 'Defend Other'], ['fullDefense', 'Full Defense']] as const).map(([key, label]) => (
               <div key={key} className="flex items-center justify-between">
                 <span className="text-xs text-stone-300">{label}</span>
                 <button
