@@ -5,7 +5,7 @@ import { GridLayout, useContainerWidth, noCompactor } from 'react-grid-layout'
 // Override it so panels can freely overlap — no collision resolution, no compaction.
 const freeCompactor = { ...noCompactor, allowOverlap: true }
 import 'react-grid-layout/css/styles.css'
-import type { SheetData, AbilityData, MeritEntry, IntimacyEntry, HealthBox, PanelLayout, CharmCategory, CharmEntry, EffectCategory, EffectEntry, InventoryCategory, InventoryItem, InventoryItemKind } from '../types/character'
+import type { SheetData, AbilityData, MeritEntry, IntimacyEntry, HealthBox, PanelLayout, CharmCategory, CharmEntry, EffectCategory, EffectEntry, InventoryItem, InventoryItemKind } from '../types/character'
 
 const ATTRIBUTE_GROUPS = [
   { label: 'Physical', attrs: ['Strength', 'Dexterity', 'Stamina'] },
@@ -416,7 +416,8 @@ function EffectPanel({ categories, onChange, dragEnabled }: {
   )
 }
 
-// Item modal — shown when creating or editing an inventory item
+// ── Inventory ──────────────────────────────────────────────────────────────
+
 function ItemModal({ item, onSave, onClose }: {
   item: Partial<InventoryItem> & { kind: InventoryItemKind }
   onSave: (item: InventoryItem) => void
@@ -552,117 +553,92 @@ function ItemModal({ item, onSave, onClose }: {
   )
 }
 
-function InventoryPanel({ categories, onChange, dragEnabled }: {
-  categories: InventoryCategory[]
-  onChange: (c: InventoryCategory[]) => void
+const INVENTORY_KINDS: { kind: InventoryItemKind; label: string; badge: string }[] = [
+  { kind: 'weapon', label: 'Weapons', badge: 'bg-red-900/60 text-red-300' },
+  { kind: 'armor',  label: 'Armor',   badge: 'bg-blue-900/60 text-blue-300' },
+  { kind: 'other',  label: 'Other',   badge: 'bg-stone-700 text-stone-300' },
+]
+
+function InventoryPanel({ items, onChange, dragEnabled }: {
+  items: InventoryItem[]
+  onChange: (items: InventoryItem[]) => void
   dragEnabled: boolean
 }) {
-  const [addingCat, setAddingCat] = useState(false)
-  const [newCatName, setNewCatName] = useState('')
-  const [editingCatId, setEditingCatId] = useState<string | null>(null)
-  const [editCatName, setEditCatName] = useState('')
-  const [dropTargetCatId, setDropTargetCatId] = useState<string | null>(null)
-  const dragging = useRef<{ fromCatId: string; itemId: string } | null>(null)
-  // modal state: null = closed, { catId, item } = open
-  const [modal, setModal] = useState<{ catId: string; item: Partial<InventoryItem> & { kind: InventoryItemKind } } | null>(null)
+  const [modal, setModal] = useState<Partial<InventoryItem> & { kind: InventoryItemKind } | null>(null)
+  const [dropBeforeId, setDropBeforeId] = useState<string | null>(null)
+  const dragging = useRef<string | null>(null)
 
-  function addCat() { if (!newCatName.trim()) return; onChange([...categories, { id: crypto.randomUUID(), name: newCatName.trim(), items: [] }]); setNewCatName(''); setAddingCat(false) }
-  function removeCat(id: string) { onChange(categories.filter(c => c.id !== id)) }
-  function saveCat() { if (!editingCatId || !editCatName.trim()) return; onChange(categories.map(c => c.id === editingCatId ? { ...c, name: editCatName.trim() } : c)); setEditingCatId(null) }
-  function removeItem(catId: string, itemId: string) { onChange(categories.map(c => c.id === catId ? { ...c, items: c.items.filter(i => i.id !== itemId) } : c)) }
-  function toggleEquipped(catId: string, itemId: string) {
-    onChange(categories.map(c => c.id === catId ? { ...c, items: c.items.map(i => i.id === itemId ? { ...i, equipped: !i.equipped } : i) } : c))
-  }
-  function saveItem(catId: string, item: InventoryItem) {
-    onChange(categories.map(c => {
-      if (c.id !== catId) return c
-      const exists = c.items.some(i => i.id === item.id)
-      return { ...c, items: exists ? c.items.map(i => i.id === item.id ? item : i) : [...c.items, item] }
-    }))
+  function saveItem(item: InventoryItem) {
+    const exists = items.some(i => i.id === item.id)
+    onChange(exists ? items.map(i => i.id === item.id ? item : i) : [...items, item])
     setModal(null)
   }
+  function removeItem(id: string) { onChange(items.filter(i => i.id !== id)) }
+  function toggleEquipped(id: string) { onChange(items.map(i => i.id === id ? { ...i, equipped: !i.equipped } : i)) }
 
-  function onDragStart(e: React.DragEvent, fromCatId: string, itemId: string) { dragging.current = { fromCatId, itemId }; e.dataTransfer.effectAllowed = 'move' }
-  function onDrop(e: React.DragEvent, toCatId: string, beforeId?: string) {
+  function onDragStart(e: React.DragEvent, id: string) { dragging.current = id; e.dataTransfer.effectAllowed = 'move' }
+  function onDragOver(e: React.DragEvent, beforeId: string) { if (!dragging.current || dragging.current === beforeId) return; e.preventDefault(); e.stopPropagation(); setDropBeforeId(beforeId) }
+  function onDrop(e: React.DragEvent, kind: InventoryItemKind, beforeId?: string) {
     e.preventDefault(); e.stopPropagation()
-    if (!dragging.current) return
-    const { fromCatId, itemId } = dragging.current
-    const item = categories.find(c => c.id === fromCatId)?.items.find(i => i.id === itemId)
-    if (!item) return
-    onChange(categories.map(c => {
-      if (c.id === fromCatId && c.id === toCatId) { const f = c.items.filter(i => i.id !== itemId); const idx = beforeId ? f.findIndex(i => i.id === beforeId) : f.length; f.splice(idx < 0 ? f.length : idx, 0, item); return { ...c, items: f } }
-      if (c.id === fromCatId) return { ...c, items: c.items.filter(i => i.id !== itemId) }
-      if (c.id === toCatId) { const idx = beforeId ? c.items.findIndex(i => i.id === beforeId) : c.items.length; const n = [...c.items]; n.splice(idx < 0 ? n.length : idx, 0, item); return { ...c, items: n } }
-      return c
-    }))
-    dragging.current = null; setDropTargetCatId(null)
+    const id = dragging.current; if (!id) return
+    const item = items.find(i => i.id === id); if (!item || item.kind !== kind) return
+    const rest = items.filter(i => i.id !== id)
+    const idx = beforeId ? rest.findIndex(i => i.id === beforeId) : rest.filter(i => i.kind === kind).length + rest.findIndex(i => i.kind !== kind && items.indexOf(i) > items.indexOf(item))
+    const insertAt = beforeId ? (idx < 0 ? rest.length : idx) : rest.length
+    rest.splice(insertAt, 0, item)
+    onChange(rest)
+    dragging.current = null; setDropBeforeId(null)
   }
-
-  const kindBadge: Record<InventoryItemKind, string> = {
-    weapon: 'bg-red-900/60 text-red-300',
-    armor: 'bg-blue-900/60 text-blue-300',
-    other: 'bg-stone-700 text-stone-300',
-  }
-  const g = "text-stone-500 hover:text-amber-400 transition-colors text-xs"
+  function onDragEnd() { dragging.current = null; setDropBeforeId(null) }
 
   return (
     <>
-      {modal && (
-        <ItemModal
-          item={modal.item}
-          onSave={item => saveItem(modal.catId, item)}
-          onClose={() => setModal(null)}
-        />
-      )}
+      {modal && <ItemModal item={modal} onSave={saveItem} onClose={() => setModal(null)} />}
       <div className="bg-stone-900 border border-stone-700 rounded-lg p-2 overflow-hidden h-full flex flex-col">
         <div className="flex items-center justify-between mb-2 shrink-0">
           <SectionHeader title="Inventory" />
-          <button onClick={() => setAddingCat(v => !v)} className={g}>+ category</button>
+          <button onClick={() => setModal({ kind: 'weapon' })} className="text-stone-500 hover:text-amber-400 transition-colors text-xs">+ item</button>
         </div>
-        {addingCat && <div className="flex gap-1 mb-2 shrink-0"><input autoFocus type="text" value={newCatName} onChange={e => setNewCatName(e.target.value)} onKeyDown={e => { if (e.key === 'Enter') addCat(); if (e.key === 'Escape') setAddingCat(false) }} placeholder="Category name…" className={inputCls} /><button onClick={addCat} className="bg-amber-600 hover:bg-amber-500 text-white rounded px-2 py-0.5 text-xs">✓</button><button onClick={() => setAddingCat(false)} className="text-stone-500 hover:text-stone-300 text-xs px-1">✕</button></div>}
         <div className="space-y-2 overflow-y-auto no-scrollbar flex-1">
-          {categories.length === 0 && <p className="text-xs text-stone-500">No categories yet.</p>}
-          {categories.map(cat => (
-            <div key={cat.id}
-              onDragOver={e => { e.preventDefault(); setDropTargetCatId(cat.id) }}
-              onDragLeave={e => { if (!e.currentTarget.contains(e.relatedTarget as Node)) setDropTargetCatId(null) }}
-              onDrop={e => onDrop(e, cat.id)}
-              className={`rounded border transition-colors ${dropTargetCatId === cat.id ? 'border-amber-500/60 bg-amber-500/5' : 'border-stone-700/50'}`}
-            >
-              <div className="flex items-center justify-between px-1.5 py-1">
-                {editingCatId === cat.id
-                  ? <div className="flex gap-1 flex-1"><input autoFocus type="text" value={editCatName} onChange={e => setEditCatName(e.target.value)} onKeyDown={e => { if (e.key === 'Enter') saveCat(); if (e.key === 'Escape') setEditingCatId(null) }} className={inputActive} /><button onClick={saveCat} className="bg-amber-600 hover:bg-amber-500 text-white rounded px-1.5 py-0.5 text-xs">✓</button><button onClick={() => setEditingCatId(null)} className="text-stone-500 hover:text-stone-300 text-xs">✕</button></div>
-                  : <><span className="text-xs font-semibold text-amber-400/80 uppercase tracking-wider">{cat.name}</span><div className="flex gap-2"><button onClick={() => setModal({ catId: cat.id, item: { kind: 'weapon' } })} className={g}>+ item</button><button onClick={() => { setEditingCatId(cat.id); setEditCatName(cat.name) }} className={g}>✎</button><button onClick={() => removeCat(cat.id)} className="text-stone-500 hover:text-red-400 transition-colors text-xs">✕</button></div></>}
-              </div>
-              <div>
-                {cat.items.length === 0 && <p className="text-xs text-stone-600 px-1.5 pb-1">No items.</p>}
-                {cat.items.map(item => (
-                  <div key={item.id}
-                    draggable={dragEnabled}
-                    onDragStart={e => dragEnabled && onDragStart(e, cat.id, item.id)}
-                    onDragOver={e => { e.preventDefault(); e.stopPropagation() }}
-                    onDrop={e => onDrop(e, cat.id, item.id)}
-                    className={`border-t border-stone-800 px-1.5 py-1 flex items-center gap-1.5 ${dragEnabled ? 'cursor-grab active:cursor-grabbing' : ''}`}
-                  >
-                    {/* Equipped checkbox */}
-                    <button onClick={() => toggleEquipped(cat.id, item.id)}
-                      className={`w-3.5 h-3.5 rounded border shrink-0 flex items-center justify-center transition-colors ${item.equipped ? 'bg-amber-500 border-amber-500' : 'border-stone-500 hover:border-amber-500'}`}>
-                      {item.equipped && <span className="text-[8px] text-stone-950 font-bold">✓</span>}
-                    </button>
-                    {/* Kind badge */}
-                    <span className={`text-[9px] font-bold uppercase px-1 py-0.5 rounded shrink-0 ${kindBadge[item.kind ?? 'other']}`}>{(item.kind ?? 'other')[0].toUpperCase()}</span>
-                    {/* Name */}
-                    <span className="text-xs text-stone-200 flex-1 min-w-0 truncate">{item.name}</span>
-                    {/* Actions */}
-                    <div className="flex gap-1 shrink-0">
-                      <button onClick={() => setModal({ catId: cat.id, item })} className="text-stone-500 hover:text-amber-400 transition-colors text-xs">✎</button>
-                      <button onClick={() => removeItem(cat.id, item.id)} className="text-stone-500 hover:text-red-400 transition-colors text-xs">✕</button>
+          {INVENTORY_KINDS.map(({ kind, label, badge }) => {
+            const kindItems = items.filter(i => i.kind === kind)
+            return (
+              <div key={kind}
+                onDragOver={e => { if (dragging.current) { e.preventDefault(); } }}
+                onDrop={e => onDrop(e, kind)}
+                className="rounded border border-stone-700/50"
+              >
+                <div className="flex items-center justify-between px-1.5 py-1">
+                  <span className="text-xs font-semibold text-amber-400/80 uppercase tracking-wider">{label}</span>
+                  <span className="text-[9px] text-stone-600">{kindItems.length}</span>
+                </div>
+                <div>
+                  {kindItems.length === 0 && <p className="text-xs text-stone-600 px-1.5 pb-1">None.</p>}
+                  {kindItems.map(item => (
+                    <div key={item.id}
+                      draggable={dragEnabled}
+                      onDragStart={e => dragEnabled && onDragStart(e, item.id)}
+                      onDragOver={e => dragEnabled && onDragOver(e, item.id)}
+                      onDrop={e => onDrop(e, kind, item.id)}
+                      onDragEnd={onDragEnd}
+                      className={`border-t border-stone-800 px-1.5 py-1 flex items-center gap-1.5 transition-colors ${dropBeforeId === item.id ? 'border-t-amber-400' : ''} ${dragEnabled ? 'cursor-grab active:cursor-grabbing' : ''}`}
+                    >
+                      <button onClick={() => toggleEquipped(item.id)}
+                        className={`w-3.5 h-3.5 rounded border shrink-0 flex items-center justify-center transition-colors ${item.equipped ? 'bg-amber-500 border-amber-500' : 'border-stone-500 hover:border-amber-500'}`}>
+                        {item.equipped && <span className="text-[8px] text-stone-950 font-bold">✓</span>}
+                      </button>
+                      <span className={`text-[9px] font-bold uppercase px-1 py-0.5 rounded shrink-0 ${badge}`}>{kind[0].toUpperCase()}</span>
+                      <span className="text-xs text-stone-200 flex-1 min-w-0 truncate">{item.name}</span>
+                      <div className="flex gap-1 shrink-0">
+                        <button onClick={() => setModal(item)} className="text-stone-500 hover:text-amber-400 transition-colors text-xs">✎</button>
+                        <button onClick={() => removeItem(item.id)} className="text-stone-500 hover:text-red-400 transition-colors text-xs">✕</button>
+                      </div>
                     </div>
-                  </div>
-                ))}
+                  ))}
+                </div>
               </div>
-            </div>
-          ))}
+            )
+          })}
         </div>
       </div>
     </>
@@ -1026,8 +1002,8 @@ export default function SheetTab({ sheet, onChange, editMode }: Props) {
 
     inventory: (
       <InventoryPanel
-        categories={data.inventory}
-        onChange={c => update({ inventory: c })}
+        items={data.inventory}
+        onChange={items => update({ inventory: items })}
         dragEnabled={!editMode}
       />
     ),

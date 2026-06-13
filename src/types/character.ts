@@ -124,7 +124,7 @@ export interface SheetData {
   layout: PanelLayout[]
   charms: CharmCategory[]
   effects: EffectCategory[]
-  inventory: InventoryCategory[]
+  inventory: InventoryItem[]
 }
 
 export interface CharacterData {
