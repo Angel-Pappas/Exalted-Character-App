@@ -157,9 +157,20 @@ export interface ArmorTableRow {
   hardness: number
 }
 
+export interface TagEntry {
+  name: string
+  description: string
+}
+
+export interface TagGroup {
+  group: string
+  tags: TagEntry[]
+}
+
 export interface GameData {
   weapons: WeaponTableRow[]
   armor: ArmorTableRow[]
+  tagGroups: TagGroup[]
 }
 
 export const DEFAULT_GAME_DATA: GameData = {
@@ -172,5 +183,58 @@ export const DEFAULT_GAME_DATA: GameData = {
   armor: [
     { category: 'Light Armor', soak: 1, mobilityPenalty:  0, hardness: 0 },
     { category: 'Heavy Armor', soak: 2, mobilityPenalty: -1, hardness: 0 },
+  ],
+  tagGroups: [
+    {
+      group: 'Type Tags',
+      tags: [
+        { name: 'Artifact',  description: 'Artifacts are ancient weapons and armor with fantastical effects. Increase all weapon or armor stats (Accuracy, Damage, Defense, and Overwhelming, or Soak and Hardness) by one.' },
+        { name: 'Melee',     description: 'This weapon uses the Close Combat Ability to make attacks against targets in close range and requires the use of one or two hands.' },
+        { name: 'Ranged',    description: 'This weapon uses the Ranged Combat Ability. It requires two hands and loses any Defense bonus but can attack out to long range.' },
+      ],
+    },
+    {
+      group: 'Universal Tags',
+      tags: [
+        { name: 'Balanced',      description: 'A superbly balanced weapon. It increases its Overwhelming by 1 and adds two dice when using the weapon to enact gambits.' },
+        { name: 'Concealable',   description: 'The weapon is easily hidden on the person (difficulty 1 to do so with Stealth).' },
+        { name: 'Flexible',      description: 'The weapon ignores the Defense bonus granted by cover. Flexible weapons reduce the cost of the ensnare gambit by one.' },
+        { name: 'Improvised',    description: 'A weapon made of anything available. Reduce the accuracy rating by 2, to a minimum of 0.' },
+        { name: 'Natural/Worn',  description: "The weapon is part of the user's body and cannot be disarmed, lost, or stolen. If worn, increase the cost of the disarm gambit by one." },
+        { name: 'Paired',        description: 'Weapons meant to be used as a set. Successful withering attacks generate 1 additional Power. These are typically identical weapons.' },
+        { name: 'Piercing',      description: "The weapon is especially good at defeating armor. Enables a piercing attack: Decrease the wielder's Defense by 1 until the start of her next turn. Reduce the opponent's Soak by 2." },
+        { name: 'Pulling',       description: 'This weapon may make ranged attacks with the Physique Ability. If a melee weapon, it can attack out to short range. These weapons also allow the character to take the pull gambit as a ranged attack on the target.' },
+        { name: 'Thrown',        description: 'Usable as a melee weapon in close combat or a ranged weapon out to medium range. Attacking at range uses Ranged Combat. The wielder may draw a replacement thrown weapon as part of a Ranged Combat attack.' },
+      ],
+    },
+    {
+      group: 'Armor Tags',
+      tags: [
+        { name: 'Buoyant', description: 'Armor that is lighter than most. Does not apply mobility penalties to swimming.' },
+        { name: 'Silent',  description: 'Armor that does not make noise when moving. Does not apply mobility penalties to silent movement.' },
+      ],
+    },
+    {
+      group: 'Melee Tags',
+      tags: [
+        { name: 'Chopping',    description: "Enables chopping attack for melee weapons. Decrease the wielder's Defense by one until the start of her next turn. Gain two bonus dice to a withering attack or decrease an opponent's Hardness by 1 for the purpose of a decisive attack." },
+        { name: 'Defensive',   description: "The melee weapon increases the character's Defense by an additional 1 when taking the defend other or full defense actions." },
+        { name: 'Disarming',   description: 'The melee weapon reduces the Power cost by 1 for disarm gambits.' },
+        { name: 'Off-Hand',    description: "The melee weapon can be used in the off-hand along with a one-handed weapon. The weapon does not add its accuracy or damage rating to an attack; instead, when making an attack action as part of a flurry, reduce the attack's dice pool by one die instead of three dice." },
+        { name: 'Reaching',    description: 'A melee weapon that negates the advantages of mounted combatants and the penalty from enormous size.' },
+        { name: 'Shield',      description: "A medium or heavy melee weapon that acts to protect the wielder and allows him to flurry the full defense action. Shields reduce the weapon's damage rating by 1 to a minimum of 0." },
+        { name: 'Smashing',    description: 'A melee weapon meant to unbalance an enemy. Reduce the cost of knockback and knockdown gambits made with this weapon by 1.' },
+        { name: 'Two-Handed',  description: 'A melee weapon that must be wielded with two hands, preventing the character from dual wielding or carrying a shield. Two-handed weapons have +1 damage. Heavy weapons with this tag increase Overwhelming by one.' },
+      ],
+    },
+    {
+      group: 'Ranged Tags',
+      tags: [
+        { name: 'Flame',      description: 'A ranged weapon that shoots a narrow blast of fire, which can ignite flammable objects. Attacks made at close range with this weapon gain +1 damage, but they cannot attack past medium range.' },
+        { name: 'Mounted',    description: 'This ranged weapon is designed to be used while mounted on a steed, granting two bonus dice to attacks while mounted.' },
+        { name: 'One-Handed', description: "A ranged weapon that can be wielded in one hand, leaving the user's other hand free." },
+        { name: 'Powerful',   description: "Enables a point-blank attack for ranged weapons. Decrease the wielder's Defense by 1 until the start of her next turn. Gain two bonus dice to withering attacks or decrease an opponent's Hardness by 1 for the purpose of making decisive attacks." },
+      ],
+    },
   ],
 }

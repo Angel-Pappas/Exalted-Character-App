@@ -2,7 +2,7 @@ import { useEffect, useState, useCallback } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { supabase } from '../lib/supabase'
 import { useAuth } from '../contexts/AuthContext'
-import type { GameData, WeaponTableRow, ArmorTableRow } from '../types/character'
+import type { GameData, WeaponTableRow, ArmorTableRow, TagEntry } from '../types/character'
 import { DEFAULT_GAME_DATA } from '../types/character'
 
 const TABS = ['Information'] as const
@@ -62,8 +62,9 @@ export default function OptionsPage() {
       .then(({ data: row }) => {
         if (row?.data) {
           setData({
-            weapons: row.data.weapons ?? DEFAULT_GAME_DATA.weapons,
-            armor:   row.data.armor   ?? DEFAULT_GAME_DATA.armor,
+            weapons:   row.data.weapons   ?? DEFAULT_GAME_DATA.weapons,
+            armor:     row.data.armor     ?? DEFAULT_GAME_DATA.armor,
+            tagGroups: row.data.tagGroups ?? DEFAULT_GAME_DATA.tagGroups,
           })
         }
         setLoaded(true)
@@ -101,6 +102,29 @@ export default function OptionsPage() {
   }
   function removeArmorRow(idx: number) {
     update({ ...data, armor: data.armor.filter((_, i) => i !== idx) })
+  }
+
+  function updateTag(gIdx: number, tIdx: number, patch: Partial<TagEntry>) {
+    const tagGroups = data.tagGroups.map((g, gi) => gi !== gIdx ? g : { ...g, tags: g.tags.map((t, ti) => ti !== tIdx ? t : { ...t, ...patch }) })
+    update({ ...data, tagGroups })
+  }
+  function addTag(gIdx: number) {
+    const tagGroups = data.tagGroups.map((g, gi) => gi !== gIdx ? g : { ...g, tags: [...g.tags, { name: '', description: '' }] })
+    update({ ...data, tagGroups })
+  }
+  function removeTag(gIdx: number, tIdx: number) {
+    const tagGroups = data.tagGroups.map((g, gi) => gi !== gIdx ? g : { ...g, tags: g.tags.filter((_, ti) => ti !== tIdx) })
+    update({ ...data, tagGroups })
+  }
+  function addTagGroup() {
+    update({ ...data, tagGroups: [...data.tagGroups, { group: '', tags: [] }] })
+  }
+  function updateTagGroupName(gIdx: number, name: string) {
+    const tagGroups = data.tagGroups.map((g, gi) => gi !== gIdx ? g : { ...g, group: name })
+    update({ ...data, tagGroups })
+  }
+  function removeTagGroup(gIdx: number) {
+    update({ ...data, tagGroups: data.tagGroups.filter((_, gi) => gi !== gIdx) })
   }
 
   const textInput = "bg-stone-800 border border-stone-700 text-stone-100 rounded px-2 py-1 text-xs focus:outline-none focus:border-amber-500 w-full"
@@ -179,6 +203,57 @@ export default function OptionsPage() {
                 {data.armor.length === 0 && <p className="text-xs text-stone-600 px-3 py-2">No rows.</p>}
               </div>
               <p className="text-xs text-stone-600 mt-1.5">Values shown as modifiers. Hover column headers for descriptions.</p>
+            </section>
+
+            {/* ── Equipment Tags ── */}
+            <section>
+              <div className="flex items-center justify-between mb-3">
+                <h2 className="text-base font-semibold text-amber-400">Equipment Tags</h2>
+                <button onClick={addTagGroup} className="text-xs text-stone-500 hover:text-amber-400 transition-colors">+ group</button>
+              </div>
+              <div className="space-y-4">
+                {data.tagGroups.map((group, gIdx) => (
+                  <div key={gIdx} className="rounded-lg border border-stone-700 overflow-hidden">
+                    {/* Group header */}
+                    <div className="flex items-center justify-between px-3 py-2 bg-stone-800 border-b border-stone-700 gap-2">
+                      <input
+                        type="text"
+                        value={group.group}
+                        onChange={e => updateTagGroupName(gIdx, e.target.value)}
+                        placeholder="Group name…"
+                        className="bg-transparent text-xs font-bold uppercase tracking-wider text-amber-400/80 focus:outline-none placeholder-stone-600 flex-1"
+                      />
+                      <div className="flex items-center gap-2 shrink-0">
+                        <button onClick={() => addTag(gIdx)} className="text-xs text-stone-500 hover:text-amber-400 transition-colors">+ tag</button>
+                        <button onClick={() => removeTagGroup(gIdx)} className="text-stone-600 hover:text-red-400 transition-colors text-xs">✕</button>
+                      </div>
+                    </div>
+                    {/* Tags */}
+                    {group.tags.length === 0 && <p className="text-xs text-stone-600 px-3 py-2">No tags. Add one above.</p>}
+                    {group.tags.map((tag, tIdx) => (
+                      <div key={tIdx} className="border-b border-stone-800 last:border-0 px-3 py-2 space-y-1">
+                        <div className="flex items-center gap-2">
+                          <input
+                            type="text"
+                            value={tag.name}
+                            onChange={e => updateTag(gIdx, tIdx, { name: e.target.value })}
+                            placeholder="Tag name…"
+                            className="bg-stone-800 border border-stone-700 text-stone-100 font-semibold rounded px-2 py-0.5 text-xs focus:outline-none focus:border-amber-500 w-36"
+                          />
+                          <button onClick={() => removeTag(gIdx, tIdx)} className="text-stone-600 hover:text-red-400 transition-colors text-xs ml-auto">✕</button>
+                        </div>
+                        <textarea
+                          value={tag.description}
+                          onChange={e => updateTag(gIdx, tIdx, { description: e.target.value })}
+                          placeholder="Description…"
+                          rows={2}
+                          className="w-full bg-stone-800 border border-stone-700 text-stone-300 rounded px-2 py-1 text-xs focus:outline-none focus:border-amber-500 resize-none placeholder-stone-600"
+                        />
+                      </div>
+                    ))}
+                  </div>
+                ))}
+              </div>
             </section>
 
           </div>
