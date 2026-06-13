@@ -523,6 +523,8 @@ function ItemModal({ item, onSave, onClose, gameData }: {
     set({ tags: next ? [...base, next === 'melee' ? 'Melee' : 'Ranged'] : base })
   }
 
+  const f0 = (n: number) => Math.max(0, n)
+
   function toggleArtifact() {
     const on = !form.artifact
     const delta = on ? 1 : -1
@@ -531,13 +533,13 @@ function ItemModal({ item, onSave, onClose, gameData }: {
       artifactColor: on ? (form.artifactColor ?? 'gold') : undefined,
     }
     if (form.kind === 'weapon') {
-      patch.accuracy    = (form.accuracy    ?? 0) + delta
-      patch.damage      = (form.damage      ?? 0) + delta
-      patch.defense     = (form.defense     ?? 0) + delta
-      patch.overwhelming = (form.overwhelming ?? 0) + delta
+      patch.accuracy     = f0((form.accuracy     ?? 0) + delta)
+      patch.damage       = f0((form.damage       ?? 0) + delta)
+      patch.defense      = f0((form.defense      ?? 0) + delta)
+      patch.overwhelming = f0((form.overwhelming ?? 0) + delta)
     } else if (form.kind === 'armor') {
-      patch.soak     = (form.soak     ?? 0) + delta
-      patch.hardness = (form.hardness ?? 0) + delta
+      patch.soak     = f0((form.soak     ?? 0) + delta)
+      patch.hardness = f0((form.hardness ?? 0) + delta)
     }
     set(patch)
   }
