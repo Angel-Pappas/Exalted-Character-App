@@ -477,17 +477,19 @@ function ItemModal({ item, onSave, onClose, gameData }: {
 
   function selectWeightRow(category: string) {
     const r = gameData.weapons.find(w => w.category === category)
+    const a = form.artifact ? 1 : 0
     set({
       weight: category as WeaponWeight,
-      ...(r ? { accuracy: r.accuracy, damage: r.damage, defense: r.defense, overwhelming: r.overwhelming } : {}),
+      ...(r ? { accuracy: r.accuracy + a, damage: r.damage + a, defense: r.defense + a, overwhelming: r.overwhelming + a } : {}),
     })
   }
 
   function selectArmorRow(category: string) {
     const r = gameData.armor.find(a => a.category === category)
+    const a = form.artifact ? 1 : 0
     set({
       type: category,
-      ...(r ? { soak: r.soak, mobilityPen: r.mobilityPenalty, hardness: r.hardness } : {}),
+      ...(r ? { soak: r.soak + a, mobilityPen: r.mobilityPenalty, hardness: r.hardness + a } : {}),
     })
   }
 
