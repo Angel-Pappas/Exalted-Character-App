@@ -87,7 +87,7 @@ function CharmPanel({ categories, onChange, dragEnabled }: {
   onChange: (c: CharmCategory[]) => void
   dragEnabled: boolean
 }) {
-  const [expandedId, setExpandedId] = useState<string | null>(null)
+  const [expandedIds, setExpandedIds] = useState<Set<string>>(new Set())
   const [addingCat, setAddingCat] = useState(false)
   const [newCatName, setNewCatName] = useState('')
   const [addingCharmCatId, setAddingCharmCatId] = useState<string | null>(null)
@@ -148,7 +148,7 @@ function CharmPanel({ categories, onChange, dragEnabled }: {
   }
   function removeCharm(catId: string, charmId: string) {
     onChange(categories.map(c => c.id === catId ? { ...c, charms: c.charms.filter(ch => ch.id !== charmId) } : c))
-    if (expandedId === charmId) setExpandedId(null)
+    setExpandedIds(s => { const n = new Set(s); n.delete(charmId); return n })
   }
   function saveCharm() {
     if (!editingCharm || !editCharmName.trim()) return
@@ -270,7 +270,7 @@ function CharmPanel({ categories, onChange, dragEnabled }: {
                   className={`border-t border-stone-800 px-1.5 ${dragEnabled ? 'cursor-grab active:cursor-grabbing' : ''}`}
                 >
                   <div className="flex items-center justify-between py-1 text-xs gap-1">
-                    <button onClick={() => setExpandedId(expandedId === charm.id ? null : charm.id)}
+                    <button onClick={() => setExpandedIds(s => { const n = new Set(s); n.has(charm.id) ? n.delete(charm.id) : n.add(charm.id); return n })}
                       className="text-left text-stone-200 hover:text-amber-300 transition-colors flex-1 min-w-0 truncate">
                       {charm.name}
                     </button>
@@ -282,7 +282,7 @@ function CharmPanel({ categories, onChange, dragEnabled }: {
                     </div>
                   </div>
 
-                  {expandedId === charm.id && editingCharm?.charm.id !== charm.id && (
+                  {expandedIds.has(charm.id) && editingCharm?.charm.id !== charm.id && (
                     <p className="text-xs text-stone-400 pb-1.5 whitespace-pre-wrap leading-relaxed">
                       {charm.text || <em className="text-stone-600">No description.</em>}
                     </p>
@@ -317,7 +317,7 @@ function EffectPanel({ categories, onChange, dragEnabled }: {
   onChange: (c: EffectCategory[]) => void
   dragEnabled: boolean
 }) {
-  const [expandedId, setExpandedId] = useState<string | null>(null)
+  const [expandedIds, setExpandedIds] = useState<Set<string>>(new Set())
   const [addingCat, setAddingCat] = useState(false)
   const [newCatName, setNewCatName] = useState('')
   const [addingEffectCatId, setAddingEffectCatId] = useState<string | null>(null)
@@ -352,7 +352,7 @@ function EffectPanel({ categories, onChange, dragEnabled }: {
     onChange(categories.map(c => c.id === catId ? { ...c, effects: [...c.effects, { id: crypto.randomUUID(), name: newEffectName.trim(), text: newEffectText }] } : c))
     setNewEffectName(''); setNewEffectText(''); setAddingEffectCatId(null)
   }
-  function removeEffect(catId: string, effectId: string) { onChange(categories.map(c => c.id === catId ? { ...c, effects: c.effects.filter(e => e.id !== effectId) } : c)); if (expandedId === effectId) setExpandedId(null) }
+  function removeEffect(catId: string, effectId: string) { onChange(categories.map(c => c.id === catId ? { ...c, effects: c.effects.filter(e => e.id !== effectId) } : c)); setExpandedIds(s => { const n = new Set(s); n.delete(effectId); return n }) }
   function saveEffect() {
     if (!editingEffect || !editEffectName.trim()) return
     onChange(categories.map(c => c.id === editingEffect.catId ? { ...c, effects: c.effects.map(e => e.id === editingEffect.effect.id ? { ...e, name: editEffectName.trim(), text: editEffectText } : e) } : c))
@@ -403,10 +403,10 @@ function EffectPanel({ categories, onChange, dragEnabled }: {
               {cat.effects.map(effect => (
                 <div key={effect.id} draggable={dragEnabled} onDragStart={e => dragEnabled && onDragStart(e, cat.id, effect.id)} onDragOver={e => { e.preventDefault(); e.stopPropagation() }} onDrop={e => onDrop(e, cat.id, effect.id)} className={`border-t border-stone-800 px-1.5 ${dragEnabled ? 'cursor-grab active:cursor-grabbing' : ''}`}>
                   <div className="flex items-center justify-between py-1 text-xs gap-1">
-                    <button onClick={() => setExpandedId(expandedId === effect.id ? null : effect.id)} className="text-left text-stone-200 hover:text-amber-300 transition-colors flex-1 min-w-0 truncate">{effect.name}</button>
+                    <button onClick={() => setExpandedIds(s => { const n = new Set(s); n.has(effect.id) ? n.delete(effect.id) : n.add(effect.id); return n })} className="text-left text-stone-200 hover:text-amber-300 transition-colors flex-1 min-w-0 truncate">{effect.name}</button>
                     <div className="flex gap-1 shrink-0"><button onClick={() => { setEditingEffect({ catId: cat.id, effect }); setEditEffectName(effect.name); setEditEffectText(effect.text) }} className="text-stone-500 hover:text-amber-400 transition-colors">✎</button><button onClick={() => removeEffect(cat.id, effect.id)} className="text-stone-500 hover:text-red-400 transition-colors">✕</button></div>
                   </div>
-                  {expandedId === effect.id && editingEffect?.effect.id !== effect.id && <p className="text-xs text-stone-400 pb-1.5 whitespace-pre-wrap leading-relaxed">{effect.text || <em className="text-stone-600">No description.</em>}</p>}
+                  {expandedIds.has(effect.id) && editingEffect?.effect.id !== effect.id && <p className="text-xs text-stone-400 pb-1.5 whitespace-pre-wrap leading-relaxed">{effect.text || <em className="text-stone-600">No description.</em>}</p>}
                   {editingEffect?.effect.id === effect.id && <div className="pb-1.5 space-y-1"><input type="text" value={editEffectName} onChange={e => setEditEffectName(e.target.value)} className={inputActive} /><textarea value={editEffectText} onChange={e => setEditEffectText(e.target.value)} rows={4} className="w-full bg-stone-800 border border-stone-600 text-stone-100 rounded px-2 py-1 text-xs focus:outline-none focus:border-amber-500 resize-none" /><div className="flex gap-1 justify-end"><button onClick={saveEffect} className="bg-amber-600 hover:bg-amber-500 text-white rounded px-2 py-0.5 text-xs">Save</button><button onClick={() => setEditingEffect(null)} className="text-stone-500 hover:text-stone-300 text-xs px-1">Cancel</button></div></div>}
                 </div>
               ))}
