@@ -478,9 +478,10 @@ function ItemModal({ item, onSave, onClose, gameData }: {
   function selectWeightRow(category: string) {
     const r = gameData.weapons.find(w => w.category === category)
     const a = form.artifact ? 1 : 0
+    const s = (form.tags ?? []).includes('Shield') ? 1 : 0
     set({
       weight: category as WeaponWeight,
-      ...(r ? { accuracy: r.accuracy + a, damage: r.damage + a, defense: r.defense + a, overwhelming: r.overwhelming + a } : {}),
+      ...(r ? { accuracy: r.accuracy + a, damage: Math.max(0, r.damage + a - s), defense: r.defense + a, overwhelming: r.overwhelming + a } : {}),
     })
   }
 
@@ -495,7 +496,14 @@ function ItemModal({ item, onSave, onClose, gameData }: {
 
   function toggleTag(name: string) {
     const tags = form.tags ?? []
-    set({ tags: tags.includes(name) ? tags.filter(t => t !== name) : [...tags, name] })
+    const adding = !tags.includes(name)
+    const patch: Partial<InventoryItem> = { tags: adding ? [...tags, name] : tags.filter(t => t !== name) }
+    if (name === 'Shield') {
+      patch.damage = adding
+        ? Math.max(0, (form.damage ?? 0) - 1)
+        : (form.damage ?? 0) + 1
+    }
+    set(patch)
   }
 
   function addCustomTag() {
