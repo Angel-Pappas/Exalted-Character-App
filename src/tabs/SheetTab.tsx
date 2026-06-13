@@ -773,26 +773,30 @@ const INVENTORY_KINDS: { kind: InventoryItemKind; label: string }[] = [
 
 interface FoiState { active: boolean; weight: string | null; tag: string | null; artifact: boolean }
 
-function FoiModal({ current, foiWeights, foiTags, onSave, onDeactivate, onClose }: {
+function FoiModal({ current, foiWeights, foiTags, onSave, onClose }: {
   current: FoiState
   foiWeights: import('../types/character').WeaponTableRow[]
   foiTags: import('../types/character').TagEntry[]
   onSave: (s: FoiState) => void
-  onDeactivate: () => void
   onClose: () => void
 }) {
+  const [active, setActive] = useState(current.active)
   const [weight, setWeight] = useState<string | null>(current.weight)
   const [tag, setTag] = useState<string | null>(current.tag)
   const [artifact, setArtifact] = useState(current.artifact)
-  const canSave = !!weight && !!tag
+  const canSave = !active || (!!weight && !!tag)
 
   return (
     <div className="fixed inset-0 z-[100] flex items-center justify-center bg-black/60 p-4" onClick={onClose}>
       <div className="bg-stone-900 border border-orange-700/60 rounded-xl w-[420px] shadow-2xl flex flex-col max-h-full" onClick={e => e.stopPropagation()}>
+        {/* Header with toggle */}
         <div className="flex items-center justify-between px-4 py-3 border-b border-stone-700 shrink-0">
-          <div>
+          <div className="flex items-center gap-3">
             <p className="text-sm font-semibold text-orange-300">Fists of Iron Technique</p>
-            <p className="text-[10px] text-stone-500 mt-0.5">Choose weight and one tag for unarmed attacks</p>
+            <button onClick={() => setActive(v => !v)}
+              className={`w-8 h-4 rounded-full transition-colors relative shrink-0 ${active ? 'bg-orange-500' : 'bg-stone-600'}`}>
+              <span className={`absolute top-0.5 w-3 h-3 rounded-full bg-white transition-all ${active ? 'left-4' : 'left-0.5'}`} />
+            </button>
           </div>
           <button onClick={onClose} className="text-stone-500 hover:text-stone-300 text-sm">✕</button>
         </div>
@@ -809,8 +813,7 @@ function FoiModal({ current, foiWeights, foiTags, onSave, onDeactivate, onClose 
                 </button>
               ))}
               <div className="w-px h-3 bg-stone-700 mx-0.5" />
-              <button
-                onClick={() => setArtifact(a => !a)}
+              <button onClick={() => setArtifact(a => !a)}
                 title="Grant unarmed attacks the Artifact tag (+1 all stats)"
                 className={`px-2 py-0.5 rounded text-xs transition-colors border ${artifact ? 'bg-amber-600/30 border-amber-500 text-amber-300' : 'bg-stone-700 border-stone-600 text-stone-400 hover:border-amber-500'}`}>
                 Artifact
@@ -837,13 +840,10 @@ function FoiModal({ current, foiWeights, foiTags, onSave, onDeactivate, onClose 
 
         <div className="flex items-center justify-end gap-2 px-4 py-3 border-t border-stone-700 shrink-0">
           <button onClick={onClose} className="px-3 py-1 text-xs text-stone-400 hover:text-stone-200 transition-colors">Cancel</button>
-          {current.active
-            ? <button onClick={onDeactivate} className="px-3 py-1 text-xs bg-red-900/40 hover:bg-red-800/60 border border-red-700 text-red-300 rounded transition-colors">Deactivate</button>
-            : <button onClick={() => canSave && onSave({ active: true, weight, tag, artifact })} disabled={!canSave}
-                className={`px-3 py-1 text-xs rounded transition-colors ${canSave ? 'bg-orange-600 hover:bg-orange-500 text-white' : 'bg-stone-700 text-stone-500 cursor-not-allowed'}`}>
-                Activate
-              </button>
-          }
+          <button onClick={() => canSave && onSave({ active, weight, tag, artifact })} disabled={!canSave}
+            className={`px-3 py-1 text-xs rounded transition-colors ${canSave ? 'bg-amber-600 hover:bg-amber-500 text-white' : 'bg-stone-700 text-stone-500 cursor-not-allowed'}`}>
+            Save
+          </button>
         </div>
       </div>
     </div>
@@ -989,8 +989,7 @@ function InventoryPanel({ items, onChange, dragEnabled, gameData }: {
           current={foi}
           foiWeights={foiWeights}
           foiTags={foiTags}
-          onSave={s => { applyFoi(s); setFoiModalOpen(false) }}
-          onDeactivate={() => { deactivateFoi(); setFoiModalOpen(false) }}
+          onSave={s => { s.active ? applyFoi(s) : deactivateFoi(); setFoiModalOpen(false) }}
           onClose={() => setFoiModalOpen(false)}
         />
       )}
