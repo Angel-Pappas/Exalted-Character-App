@@ -628,7 +628,7 @@ function InventoryPanel({ items, onChange, dragEnabled }: {
                         {item.equipped && <span className="text-[8px] text-stone-950 font-bold">✓</span>}
                       </button>
                       <span className={`text-[9px] font-bold uppercase px-1 py-0.5 rounded shrink-0 ${badge}`}>{kind[0].toUpperCase()}</span>
-                      <span className="text-xs text-stone-200 flex-1 min-w-0 truncate">{item.name}</span>
+                      <button onClick={() => setModal(item)} className="text-xs text-stone-200 hover:text-amber-300 transition-colors flex-1 min-w-0 truncate text-left">{item.name}</button>
                       <div className="flex gap-1 shrink-0">
                         <button onClick={() => setModal(item)} className="text-stone-500 hover:text-amber-400 transition-colors text-xs">✎</button>
                         <button onClick={() => removeItem(item.id)} className="text-stone-500 hover:text-red-400 transition-colors text-xs">✕</button>
