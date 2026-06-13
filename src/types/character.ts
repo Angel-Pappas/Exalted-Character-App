@@ -122,6 +122,8 @@ export interface SheetData {
   defenses: Record<string, number>
   defenseOther: boolean
   fullDefense: boolean
+  essence: number
+  defenseBonus: { parry: number; evasion: number; soak: number; hardness: number }
   languages: string[]
   merits: MeritEntry[]
   intimacies: IntimacyEntry[]

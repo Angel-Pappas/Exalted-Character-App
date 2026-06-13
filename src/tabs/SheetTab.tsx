@@ -58,6 +58,8 @@ function defaultSheet(): SheetData {
   return {
     attributes, abilities, defenses,
     defenseOther: false, fullDefense: false,
+    essence: 1,
+    defenseBonus: { parry: 0, evasion: 0, soak: 0, hardness: 0 },
     languages: [], merits: [], intimacies: [],
     motes: { current: 0, committed: 0, total: 0 },
     health: DEFAULT_HEALTH.map(h => ({ ...h })),
@@ -1198,6 +1200,8 @@ export default function SheetTab({ sheet, onChange, editMode, gameData: gd }: Pr
     attributes: { ...def.attributes, ...sheet.attributes },
     abilities: { ...def.abilities, ...sheet.abilities },
     defenses: { ...def.defenses, ...sheet.defenses },
+    essence: sheet.essence ?? 1,
+    defenseBonus: { ...def.defenseBonus, ...sheet.defenseBonus },
     languages: sheet.languages ?? [],
     merits: sheet.merits ?? [],
     intimacies: sheet.intimacies ?? [],
@@ -1342,34 +1346,76 @@ export default function SheetTab({ sheet, onChange, editMode, gameData: gd }: Pr
       </div>
     ),
 
-    defenses: (
-      <div className={panelBase}>
-        <SectionHeader title="Defenses" />
-        <div className="space-y-1">
-          {DEFENSES.map(d => (
-            <div key={d} className="flex items-center justify-between">
-              <span className="text-xs text-stone-300">{d}</span>
-              <input type="number" min={0} value={data.defenses[d] ?? 0}
-                onChange={e => setDefense(d, parseInt(e.target.value) || 0)}
-                className={numInput} />
+    defenses: (() => {
+      const physAttrs = ['Strength', 'Dexterity', 'Stamina']
+      const highestPhys = Math.max(...physAttrs.map(a => data.attributes[a] ?? 0))
+      const cc   = data.abilities['Close Combat']?.rating ?? 0
+      const ath  = data.abilities['Athletics']?.rating ?? 0
+      const phys = data.abilities['Physique']?.rating ?? 0
+      const equippedWeapons = data.inventory.filter(i => i.kind === 'weapon' && i.equipped)
+      const equippedArmors  = data.inventory.filter(i => i.kind === 'armor'  && i.equipped)
+      const bestWpnDef = equippedWeapons.length ? Math.max(...equippedWeapons.map(i => i.defense ?? 0)) : 0
+      const totalArmorSoak = equippedArmors.reduce((s, i) => s + (i.soak ?? 0), 0)
+      const totalArmorHard = equippedArmors.reduce((s, i) => s + (i.hardness ?? 0), 0)
+      const db = data.defenseBonus
+      const parryBase    = Math.ceil((highestPhys + cc) / 2)
+      const evasionBase  = Math.ceil((highestPhys + ath) / 2)
+      const soakBase     = 1 + (phys >= 3 ? 1 : 0)
+      const hardnessBase = 2 + (data.essence ?? 1)
+      const parry    = parryBase   + bestWpnDef   + (db.parry    ?? 0)
+      const evasion  = evasionBase               + (db.evasion  ?? 0)
+      const soak     = soakBase    + totalArmorSoak + (db.soak   ?? 0)
+      const hardness = hardnessBase + totalArmorHard + (db.hardness ?? 0)
+      const bonusInput = (key: keyof typeof db) => (
+        <input type="number" value={db[key] ?? 0}
+          onChange={e => update({ defenseBonus: { ...db, [key]: parseInt(e.target.value) || 0 } })}
+          className="w-[30px] text-center bg-stone-800 border border-stone-600 text-stone-100 rounded px-1 py-0.5 text-xs focus:outline-none focus:border-amber-500" />
+      )
+      const calcRow = (label: string, total: number, breakdown: string, bonus: ReturnType<typeof bonusInput>) => (
+        <div className="flex items-center gap-1.5">
+          <span className="text-xs text-stone-400 w-16 shrink-0">{label}</span>
+          <span className="text-sm font-semibold text-stone-100 w-5 text-right shrink-0">{total}</span>
+          <span className="text-[9px] text-stone-500 flex-1 leading-tight">{breakdown}</span>
+          {bonus}
+        </div>
+      )
+      return (
+        <div className={panelBase}>
+          <SectionHeader title="Defenses" />
+          <div className="space-y-1.5">
+            {calcRow('Parry',    parry,    `⌈(${highestPhys}+${cc})÷2⌉+wpn${bestWpnDef}`, bonusInput('parry'))}
+            {calcRow('Evasion',  evasion,  `⌈(${highestPhys}+${ath})÷2⌉`, bonusInput('evasion'))}
+            {calcRow('Soak',     soak,     `${soakBase}base+arm${totalArmorSoak}`, bonusInput('soak'))}
+            {calcRow('Hardness', hardness, `${hardnessBase}base+arm${totalArmorHard}`, bonusInput('hardness'))}
+            <div className="flex items-center gap-1.5">
+              <span className="text-xs text-stone-400 w-16 shrink-0">Resolve</span>
+              <input type="number" min={0} value={data.defenses['Resolve'] ?? 0}
+                onChange={e => setDefense('Resolve', parseInt(e.target.value) || 0)}
+                className="w-[30px] text-center bg-stone-800 border border-stone-600 text-stone-100 rounded px-1 py-0.5 text-xs focus:outline-none focus:border-amber-500" />
             </div>
-          ))}
-          <div className="border-t border-stone-700 pt-1 mt-1 space-y-1">
-            {([['defenseOther', 'Defend Other'], ['fullDefense', 'Full Defense']] as const).map(([key, label]) => (
-              <div key={key} className="flex items-center justify-between">
-                <span className="text-xs text-stone-300">{label}</span>
-                <button
-                  onClick={() => update({ [key]: !data[key] })}
-                  className={`w-8 h-4 rounded-full transition-colors relative ${data[key] ? 'bg-amber-500' : 'bg-stone-600'}`}
-                >
-                  <span className={`absolute top-0.5 w-3 h-3 rounded-full bg-white transition-all ${data[key] ? 'left-4' : 'left-0.5'}`} />
-                </button>
-              </div>
-            ))}
+            <div className="flex items-center gap-1.5 pt-0.5">
+              <span className="text-xs text-stone-400 w-16 shrink-0">Essence</span>
+              <input type="number" min={1} value={data.essence ?? 1}
+                onChange={e => update({ essence: parseInt(e.target.value) || 1 })}
+                className="w-[30px] text-center bg-stone-800 border border-stone-600 text-stone-100 rounded px-1 py-0.5 text-xs focus:outline-none focus:border-amber-500" />
+            </div>
+            <div className="border-t border-stone-700 pt-1 mt-1 space-y-1">
+              {([['defenseOther', 'Defend Other'], ['fullDefense', 'Full Defense']] as const).map(([key, label]) => (
+                <div key={key} className="flex items-center justify-between">
+                  <span className="text-xs text-stone-300">{label}</span>
+                  <button
+                    onClick={() => update({ [key]: !data[key] })}
+                    className={`w-8 h-4 rounded-full transition-colors relative ${data[key] ? 'bg-amber-500' : 'bg-stone-600'}`}
+                  >
+                    <span className={`absolute top-0.5 w-3 h-3 rounded-full bg-white transition-all ${data[key] ? 'left-4' : 'left-0.5'}`} />
+                  </button>
+                </div>
+              ))}
+            </div>
           </div>
         </div>
-      </div>
-    ),
+      )
+    })(),
 
     motes: (
       <div className={panelBase}>
