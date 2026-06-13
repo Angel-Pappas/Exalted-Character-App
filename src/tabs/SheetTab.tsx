@@ -1374,11 +1374,10 @@ export default function SheetTab({ sheet, onChange, editMode, gameData: gd }: Pr
           onChange={e => update({ defenseBonus: { ...db, [key]: parseInt(e.target.value) || 0 } })}
           className="w-[30px] text-center bg-stone-800 border border-stone-600 text-stone-100 rounded px-1 py-0.5 text-xs focus:outline-none focus:border-amber-500" />
       )
-      const calcRow = (label: string, total: number, breakdown: string, bonus: ReturnType<typeof bonusInput>) => (
+      const calcRow = (label: string, total: number, _breakdown: string, bonus: ReturnType<typeof bonusInput>) => (
         <div className="flex items-center gap-1.5">
           <span className="text-xs text-stone-400 w-16 shrink-0">{label}</span>
-          <span className="text-sm font-semibold text-stone-100 w-5 text-right shrink-0">{total}</span>
-          <span className="text-[9px] text-stone-500 flex-1 leading-tight">{breakdown}</span>
+          <span className="text-sm font-semibold text-stone-100 flex-1">{total}</span>
           {bonus}
         </div>
       )
@@ -1392,8 +1391,7 @@ export default function SheetTab({ sheet, onChange, editMode, gameData: gd }: Pr
             {calcRow('Hardness', hardness, `${hardnessBase}base+arm${totalArmorHard}`, bonusInput('hardness'))}
             <div className="flex items-center gap-1.5">
               <span className="text-xs text-stone-400 w-16 shrink-0">Resolve</span>
-              <span className="text-sm font-semibold text-stone-100 w-5 text-right">{resolveBase}</span>
-              <span className="text-[9px] text-stone-500 flex-1 leading-tight">2base+Int{integ}</span>
+              <span className="text-sm font-semibold text-stone-100 flex-1">{resolveBase}</span>
             </div>
             <div className="border-t border-stone-700 pt-1 mt-1 space-y-1">
               {([['defenseOther', 'Defend Other'], ['fullDefense', 'Full Defense']] as const).map(([key, label]) => (
