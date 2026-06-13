@@ -1374,25 +1374,38 @@ export default function SheetTab({ sheet, onChange, editMode, gameData: gd }: Pr
           onChange={e => update({ defenseBonus: { ...db, [key]: parseInt(e.target.value) || 0 } })}
           className="w-[30px] text-center bg-stone-800 border border-stone-600 text-stone-100 rounded px-1 py-0.5 text-xs focus:outline-none focus:border-amber-500" />
       )
-      const calcRow = (label: string, total: number, _breakdown: string, bonus: ReturnType<typeof bonusInput>) => (
-        <div className="flex items-center gap-1.5">
+      const calcRow = (label: string, total: number, tip: string, bonus: ReturnType<typeof bonusInput>) => (
+        <div className="flex items-center gap-1.5 group/row relative">
           <span className="text-xs text-stone-400 w-16 shrink-0">{label}</span>
-          <span className="text-sm font-semibold text-stone-100 flex-1">{total}</span>
+          <span className="text-sm font-semibold text-stone-100 flex-1 cursor-default">{total}</span>
           {bonus}
+          <div className="absolute bottom-full left-0 mb-1.5 z-50 pointer-events-none opacity-0 group-hover/row:opacity-100 transition-opacity">
+            <div className="bg-stone-800 border border-stone-600 rounded-lg px-3 py-1.5 text-xs text-stone-300 whitespace-nowrap shadow-xl">
+              {tip}
+            </div>
+          </div>
+        </div>
+      )
+      const tipRow = (label: string, total: number, tip: string) => (
+        <div className="flex items-center gap-1.5 group/row relative">
+          <span className="text-xs text-stone-400 w-16 shrink-0">{label}</span>
+          <span className="text-sm font-semibold text-stone-100 flex-1 cursor-default">{total}</span>
+          <div className="absolute bottom-full left-0 mb-1.5 z-50 pointer-events-none opacity-0 group-hover/row:opacity-100 transition-opacity">
+            <div className="bg-stone-800 border border-stone-600 rounded-lg px-3 py-1.5 text-xs text-stone-300 whitespace-nowrap shadow-xl">
+              {tip}
+            </div>
+          </div>
         </div>
       )
       return (
         <div className={panelBase}>
           <SectionHeader title="Defenses" />
           <div className="space-y-1.5">
-            {calcRow('Parry',    parry,    `⌈(Sta${stamina}+CC${cc})÷2⌉+wpn${bestWpnDef}`, bonusInput('parry'))}
-            {calcRow('Evasion',  evasion,  `⌈(Dex${dex}+Ath${ath})÷2⌉`, bonusInput('evasion'))}
-            {calcRow('Soak',     soak,     `${soakBase}base+arm${totalArmorSoak}`, bonusInput('soak'))}
-            {calcRow('Hardness', hardness, `${hardnessBase}base+arm${totalArmorHard}`, bonusInput('hardness'))}
-            <div className="flex items-center gap-1.5">
-              <span className="text-xs text-stone-400 w-16 shrink-0">Resolve</span>
-              <span className="text-sm font-semibold text-stone-100 flex-1">{resolveBase}</span>
-            </div>
+            {calcRow('Parry',    parry,    `(Stamina ${stamina} + Close Combat ${cc}) / 2 + Weapon Defense ${bestWpnDef} + Bonus ${db.parry ?? 0}`, bonusInput('parry'))}
+            {calcRow('Evasion',  evasion,  `(Dexterity ${dex} + Athletics ${ath}) / 2 + Bonus ${db.evasion ?? 0}`, bonusInput('evasion'))}
+            {calcRow('Soak',     soak,     `${soakBase} base + Armor ${totalArmorSoak} + Bonus ${db.soak ?? 0}`, bonusInput('soak'))}
+            {calcRow('Hardness', hardness, `${hardnessBase} base (2 + Essence ${data.essence ?? 1}) + Armor ${totalArmorHard} + Bonus ${db.hardness ?? 0}`, bonusInput('hardness'))}
+            {tipRow('Resolve', resolveBase, `2 base + Integrity ${integ} bonus`)}
             <div className="border-t border-stone-700 pt-1 mt-1 space-y-1">
               {([['defenseOther', 'Defend Other'], ['fullDefense', 'Full Defense']] as const).map(([key, label]) => (
                 <div key={key} className="flex items-center justify-between">
@@ -1421,7 +1434,6 @@ export default function SheetTab({ sheet, onChange, editMode, gameData: gd }: Pr
               onChange={e => update({ essence: parseInt(e.target.value) || 1 })}
               className={numInput} />
           </div>
-          <p className="text-[10px] text-stone-500 leading-relaxed">Adds to Hardness. Affects charm costs and max mote pools.</p>
         </div>
       </div>
     ),
