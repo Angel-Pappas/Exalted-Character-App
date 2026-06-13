@@ -601,10 +601,10 @@ function ItemModal({ item, onSave, onClose }: {
   )
 }
 
-const INVENTORY_KINDS: { kind: InventoryItemKind; label: string; badge: string }[] = [
-  { kind: 'weapon', label: 'Weapons', badge: 'bg-red-900/60 text-red-300' },
-  { kind: 'armor',  label: 'Armor',   badge: 'bg-blue-900/60 text-blue-300' },
-  { kind: 'other',  label: 'Other',   badge: 'bg-stone-700 text-stone-300' },
+const INVENTORY_KINDS: { kind: InventoryItemKind; label: string }[] = [
+  { kind: 'weapon', label: 'Weapons' },
+  { kind: 'armor',  label: 'Armor' },
+  { kind: 'other',  label: 'Other' },
 ]
 
 function InventoryPanel({ items, onChange, dragEnabled }: {
@@ -665,7 +665,7 @@ function InventoryPanel({ items, onChange, dragEnabled }: {
           <button onClick={() => setModal({ kind: 'weapon' })} className="text-stone-500 hover:text-amber-400 transition-colors text-xs">+ item</button>
         </div>
         <div className="space-y-2 overflow-y-auto no-scrollbar flex-1">
-          {INVENTORY_KINDS.map(({ kind, label, badge }) => {
+          {INVENTORY_KINDS.map(({ kind, label }) => {
             const kindItems = items.filter(i => i.kind === kind)
             return (
               <div key={kind}
