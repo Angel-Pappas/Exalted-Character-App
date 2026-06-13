@@ -851,9 +851,9 @@ function InventoryPanel({ items, onChange, dragEnabled, gameData }: {
   gameData: GameData
 }) {
   const [modal, setModal] = useState<Partial<InventoryItem> & { kind: InventoryItemKind } | null>(null)
-  const [foiModalId, setFoiModalId] = useState<string | null>(null)
+  const [foiModalOpen, setFoiModalOpen] = useState(false)
+  const [foi, setFoi] = useState<FoiState>({ active: false, weight: null, tag: null })
   const [dropBeforeId, setDropBeforeId] = useState<string | null>(null)
-  const [foi, setFoi] = useState<Record<string, FoiState>>({})
   const [expanded, setExpanded] = useState<Record<string, boolean>>({})
   const dragging = useRef<string | null>(null)
 
@@ -862,8 +862,22 @@ function InventoryPanel({ items, onChange, dragEnabled, gameData }: {
     M: 'bg-green-600 text-white',
     H: 'bg-yellow-500 text-stone-900',
   }
-
-  function getFoi(id: string): FoiState { return foi[id] ?? { active: false, weight: null, tag: null } }
+  const artifactRowCls: Record<ArtifactColor, string> = {
+    red:    'bg-red-900/15',
+    green:  'bg-green-900/15',
+    blue:   'bg-blue-900/15',
+    white:  'bg-stone-600/15',
+    silver: 'bg-slate-700/15',
+    gold:   'bg-amber-900/15',
+  }
+  const artifactTextCls: Record<ArtifactColor, string> = {
+    red:    'text-red-400',
+    green:  'text-green-400',
+    blue:   'text-blue-400',
+    white:  'text-white',
+    silver: 'text-slate-300',
+    gold:   'text-amber-400',
+  }
 
   // All tags available for FoI: Universal + Melee, excluding Artifact
   const foiTags = gameData.tagGroups
@@ -897,14 +911,6 @@ function InventoryPanel({ items, onChange, dragEnabled, gameData }: {
   }
   function onDragEnd() { dragging.current = null; setDropBeforeId(null) }
 
-  const artifactColorCls: Record<ArtifactColor, string> = {
-    red:    'text-red-400 bg-red-900/20',
-    green:  'text-green-400 bg-green-900/20',
-    blue:   'text-blue-400 bg-blue-900/20',
-    white:  'text-white bg-stone-700/30',
-    silver: 'text-slate-300 bg-slate-700/20',
-    gold:   'text-amber-400 bg-amber-900/20',
-  }
   const artifactCheckboxCls: Record<ArtifactColor, string> = {
     red:    'bg-red-500 border-red-500',
     green:  'bg-green-500 border-green-500',
@@ -917,14 +923,14 @@ function InventoryPanel({ items, onChange, dragEnabled, gameData }: {
   return (
     <>
       {modal && <ItemModal item={modal} onSave={saveItem} onClose={() => setModal(null)} gameData={gameData} />}
-      {foiModalId && (
+      {foiModalOpen && (
         <FoiModal
-          current={getFoi(foiModalId)}
+          current={foi}
           foiWeights={foiWeights}
           foiTags={foiTags}
-          onSave={s => { setFoi(f => ({ ...f, [foiModalId]: s })); setFoiModalId(null) }}
-          onDeactivate={() => { setFoi(f => ({ ...f, [foiModalId]: { active: false, weight: null, tag: null } })); setFoiModalId(null) }}
-          onClose={() => setFoiModalId(null)}
+          onSave={s => { setFoi(s); setFoiModalOpen(false) }}
+          onDeactivate={() => { setFoi({ active: false, weight: null, tag: null }); setFoiModalOpen(false) }}
+          onClose={() => setFoiModalOpen(false)}
         />
       )}
       <div className="bg-stone-900 border border-stone-700 rounded-lg p-2 overflow-hidden h-full flex flex-col">
@@ -943,17 +949,31 @@ function InventoryPanel({ items, onChange, dragEnabled, gameData }: {
               >
                 <div className="flex items-center justify-between px-1.5 py-1">
                   <span className="text-xs font-semibold text-amber-400/80 uppercase tracking-wider">{label}</span>
-                  <span className="text-[9px] text-stone-600">{kindItems.length}</span>
+                  <div className="flex items-center gap-1.5">
+                    {kind === 'weapon' && (() => {
+                      const hasUnarmed = kindItems.some(i => i.weight === 'Unarmed')
+                      return (
+                        <button
+                          onClick={() => hasUnarmed && setFoiModalOpen(true)}
+                          title={hasUnarmed ? 'Fists of Iron Technique' : 'You need an unarmed weapon'}
+                          className={`text-[9px] px-1 py-0.5 rounded border transition-colors ${foi.active ? 'bg-orange-600/30 border-orange-500 text-orange-300' : hasUnarmed ? 'border-stone-600 text-stone-500 hover:border-orange-500 hover:text-orange-400' : 'border-stone-700 text-stone-700 cursor-not-allowed'}`}>
+                          FoI
+                        </button>
+                      )
+                    })()}
+                    <span className="text-[9px] text-stone-600">{kindItems.length}</span>
+                  </div>
                 </div>
                 <div>
                   {kindItems.length === 0 && <p className="text-xs text-stone-600 px-1.5 pb-1">None.</p>}
                   {kindItems.map(item => {
-                    const f = getFoi(item.id)
                     const isUnarmed = item.kind === 'weapon' && item.weight === 'Unarmed'
-                    const foiTagEntry = f.tag ? foiTags.find(t => t.name === f.tag) : null
+                    const foiTagEntry = foi.active && foi.tag ? foiTags.find(t => t.name === foi.tag) : null
                     const isExpanded = expanded[item.id] ?? false
-                    const wLetter = f.weight?.[0]?.toUpperCase() ?? ''
+                    const wLetter = foi.weight?.[0]?.toUpperCase() ?? ''
                     const wBadge = weightBadgeCls[wLetter] ?? 'bg-stone-600 text-stone-100'
+                    const rowArtifactBg = item.artifact && item.artifactColor ? artifactRowCls[item.artifactColor] : ''
+                    const nameTextCls = item.artifact && item.artifactColor ? artifactTextCls[item.artifactColor] : 'text-stone-200'
                     return (
                       <div key={item.id}
                         draggable={dragEnabled}
@@ -961,7 +981,7 @@ function InventoryPanel({ items, onChange, dragEnabled, gameData }: {
                         onDragOver={e => dragEnabled && onDragOver(e, item.id)}
                         onDrop={e => onDrop(e, kind, item.id)}
                         onDragEnd={onDragEnd}
-                        className={`border-t border-stone-800 transition-colors ${dropBeforeId === item.id ? 'border-t-amber-400' : ''}`}
+                        className={`border-t border-stone-800 transition-colors ${dropBeforeId === item.id ? 'border-t-amber-400' : ''} ${rowArtifactBg}`}
                       >
                         {/* Main row */}
                         <div className={`px-1.5 py-1 flex items-center gap-1.5 ${dragEnabled ? 'cursor-grab active:cursor-grabbing' : ''}`}>
@@ -973,36 +993,36 @@ function InventoryPanel({ items, onChange, dragEnabled, gameData }: {
                             onClick={() => item.kind === 'other'
                               ? setExpanded(e => ({ ...e, [item.id]: !e[item.id] }))
                               : setModal(item)}
-                            className={`text-xs hover:brightness-125 transition-all flex-1 min-w-0 truncate text-left rounded px-0.5 ${item.artifact && item.artifactColor ? artifactColorCls[item.artifactColor] : 'text-stone-200'}`}>
+                            className={`text-xs hover:brightness-125 transition-all flex-1 min-w-0 truncate text-left rounded px-0.5 ${nameTextCls}`}>
                             {item.kind === 'other' && <span className="mr-0.5 text-stone-500">{isExpanded ? '▾' : '▸'}</span>}
                             {item.name}
                           </button>
 
                           {/* Weapon stats */}
                           {item.kind === 'weapon' && (
-                            <span className="text-[9px] text-stone-500 shrink-0 flex gap-1.5">
+                            <span className="text-[9px] shrink-0 flex gap-1.5">
                               {([['Ac', item.accuracy], ['Da', item.damage], ['De', item.defense], ['Ov', item.overwhelming]] as [string, number|undefined][]).map(([l, v]) => (
-                                <span key={l}><span className="text-stone-600">{l} </span>{v ?? 0}</span>
+                                <span key={l}><span className="text-stone-500">{l} </span><span className="text-stone-300">{v ?? 0}</span></span>
                               ))}
                             </span>
                           )}
 
                           {/* Armor stats */}
                           {item.kind === 'armor' && (
-                            <span className="text-[9px] text-stone-500 shrink-0 flex gap-1.5">
+                            <span className="text-[9px] shrink-0 flex gap-1.5">
                               {([['So', item.soak], ['MP', item.mobilityPen], ['Ha', item.hardness]] as [string, number|undefined][]).map(([l, v]) => (
-                                <span key={l}><span className="text-stone-600">{l} </span>{v ?? 0}</span>
+                                <span key={l}><span className="text-stone-500">{l} </span><span className="text-stone-300">{v ?? 0}</span></span>
                               ))}
                             </span>
                           )}
 
-                          {/* FoI active: weight badge + tag chip */}
-                          {isUnarmed && f.active && f.weight && (
+                          {/* FoI active: weight badge + tag chip (unarmed weapons only) */}
+                          {isUnarmed && foi.active && foi.weight && (
                             <span className={`text-[9px] w-4 h-4 rounded flex items-center justify-center font-bold shrink-0 ${wBadge}`}>
                               {wLetter}
                             </span>
                           )}
-                          {isUnarmed && f.active && foiTagEntry && (
+                          {isUnarmed && foi.active && foiTagEntry && (
                             <span title={foiTagEntry.description}
                               className="text-[9px] px-1 py-0.5 rounded bg-orange-900/40 border border-orange-600/50 text-orange-300 cursor-help shrink-0">
                               {foiTagEntry.name}
@@ -1010,13 +1030,6 @@ function InventoryPanel({ items, onChange, dragEnabled, gameData }: {
                           )}
 
                           <div className="flex gap-1 shrink-0">
-                            {isUnarmed && (
-                              <button onClick={() => setFoiModalId(item.id)}
-                                title="Fists of Iron Technique"
-                                className={`text-[9px] px-1 py-0.5 rounded border transition-colors ${f.active ? 'bg-orange-600/30 border-orange-500 text-orange-300' : 'border-stone-600 text-stone-500 hover:border-orange-500 hover:text-orange-400'}`}>
-                                FoI
-                              </button>
-                            )}
                             <button onClick={() => setModal(item)} className="text-stone-500 hover:text-amber-400 transition-colors text-xs">✎</button>
                             <button onClick={() => removeItem(item.id)} className="text-stone-500 hover:text-red-400 transition-colors text-xs">✕</button>
                           </div>
