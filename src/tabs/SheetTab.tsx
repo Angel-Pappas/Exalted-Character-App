@@ -56,6 +56,7 @@ function defaultSheet(): SheetData {
   for (const d of DEFENSES) defenses[d] = 0
   return {
     attributes, abilities, defenses,
+    defenseOther: false, fullDefense: false,
     languages: [], merits: [], intimacies: [],
     motes: { current: 0, committed: 0, total: 0 },
     health: DEFAULT_HEALTH.map(h => ({ ...h })),
@@ -515,6 +516,8 @@ export default function SheetTab({ sheet, onChange, editMode }: Props) {
     charms: sheet.charms ?? [],
     effects: sheet.effects ?? [],
     inventory: sheet.inventory ?? [],
+    defenseOther: sheet.defenseOther ?? false,
+    fullDefense: sheet.fullDefense ?? false,
   }
 
   const [newLanguage, setNewLanguage] = useState('')
@@ -655,6 +658,19 @@ export default function SheetTab({ sheet, onChange, editMode }: Props) {
                 className={numInput} />
             </div>
           ))}
+          <div className="border-t border-stone-700 pt-1 mt-1 space-y-1">
+            {([['defenseOther', 'Defense Other'], ['fullDefense', 'Full Defense']] as const).map(([key, label]) => (
+              <div key={key} className="flex items-center justify-between">
+                <span className="text-xs text-stone-300">{label}</span>
+                <button
+                  onClick={() => update({ [key]: !data[key] })}
+                  className={`w-8 h-4 rounded-full transition-colors relative ${data[key] ? 'bg-amber-500' : 'bg-stone-600'}`}
+                >
+                  <span className={`absolute top-0.5 w-3 h-3 rounded-full bg-white transition-all ${data[key] ? 'left-4' : 'left-0.5'}`} />
+                </button>
+              </div>
+            ))}
+          </div>
         </div>
       </div>
     ),

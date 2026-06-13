@@ -96,6 +96,8 @@ export interface SheetData {
   attributes: Record<string, number>
   abilities: Record<string, AbilityData>
   defenses: Record<string, number>
+  defenseOther: boolean
+  fullDefense: boolean
   languages: string[]
   merits: MeritEntry[]
   intimacies: IntimacyEntry[]
