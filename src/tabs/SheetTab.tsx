@@ -998,6 +998,19 @@ function InventoryPanel({ items, onChange, dragEnabled, gameData }: {
                             {item.name}
                           </button>
 
+                          {/* FoI active: tag chip + weight badge — shown before stats so numbers stay in the same column */}
+                          {isUnarmed && foi.active && foiTagEntry && (
+                            <span title={foiTagEntry.description}
+                              className="text-[9px] px-1 py-0.5 rounded bg-orange-900/40 border border-orange-600/50 text-orange-300 cursor-help shrink-0">
+                              {foiTagEntry.name}
+                            </span>
+                          )}
+                          {isUnarmed && foi.active && foi.weight && (
+                            <span className={`text-[9px] w-4 h-4 rounded flex items-center justify-center font-bold shrink-0 ${wBadge}`}>
+                              {wLetter}
+                            </span>
+                          )}
+
                           {/* Weapon stats */}
                           {item.kind === 'weapon' && (
                             <span className="text-[9px] shrink-0 flex gap-1.5">
@@ -1013,19 +1026,6 @@ function InventoryPanel({ items, onChange, dragEnabled, gameData }: {
                               {([['So', item.soak], ['MP', item.mobilityPen], ['Ha', item.hardness]] as [string, number|undefined][]).map(([l, v]) => (
                                 <span key={l}><span className="text-stone-500">{l} </span><span className="text-stone-300">{v ?? 0}</span></span>
                               ))}
-                            </span>
-                          )}
-
-                          {/* FoI active: weight badge + tag chip (unarmed weapons only) */}
-                          {isUnarmed && foi.active && foi.weight && (
-                            <span className={`text-[9px] w-4 h-4 rounded flex items-center justify-center font-bold shrink-0 ${wBadge}`}>
-                              {wLetter}
-                            </span>
-                          )}
-                          {isUnarmed && foi.active && foiTagEntry && (
-                            <span title={foiTagEntry.description}
-                              className="text-[9px] px-1 py-0.5 rounded bg-orange-900/40 border border-orange-600/50 text-orange-300 cursor-help shrink-0">
-                              {foiTagEntry.name}
                             </span>
                           )}
 
