@@ -880,40 +880,53 @@ function InventoryPanel({ items, onChange, dragEnabled, gameData }: {
   const dragging = useRef<string | null>(null)
   const migrationDone = useRef(false)
 
-  // One-time migration: apply tag stat effects to existing items that predate this logic.
-  // Runs once after items first load from Supabase (items transitions from [] to populated).
+  function computeWeaponStats(item: InventoryItem): Partial<InventoryItem> {
+    const row = gameData.weapons.find(w => w.category === item.weight)
+    if (!row) return {}
+    const a = item.artifact ? 1 : 0
+    const tags = Array.isArray(item.tags) ? item.tags : []
+    let ac = row.accuracy + a
+    let da = row.damage + a
+    let de = row.defense + a
+    let ov = row.overwhelming + a
+    if (tags.includes('Shield'))     da = Math.max(0, da - 1)
+    if (tags.includes('Balanced'))   ov += 1
+    if (tags.includes('Improvised')) ac = Math.max(0, ac - 2)
+    if (tags.includes('Defensive'))  de += 1
+    return { accuracy: Math.max(0, ac), damage: Math.max(0, da), defense: Math.max(0, de), overwhelming: Math.max(0, ov) }
+  }
+
+  function computeArmorStats(item: InventoryItem): Partial<InventoryItem> {
+    const row = gameData.armor.find(r => r.category === item.type)
+    if (!row) return {}
+    const a = item.artifact ? 1 : 0
+    return { soak: row.soak + a, mobilityPen: row.mobilityPenalty, hardness: Math.max(0, row.hardness + a) }
+  }
+
+  // On first load, recompute all weapon/armor stats from source of truth (table + artifact + tags).
+  // This ensures items are always correct regardless of when they were saved.
   useEffect(() => {
     if (migrationDone.current || items.length === 0) return
     migrationDone.current = true
-    const TAG_EFFECTS: Record<string, (item: InventoryItem) => Partial<InventoryItem>> = {
-      Shield:    i => ({ damage:       Math.max(0, (i.damage       ?? 0) - 1) }),
-      Balanced:  i => ({ overwhelming: (i.overwhelming ?? 0) + 1 }),
-      Improvised:i => ({ accuracy:     Math.max(0, (i.accuracy     ?? 0) - 2) }),
-      Defensive: i => ({ defense:      (i.defense      ?? 0) + 1 }),
-    }
     let anyChanged = false
     const next = items.map(item => {
-      if (item.kind !== 'weapon') return item
-      const applied: string[] = [...((item as any)._tagsApplied ?? [])]
-      const tags = Array.isArray(item.tags) ? item.tags : []
-      let patch: Partial<InventoryItem> = {}
-      let itemChanged = false
-      for (const [tag, fn] of Object.entries(TAG_EFFECTS)) {
-        const has = tags.includes(tag)
-        const wasApplied = applied.includes(tag)
-        if (has && !wasApplied) {
-          patch = { ...patch, ...fn({ ...item, ...patch } as InventoryItem) }
-          applied.push(tag)
-          itemChanged = true
-        }
-        if (!has && wasApplied) {
-          applied.splice(applied.indexOf(tag), 1)
-          itemChanged = true
+      // Skip unarmed weapons when FoI is active — FoI has intentionally modified their stats
+      if (item.kind === 'weapon' && item.weight === 'Unarmed' && foi.active) return item
+      if (item.kind === 'weapon' && item.weight) {
+        const computed = computeWeaponStats(item)
+        if (Object.entries(computed).some(([k, v]) => (item as any)[k] !== v)) {
+          anyChanged = true
+          return { ...item, ...computed }
         }
       }
-      if (!itemChanged) return item
-      anyChanged = true
-      return { ...item, ...patch, _tagsApplied: applied } as InventoryItem
+      if (item.kind === 'armor' && item.type) {
+        const computed = computeArmorStats(item)
+        if (Object.entries(computed).some(([k, v]) => (item as any)[k] !== v)) {
+          anyChanged = true
+          return { ...item, ...computed }
+        }
+      }
+      return item
     })
     if (anyChanged) onChange(next)
   }, [items])
@@ -996,11 +1009,15 @@ function InventoryPanel({ items, onChange, dragEnabled, gameData }: {
   }
 
   function saveItem(item: InventoryItem) {
-    const TAG_STAT_KEYS = ['Shield', 'Balanced', 'Improvised', 'Defensive']
-    const tags = Array.isArray(item.tags) ? item.tags : []
-    const stamped = { ...item, _tagsApplied: tags.filter(t => TAG_STAT_KEYS.includes(t)) } as InventoryItem
-    const exists = items.some(i => i.id === stamped.id)
-    onChange(exists ? items.map(i => i.id === stamped.id ? stamped : i) : [...items, stamped])
+    let final = { ...item } as any
+    delete final._tagsApplied
+    if (item.kind === 'weapon' && item.weight) {
+      final = { ...final, ...computeWeaponStats(item) }
+    } else if (item.kind === 'armor' && item.type) {
+      final = { ...final, ...computeArmorStats(item) }
+    }
+    const exists = items.some(i => i.id === final.id)
+    onChange(exists ? items.map(i => i.id === final.id ? final : i) : [...items, final])
     setModal(null)
   }
   function removeItem(id: string) {
