@@ -827,17 +827,15 @@ function FoiModal({ current, foiWeights, foiTags, onSave, onDeactivate, onClose 
           </div>
         </div>
 
-        <div className="flex items-center justify-between px-4 py-3 border-t border-stone-700 shrink-0">
+        <div className="flex items-center justify-end gap-2 px-4 py-3 border-t border-stone-700 shrink-0">
+          <button onClick={onClose} className="px-3 py-1 text-xs text-stone-400 hover:text-stone-200 transition-colors">Cancel</button>
           {current.active
-            ? <button onClick={onDeactivate} className="text-xs text-stone-500 hover:text-red-400 transition-colors">Deactivate</button>
-            : <span />}
-          <div className="flex gap-2">
-            <button onClick={onClose} className="px-3 py-1 text-xs text-stone-400 hover:text-stone-200 transition-colors">Cancel</button>
-            <button onClick={() => canSave && onSave({ active: true, weight, tag })} disabled={!canSave}
-              className={`px-3 py-1 text-xs rounded transition-colors ${canSave ? 'bg-orange-600 hover:bg-orange-500 text-white' : 'bg-stone-700 text-stone-500 cursor-not-allowed'}`}>
-              Activate
-            </button>
-          </div>
+            ? <button onClick={onDeactivate} className="px-3 py-1 text-xs bg-red-900/40 hover:bg-red-800/60 border border-red-700 text-red-300 rounded transition-colors">Deactivate</button>
+            : <button onClick={() => canSave && onSave({ active: true, weight, tag })} disabled={!canSave}
+                className={`px-3 py-1 text-xs rounded transition-colors ${canSave ? 'bg-orange-600 hover:bg-orange-500 text-white' : 'bg-stone-700 text-stone-500 cursor-not-allowed'}`}>
+                Activate
+              </button>
+          }
         </div>
       </div>
     </div>
@@ -853,6 +851,7 @@ function InventoryPanel({ items, onChange, dragEnabled, gameData }: {
   const [modal, setModal] = useState<Partial<InventoryItem> & { kind: InventoryItemKind } | null>(null)
   const [foiModalOpen, setFoiModalOpen] = useState(false)
   const [foi, setFoi] = useState<FoiState>({ active: false, weight: null, tag: null })
+  const [foiOriginals, setFoiOriginals] = useState<Record<string, Partial<InventoryItem>>>({})
   const [dropBeforeId, setDropBeforeId] = useState<string | null>(null)
   const [expanded, setExpanded] = useState<Record<string, boolean>>({})
   const dragging = useRef<string | null>(null)
@@ -888,12 +887,63 @@ function InventoryPanel({ items, onChange, dragEnabled, gameData }: {
   // Weights available for FoI override: everything except Unarmed
   const foiWeights = gameData.weapons.filter(w => w.category !== 'Unarmed')
 
+  function applyFoi(newFoi: FoiState) {
+    // Restore originals to get a clean base (in case FoI was already active)
+    const base = foi.active
+      ? items.map(i => foiOriginals[i.id] ? { ...i, ...foiOriginals[i.id] } : i)
+      : items
+
+    // Save originals on first activation only
+    const newOriginals: Record<string, Partial<InventoryItem>> = foi.active
+      ? foiOriginals
+      : Object.fromEntries(
+          base.filter(i => i.kind === 'weapon' && i.weight === 'Unarmed').map(i => [
+            i.id,
+            { accuracy: i.accuracy, damage: i.damage, defense: i.defense, overwhelming: i.overwhelming, tags: [...(i.tags ?? [])] }
+          ])
+        )
+
+    const weightRow = newFoi.weight ? gameData.weapons.find(w => w.category === newFoi.weight) : null
+
+    const newItems = base.map(i => {
+      if (i.kind !== 'weapon' || i.weight !== 'Unarmed') return i
+      const art = i.artifact ? 1 : 0
+      let acc = weightRow ? weightRow.accuracy + art : (i.accuracy ?? 0)
+      let dmg = weightRow ? weightRow.damage + art : (i.damage ?? 0)
+      let def = weightRow ? weightRow.defense + art : (i.defense ?? 0)
+      let ovw = weightRow ? weightRow.overwhelming + art : (i.overwhelming ?? 0)
+      const baseTags = (i.tags ?? []).filter(t => t !== foi.tag)  // remove old FoI tag
+      const newTags = newFoi.tag ? [...baseTags, newFoi.tag] : baseTags
+      if (newFoi.tag === 'Shield') dmg = Math.max(0, dmg - 1)
+      return { ...i, accuracy: acc, damage: dmg, defense: def, overwhelming: ovw, tags: newTags }
+    })
+
+    setFoiOriginals(newOriginals)
+    setFoi(newFoi)
+    onChange(newItems)
+  }
+
+  function deactivateFoi() {
+    const restored = items.map(i => foiOriginals[i.id] ? { ...i, ...foiOriginals[i.id] } : i)
+    setFoi({ active: false, weight: null, tag: null })
+    setFoiOriginals({})
+    onChange(restored)
+  }
+
   function saveItem(item: InventoryItem) {
     const exists = items.some(i => i.id === item.id)
     onChange(exists ? items.map(i => i.id === item.id ? item : i) : [...items, item])
     setModal(null)
   }
-  function removeItem(id: string) { onChange(items.filter(i => i.id !== id)) }
+  function removeItem(id: string) {
+    const newItems = items.filter(i => i.id !== id)
+    const stillHasUnarmed = newItems.some(i => i.kind === 'weapon' && i.weight === 'Unarmed')
+    if (foi.active && !stillHasUnarmed) {
+      setFoi({ active: false, weight: null, tag: null })
+      setFoiOriginals({})
+    }
+    onChange(newItems)
+  }
   function toggleEquipped(id: string) { onChange(items.map(i => i.id === id ? { ...i, equipped: !i.equipped } : i)) }
 
   function onDragStart(e: React.DragEvent, id: string) { dragging.current = id; e.dataTransfer.effectAllowed = 'move' }
@@ -928,8 +978,8 @@ function InventoryPanel({ items, onChange, dragEnabled, gameData }: {
           current={foi}
           foiWeights={foiWeights}
           foiTags={foiTags}
-          onSave={s => { setFoi(s); setFoiModalOpen(false) }}
-          onDeactivate={() => { setFoi({ active: false, weight: null, tag: null }); setFoiModalOpen(false) }}
+          onSave={s => { applyFoi(s); setFoiModalOpen(false) }}
+          onDeactivate={() => { deactivateFoi(); setFoiModalOpen(false) }}
           onClose={() => setFoiModalOpen(false)}
         />
       )}
