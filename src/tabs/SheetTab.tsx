@@ -1,4 +1,4 @@
-import { useState, useRef } from 'react' // useState used by CharmPanel and other local state
+import { useState, useRef, useEffect } from 'react' // useState used by CharmPanel and other local state
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 import { GridLayout, useContainerWidth, noCompactor } from 'react-grid-layout'
 // noCompactor has allowOverlap:false which causes panels to push each other during drag.
@@ -503,6 +503,21 @@ function ItemModal({ item, onSave, onClose, gameData }: {
         ? Math.max(0, (form.damage ?? 0) - 1)
         : (form.damage ?? 0) + 1
     }
+    if (name === 'Balanced') {
+      patch.overwhelming = adding
+        ? (form.overwhelming ?? 0) + 1
+        : Math.max(0, (form.overwhelming ?? 0) - 1)
+    }
+    if (name === 'Improvised') {
+      patch.accuracy = adding
+        ? Math.max(0, (form.accuracy ?? 0) - 2)
+        : (form.accuracy ?? 0) + 2
+    }
+    if (name === 'Defensive') {
+      patch.defense = adding
+        ? (form.defense ?? 0) + 1
+        : Math.max(0, (form.defense ?? 0) - 1)
+    }
     set(patch)
   }
 
@@ -864,6 +879,42 @@ function InventoryPanel({ items, onChange, dragEnabled, gameData }: {
   const [expanded, setExpanded] = useState<Record<string, boolean>>({})
   const dragging = useRef<string | null>(null)
 
+  // One-time migration: apply tag stat effects to existing items that predate this logic
+  useEffect(() => {
+    const TAG_EFFECTS: Record<string, (item: InventoryItem) => Partial<InventoryItem>> = {
+      Shield:    i => ({ damage:       Math.max(0, (i.damage       ?? 0) - 1) }),
+      Balanced:  i => ({ overwhelming: (i.overwhelming ?? 0) + 1 }),
+      Improvised:i => ({ accuracy:     Math.max(0, (i.accuracy     ?? 0) - 2) }),
+      Defensive: i => ({ defense:      (i.defense      ?? 0) + 1 }),
+    }
+    let anyChanged = false
+    const next = items.map(item => {
+      if (item.kind !== 'weapon') return item
+      const applied: string[] = [...((item as any)._tagsApplied ?? [])]
+      const tags = Array.isArray(item.tags) ? item.tags : []
+      let patch: Partial<InventoryItem> = {}
+      let itemChanged = false
+      for (const [tag, fn] of Object.entries(TAG_EFFECTS)) {
+        const has = tags.includes(tag)
+        const wasApplied = applied.includes(tag)
+        if (has && !wasApplied) {
+          patch = { ...patch, ...fn({ ...item, ...patch } as InventoryItem) }
+          applied.push(tag)
+          itemChanged = true
+        }
+        if (!has && wasApplied) {
+          applied.splice(applied.indexOf(tag), 1)
+          itemChanged = true
+        }
+      }
+      if (!itemChanged) return item
+      anyChanged = true
+      return { ...item, ...patch, _tagsApplied: applied } as InventoryItem
+    })
+    if (anyChanged) onChange(next)
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [])
+
   const weightBadgeCls: Record<string, string> = {
     L: 'bg-blue-600 text-white',
     M: 'bg-green-600 text-white',
@@ -942,8 +993,11 @@ function InventoryPanel({ items, onChange, dragEnabled, gameData }: {
   }
 
   function saveItem(item: InventoryItem) {
-    const exists = items.some(i => i.id === item.id)
-    onChange(exists ? items.map(i => i.id === item.id ? item : i) : [...items, item])
+    const TAG_STAT_KEYS = ['Shield', 'Balanced', 'Improvised', 'Defensive']
+    const tags = Array.isArray(item.tags) ? item.tags : []
+    const stamped = { ...item, _tagsApplied: tags.filter(t => TAG_STAT_KEYS.includes(t)) } as InventoryItem
+    const exists = items.some(i => i.id === stamped.id)
+    onChange(exists ? items.map(i => i.id === stamped.id ? stamped : i) : [...items, stamped])
     setModal(null)
   }
   function removeItem(id: string) {
