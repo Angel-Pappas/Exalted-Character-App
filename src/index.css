@@ -32,6 +32,11 @@ body {
   display: none !important;
 }
 
+/* Allow tooltips inside grid panels to escape their container */
+.react-grid-item:has([data-tooltip-panel]) {
+  overflow: visible !important;
+}
+
 .react-resizable-handle {
   width: 20px !important;
   height: 20px !important;

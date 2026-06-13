@@ -1398,7 +1398,7 @@ export default function SheetTab({ sheet, onChange, editMode, gameData: gd }: Pr
         </div>
       )
       return (
-        <div className={panelBase}>
+        <div className="bg-stone-900 border border-stone-700 rounded-lg p-2 overflow-visible h-full" data-tooltip-panel>
           <SectionHeader title="Defenses" />
           <div className="space-y-1.5">
             {calcRow('Parry',    parry,    `(Stamina ${stamina} + Close Combat ${cc}) / 2 + Weapon Defense ${bestWpnDef} + Bonus ${db.parry ?? 0}`, bonusInput('parry'))}
