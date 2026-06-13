@@ -878,9 +878,13 @@ function InventoryPanel({ items, onChange, dragEnabled, gameData }: {
   const [dropBeforeId, setDropBeforeId] = useState<string | null>(null)
   const [expanded, setExpanded] = useState<Record<string, boolean>>({})
   const dragging = useRef<string | null>(null)
+  const migrationDone = useRef(false)
 
-  // One-time migration: apply tag stat effects to existing items that predate this logic
+  // One-time migration: apply tag stat effects to existing items that predate this logic.
+  // Runs once after items first load from Supabase (items transitions from [] to populated).
   useEffect(() => {
+    if (migrationDone.current || items.length === 0) return
+    migrationDone.current = true
     const TAG_EFFECTS: Record<string, (item: InventoryItem) => Partial<InventoryItem>> = {
       Shield:    i => ({ damage:       Math.max(0, (i.damage       ?? 0) - 1) }),
       Balanced:  i => ({ overwhelming: (i.overwhelming ?? 0) + 1 }),
@@ -912,8 +916,7 @@ function InventoryPanel({ items, onChange, dragEnabled, gameData }: {
       return { ...item, ...patch, _tagsApplied: applied } as InventoryItem
     })
     if (anyChanged) onChange(next)
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [])
+  }, [items])
 
   const weightBadgeCls: Record<string, string> = {
     L: 'bg-blue-600 text-white',
