@@ -647,6 +647,14 @@ function InventoryPanel({ items, onChange, dragEnabled }: {
     silver: 'text-slate-300 bg-slate-700/20',
     gold:   'text-amber-400 bg-amber-900/20',
   }
+  const artifactCheckboxCls: Record<ArtifactColor, string> = {
+    red:    'bg-red-500 border-red-500',
+    green:  'bg-green-500 border-green-500',
+    blue:   'bg-blue-500 border-blue-500',
+    white:  'bg-white border-white',
+    silver: 'bg-slate-300 border-slate-300',
+    gold:   'bg-amber-400 border-amber-400',
+  }
 
   return (
     <>
@@ -681,10 +689,9 @@ function InventoryPanel({ items, onChange, dragEnabled }: {
                       className={`border-t border-stone-800 px-1.5 py-1 flex items-center gap-1.5 transition-colors ${dropBeforeId === item.id ? 'border-t-amber-400' : ''} ${dragEnabled ? 'cursor-grab active:cursor-grabbing' : ''}`}
                     >
                       <button onClick={() => toggleEquipped(item.id)}
-                        className={`w-3.5 h-3.5 rounded border shrink-0 flex items-center justify-center transition-colors ${item.equipped ? 'bg-amber-500 border-amber-500' : 'border-stone-500 hover:border-amber-500'}`}>
+                        className={`w-3.5 h-3.5 rounded border shrink-0 flex items-center justify-center transition-colors ${item.equipped ? (item.artifact && item.artifactColor ? artifactCheckboxCls[item.artifactColor] : 'bg-amber-500 border-amber-500') : 'border-stone-500 hover:border-amber-500'}`}>
                         {item.equipped && <span className="text-[8px] text-stone-950 font-bold">✓</span>}
                       </button>
-                      <span className={`text-[9px] font-bold uppercase px-1 py-0.5 rounded shrink-0 ${badge}`}>{kind[0].toUpperCase()}</span>
                       <button onClick={() => setModal(item)}
                         className={`text-xs hover:brightness-125 transition-all flex-1 min-w-0 truncate text-left rounded px-0.5 ${item.artifact && item.artifactColor ? artifactColorCls[item.artifactColor] : 'text-stone-200'}`}>
                         {item.name}
