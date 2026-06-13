@@ -1041,7 +1041,7 @@ function InventoryPanel({ items, onChange, dragEnabled, gameData }: {
                         onDragOver={e => dragEnabled && onDragOver(e, item.id)}
                         onDrop={e => onDrop(e, kind, item.id)}
                         onDragEnd={onDragEnd}
-                        className={`border-t border-stone-800 transition-colors ${dropBeforeId === item.id ? 'border-t-amber-400' : ''} ${rowArtifactBg}`}
+                        className={`group border-t border-stone-800 transition-colors ${dropBeforeId === item.id ? 'border-t-amber-400' : ''} ${rowArtifactBg}`}
                       >
                         {/* Main row */}
                         <div className={`px-1.5 py-1 flex items-center gap-1.5 ${dragEnabled ? 'cursor-grab active:cursor-grabbing' : ''}`}>
@@ -1089,7 +1089,7 @@ function InventoryPanel({ items, onChange, dragEnabled, gameData }: {
                             </span>
                           )}
 
-                          <div className="flex gap-1 shrink-0">
+                          <div className="flex gap-1 shrink-0 opacity-0 group-hover:opacity-100 transition-opacity">
                             <button onClick={() => setModal(item)} className="text-stone-500 hover:text-amber-400 transition-colors text-xs">✎</button>
                             <button onClick={() => removeItem(item.id)} className="text-stone-500 hover:text-red-400 transition-colors text-xs">✕</button>
                           </div>
