@@ -449,6 +449,10 @@ function ItemModal({ item, onSave, onClose, gameData }: {
     notes: item.notes ?? '',
   })
   const [customTag, setCustomTag] = useState('')
+  const initTags = normTags(item.tags)
+  const [weaponCombatType, setWeaponCombatType] = useState<'melee' | 'ranged' | null>(
+    initTags.includes('Ranged') ? 'ranged' : initTags.includes('Melee') ? 'melee' : null
+  )
 
   const set = (patch: Partial<InventoryItem>) => setForm(f => ({ ...f, ...patch }))
   const nf = "w-full bg-stone-800 border border-stone-600 text-stone-100 rounded px-2 py-1 text-xs focus:outline-none focus:border-amber-500 placeholder-stone-500"
@@ -500,10 +504,33 @@ function ItemModal({ item, onSave, onClose, gameData }: {
     setCustomTag('')
   }
 
+  function selectCombatType(ct: 'melee' | 'ranged') {
+    const current = weaponCombatType
+    const next = current === ct ? null : ct
+    setWeaponCombatType(next)
+    // Swap the Type Tag in the tags array
+    const base = (form.tags ?? []).filter(t => t !== 'Melee' && t !== 'Ranged')
+    set({ tags: next ? [...base, next === 'melee' ? 'Melee' : 'Ranged'] : base })
+  }
+
   function renderTagPicker() {
+    const visibleGroups = gameData.tagGroups.filter(g => {
+      const name = g.group.toLowerCase()
+      if (form.kind === 'weapon') {
+        if (name.includes('armor')) return false
+        if (name.includes('melee')) return weaponCombatType === 'melee'
+        if (name.includes('ranged')) return weaponCombatType === 'ranged'
+        return true
+      }
+      if (form.kind === 'armor') {
+        if (name.includes('melee') || name.includes('ranged')) return false
+        return true
+      }
+      return false
+    })
     return (
       <div className="space-y-2">
-        {gameData.tagGroups.map((group, gi) => (
+        {visibleGroups.map((group, gi) => (
           <div key={gi}>
             <p className="text-[9px] uppercase tracking-wider text-stone-500 mb-1">{group.group}</p>
             <div className="flex flex-wrap gap-1">
@@ -581,6 +608,19 @@ function ItemModal({ item, onSave, onClose, gameData }: {
                   <button key={w.category} onClick={() => selectWeightRow(w.category)}
                     className={`px-2 py-0.5 rounded text-xs transition-colors ${form.weight === w.category ? 'bg-amber-600 text-white' : 'bg-stone-700 text-stone-400 hover:bg-stone-600'}`}>
                     {w.category}
+                  </button>
+                ))}
+              </div>
+            </div>
+
+            {/* Melee / Ranged */}
+            <div className="space-y-1">
+              <span className={lbl}>Combat Type</span>
+              <div className="flex gap-1">
+                {(['melee', 'ranged'] as const).map(ct => (
+                  <button key={ct} onClick={() => selectCombatType(ct)}
+                    className={`px-2 py-0.5 rounded text-xs capitalize transition-colors ${weaponCombatType === ct ? 'bg-amber-600 text-white' : 'bg-stone-700 text-stone-400 hover:bg-stone-600'}`}>
+                    {ct}
                   </button>
                 ))}
               </div>
