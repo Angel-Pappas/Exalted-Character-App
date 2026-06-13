@@ -771,7 +771,7 @@ const INVENTORY_KINDS: { kind: InventoryItemKind; label: string }[] = [
   { kind: 'other',  label: 'Other' },
 ]
 
-interface FoiState { active: boolean; weight: string | null; tag: string | null }
+interface FoiState { active: boolean; weight: string | null; tag: string | null; artifact: boolean }
 
 function FoiModal({ current, foiWeights, foiTags, onSave, onDeactivate, onClose }: {
   current: FoiState
@@ -783,6 +783,7 @@ function FoiModal({ current, foiWeights, foiTags, onSave, onDeactivate, onClose 
 }) {
   const [weight, setWeight] = useState<string | null>(current.weight)
   const [tag, setTag] = useState<string | null>(current.tag)
+  const [artifact, setArtifact] = useState(current.artifact)
   const canSave = !!weight && !!tag
 
   return (
@@ -800,13 +801,20 @@ function FoiModal({ current, foiWeights, foiTags, onSave, onDeactivate, onClose 
           {/* Weight */}
           <div className="space-y-1">
             <p className="text-[10px] uppercase tracking-wider text-stone-400">Count as</p>
-            <div className="flex flex-wrap gap-1">
+            <div className="flex flex-wrap gap-1 items-center">
               {foiWeights.map(w => (
                 <button key={w.category} onClick={() => setWeight(w.category)}
                   className={`px-2 py-0.5 rounded text-xs transition-colors ${weight === w.category ? 'bg-orange-600 text-white' : 'bg-stone-700 text-stone-400 hover:bg-stone-600'}`}>
                   {w.category}
                 </button>
               ))}
+              <div className="w-px h-3 bg-stone-700 mx-0.5" />
+              <button
+                onClick={() => setArtifact(a => !a)}
+                title="Grant unarmed attacks the Artifact tag (+1 all stats)"
+                className={`px-2 py-0.5 rounded text-xs transition-colors border ${artifact ? 'bg-amber-600/30 border-amber-500 text-amber-300' : 'bg-stone-700 border-stone-600 text-stone-400 hover:border-amber-500'}`}>
+                Artifact
+              </button>
             </div>
           </div>
 
@@ -831,7 +839,7 @@ function FoiModal({ current, foiWeights, foiTags, onSave, onDeactivate, onClose 
           <button onClick={onClose} className="px-3 py-1 text-xs text-stone-400 hover:text-stone-200 transition-colors">Cancel</button>
           {current.active
             ? <button onClick={onDeactivate} className="px-3 py-1 text-xs bg-red-900/40 hover:bg-red-800/60 border border-red-700 text-red-300 rounded transition-colors">Deactivate</button>
-            : <button onClick={() => canSave && onSave({ active: true, weight, tag })} disabled={!canSave}
+            : <button onClick={() => canSave && onSave({ active: true, weight, tag, artifact })} disabled={!canSave}
                 className={`px-3 py-1 text-xs rounded transition-colors ${canSave ? 'bg-orange-600 hover:bg-orange-500 text-white' : 'bg-stone-700 text-stone-500 cursor-not-allowed'}`}>
                 Activate
               </button>
@@ -850,7 +858,7 @@ function InventoryPanel({ items, onChange, dragEnabled, gameData }: {
 }) {
   const [modal, setModal] = useState<Partial<InventoryItem> & { kind: InventoryItemKind } | null>(null)
   const [foiModalOpen, setFoiModalOpen] = useState(false)
-  const [foi, setFoi] = useState<FoiState>({ active: false, weight: null, tag: null })
+  const [foi, setFoi] = useState<FoiState>({ active: false, weight: null, tag: null, artifact: false })
   const [foiOriginals, setFoiOriginals] = useState<Record<string, Partial<InventoryItem>>>({})
   const [dropBeforeId, setDropBeforeId] = useState<string | null>(null)
   const [expanded, setExpanded] = useState<Record<string, boolean>>({})
@@ -908,12 +916,15 @@ function InventoryPanel({ items, onChange, dragEnabled, gameData }: {
     const newItems = base.map(i => {
       if (i.kind !== 'weapon' || i.weight !== 'Unarmed') return i
       const art = i.artifact ? 1 : 0
-      let acc = weightRow ? weightRow.accuracy + art : (i.accuracy ?? 0)
-      let dmg = weightRow ? weightRow.damage + art : (i.damage ?? 0)
-      let def = weightRow ? weightRow.defense + art : (i.defense ?? 0)
-      let ovw = weightRow ? weightRow.overwhelming + art : (i.overwhelming ?? 0)
-      const baseTags = (i.tags ?? []).filter(t => t !== foi.tag)  // remove old FoI tag
-      const newTags = newFoi.tag ? [...baseTags, newFoi.tag] : baseTags
+      const foiArt = newFoi.artifact ? 1 : 0
+      let acc = weightRow ? weightRow.accuracy + art + foiArt : (i.accuracy ?? 0) + foiArt
+      let dmg = weightRow ? weightRow.damage + art + foiArt : (i.damage ?? 0) + foiArt
+      let def = weightRow ? weightRow.defense + art + foiArt : (i.defense ?? 0) + foiArt
+      let ovw = weightRow ? weightRow.overwhelming + art + foiArt : (i.overwhelming ?? 0) + foiArt
+      // Remove old FoI tag and old FoI artifact tag before re-applying
+      const baseTags = (i.tags ?? []).filter(t => t !== foi.tag && !(foi.artifact && t === 'Artifact'))
+      let newTags = newFoi.tag ? [...baseTags, newFoi.tag] : baseTags
+      if (newFoi.artifact) newTags = [...newTags, 'Artifact']
       if (newFoi.tag === 'Shield') dmg = Math.max(0, dmg - 1)
       return { ...i, accuracy: acc, damage: dmg, defense: def, overwhelming: ovw, tags: newTags }
     })
@@ -925,7 +936,7 @@ function InventoryPanel({ items, onChange, dragEnabled, gameData }: {
 
   function deactivateFoi() {
     const restored = items.map(i => foiOriginals[i.id] ? { ...i, ...foiOriginals[i.id] } : i)
-    setFoi({ active: false, weight: null, tag: null })
+    setFoi({ active: false, weight: null, tag: null, artifact: false })
     setFoiOriginals({})
     onChange(restored)
   }
@@ -939,7 +950,7 @@ function InventoryPanel({ items, onChange, dragEnabled, gameData }: {
     const newItems = items.filter(i => i.id !== id)
     const stillHasUnarmed = newItems.some(i => i.kind === 'weapon' && i.weight === 'Unarmed')
     if (foi.active && !stillHasUnarmed) {
-      setFoi({ active: false, weight: null, tag: null })
+      setFoi({ active: false, weight: null, tag: null, artifact: false })
       setFoiOriginals({})
     }
     onChange(newItems)
