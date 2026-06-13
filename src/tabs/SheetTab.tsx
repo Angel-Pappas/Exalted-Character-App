@@ -1459,9 +1459,9 @@ export default function SheetTab({ sheet, onChange, editMode, gameData: gd }: Pr
     ),
 
     merits: (
-      <div className={panelBase}>
+      <div className="bg-stone-900 border border-stone-700 rounded-lg p-2 overflow-hidden h-full flex flex-col">
         <SectionHeader title="Merits" />
-        <div className="space-y-1 mb-2">
+        <div className="space-y-1 mb-2 overflow-y-auto no-scrollbar flex-1">
           {data.merits.map(merit => (
             <div key={merit.id}>
               <div className="flex items-center justify-between text-xs">
@@ -1540,9 +1540,9 @@ export default function SheetTab({ sheet, onChange, editMode, gameData: gd }: Pr
     ),
 
     intimacies: (
-      <div className={panelBase}>
+      <div className="bg-stone-900 border border-stone-700 rounded-lg p-2 overflow-hidden h-full flex flex-col">
         <SectionHeader title="Intimacies" />
-        <div className="space-y-1 mb-2">
+        <div className="space-y-1 mb-2 overflow-y-auto no-scrollbar flex-1">
           {data.intimacies.map(intimacy => (
             <div key={intimacy.id}>
               <div className="flex items-start justify-between text-xs gap-1">
