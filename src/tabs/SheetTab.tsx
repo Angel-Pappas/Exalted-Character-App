@@ -35,9 +35,10 @@ const DEFAULT_HEALTH: HealthBox[] = [
 const DEFAULT_LAYOUT: PanelLayout[] = [
   { i: 'attributes', x: 0,  y: 0,  w: 16, h: 22, minW: 4, minH: 8 },
   { i: 'abilities',  x: 0,  y: 22, w: 16, h: 38, minW: 4, minH: 8 },
-  { i: 'defenses',   x: 16, y: 0,  w: 16, h: 11, minW: 4, minH: 8 },
-  { i: 'motes',      x: 16, y: 11, w: 16, h: 8,  minW: 4, minH: 8 },
-  { i: 'health',     x: 16, y: 19, w: 16, h: 8,  minW: 4, minH: 8 },
+  { i: 'defenses',   x: 16, y: 0,  w: 16, h: 12, minW: 4, minH: 8 },
+  { i: 'essence',    x: 16, y: 12, w: 16, h: 6,  minW: 4, minH: 6 },
+  { i: 'motes',      x: 16, y: 18, w: 16, h: 8,  minW: 4, minH: 8 },
+  { i: 'health',     x: 16, y: 26, w: 16, h: 8,  minW: 4, minH: 8 },
   { i: 'merits',     x: 32, y: 0,  w: 28, h: 18, minW: 4, minH: 8 },
   { i: 'languages',  x: 32, y: 18, w: 28, h: 10, minW: 4, minH: 8 },
   { i: 'intimacies', x: 32, y: 28, w: 28, h: 18, minW: 4, minH: 8 },
@@ -1241,7 +1242,7 @@ export default function SheetTab({ sheet, onChange, editMode, gameData: gd }: Pr
   function setAbility(name: string, patch: Partial<AbilityData>) {
     update({ abilities: { ...data.abilities, [name]: { ...(data.abilities[name] ?? defaultAbility), ...patch } } })
   }
-  function setDefense(name: string, value: number) { update({ defenses: { ...data.defenses, [name]: value } }) }
+
   function addLanguage() {
     if (!newLanguage.trim()) return
     update({ languages: [...data.languages, newLanguage.trim()] })
@@ -1347,24 +1348,26 @@ export default function SheetTab({ sheet, onChange, editMode, gameData: gd }: Pr
     ),
 
     defenses: (() => {
-      const physAttrs = ['Strength', 'Dexterity', 'Stamina']
-      const highestPhys = Math.max(...physAttrs.map(a => data.attributes[a] ?? 0))
-      const cc   = data.abilities['Close Combat']?.rating ?? 0
-      const ath  = data.abilities['Athletics']?.rating ?? 0
-      const phys = data.abilities['Physique']?.rating ?? 0
+      const stamina = data.attributes['Stamina']   ?? 0
+      const dex     = data.attributes['Dexterity']  ?? 0
+      const cc      = data.abilities['Close Combat']?.rating ?? 0
+      const ath     = data.abilities['Athletics']?.rating    ?? 0
+      const phys    = data.abilities['Physique']?.rating     ?? 0
+      const integ   = data.abilities['Integrity']?.rating    ?? 0
       const equippedWeapons = data.inventory.filter(i => i.kind === 'weapon' && i.equipped)
       const equippedArmors  = data.inventory.filter(i => i.kind === 'armor'  && i.equipped)
-      const bestWpnDef = equippedWeapons.length ? Math.max(...equippedWeapons.map(i => i.defense ?? 0)) : 0
+      const bestWpnDef     = equippedWeapons.length ? Math.max(...equippedWeapons.map(i => i.defense ?? 0)) : 0
       const totalArmorSoak = equippedArmors.reduce((s, i) => s + (i.soak ?? 0), 0)
       const totalArmorHard = equippedArmors.reduce((s, i) => s + (i.hardness ?? 0), 0)
       const db = data.defenseBonus
-      const parryBase    = Math.ceil((highestPhys + cc) / 2)
-      const evasionBase  = Math.ceil((highestPhys + ath) / 2)
+      const parryBase    = Math.ceil((stamina + cc) / 2)
+      const evasionBase  = Math.ceil((dex + ath) / 2)
       const soakBase     = 1 + (phys >= 3 ? 1 : 0)
       const hardnessBase = 2 + (data.essence ?? 1)
-      const parry    = parryBase   + bestWpnDef   + (db.parry    ?? 0)
-      const evasion  = evasionBase               + (db.evasion  ?? 0)
-      const soak     = soakBase    + totalArmorSoak + (db.soak   ?? 0)
+      const resolveBase  = integ >= 3 ? 4 : integ >= 1 ? 3 : 2
+      const parry    = parryBase    + bestWpnDef    + (db.parry    ?? 0)
+      const evasion  = evasionBase                  + (db.evasion  ?? 0)
+      const soak     = soakBase     + totalArmorSoak + (db.soak     ?? 0)
       const hardness = hardnessBase + totalArmorHard + (db.hardness ?? 0)
       const bonusInput = (key: keyof typeof db) => (
         <input type="number" value={db[key] ?? 0}
@@ -1383,21 +1386,14 @@ export default function SheetTab({ sheet, onChange, editMode, gameData: gd }: Pr
         <div className={panelBase}>
           <SectionHeader title="Defenses" />
           <div className="space-y-1.5">
-            {calcRow('Parry',    parry,    `⌈(${highestPhys}+${cc})÷2⌉+wpn${bestWpnDef}`, bonusInput('parry'))}
-            {calcRow('Evasion',  evasion,  `⌈(${highestPhys}+${ath})÷2⌉`, bonusInput('evasion'))}
+            {calcRow('Parry',    parry,    `⌈(Sta${stamina}+CC${cc})÷2⌉+wpn${bestWpnDef}`, bonusInput('parry'))}
+            {calcRow('Evasion',  evasion,  `⌈(Dex${dex}+Ath${ath})÷2⌉`, bonusInput('evasion'))}
             {calcRow('Soak',     soak,     `${soakBase}base+arm${totalArmorSoak}`, bonusInput('soak'))}
             {calcRow('Hardness', hardness, `${hardnessBase}base+arm${totalArmorHard}`, bonusInput('hardness'))}
             <div className="flex items-center gap-1.5">
               <span className="text-xs text-stone-400 w-16 shrink-0">Resolve</span>
-              <input type="number" min={0} value={data.defenses['Resolve'] ?? 0}
-                onChange={e => setDefense('Resolve', parseInt(e.target.value) || 0)}
-                className="w-[30px] text-center bg-stone-800 border border-stone-600 text-stone-100 rounded px-1 py-0.5 text-xs focus:outline-none focus:border-amber-500" />
-            </div>
-            <div className="flex items-center gap-1.5 pt-0.5">
-              <span className="text-xs text-stone-400 w-16 shrink-0">Essence</span>
-              <input type="number" min={1} value={data.essence ?? 1}
-                onChange={e => update({ essence: parseInt(e.target.value) || 1 })}
-                className="w-[30px] text-center bg-stone-800 border border-stone-600 text-stone-100 rounded px-1 py-0.5 text-xs focus:outline-none focus:border-amber-500" />
+              <span className="text-sm font-semibold text-stone-100 w-5 text-right">{resolveBase}</span>
+              <span className="text-[9px] text-stone-500 flex-1 leading-tight">2base+Int{integ}</span>
             </div>
             <div className="border-t border-stone-700 pt-1 mt-1 space-y-1">
               {([['defenseOther', 'Defend Other'], ['fullDefense', 'Full Defense']] as const).map(([key, label]) => (
@@ -1416,6 +1412,21 @@ export default function SheetTab({ sheet, onChange, editMode, gameData: gd }: Pr
         </div>
       )
     })(),
+
+    essence: (
+      <div className={panelBase}>
+        <SectionHeader title="Essence" />
+        <div className="space-y-1">
+          <div className="flex items-center justify-between">
+            <span className="text-xs text-stone-300">Essence</span>
+            <input type="number" min={1} value={data.essence ?? 1}
+              onChange={e => update({ essence: parseInt(e.target.value) || 1 })}
+              className={numInput} />
+          </div>
+          <p className="text-[10px] text-stone-500 leading-relaxed">Adds to Hardness. Affects charm costs and max mote pools.</p>
+        </div>
+      </div>
+    ),
 
     motes: (
       <div className={panelBase}>
