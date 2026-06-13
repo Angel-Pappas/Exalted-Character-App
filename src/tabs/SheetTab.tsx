@@ -5,7 +5,8 @@ import { GridLayout, useContainerWidth, noCompactor } from 'react-grid-layout'
 // Override it so panels can freely overlap — no collision resolution, no compaction.
 const freeCompactor = { ...noCompactor, allowOverlap: true }
 import 'react-grid-layout/css/styles.css'
-import type { SheetData, AbilityData, MeritEntry, IntimacyEntry, HealthBox, PanelLayout, CharmCategory, CharmEntry, EffectCategory, EffectEntry, InventoryItem, InventoryItemKind, WeaponWeight, ArtifactColor } from '../types/character'
+import type { SheetData, AbilityData, MeritEntry, IntimacyEntry, HealthBox, PanelLayout, CharmCategory, CharmEntry, EffectCategory, EffectEntry, InventoryItem, InventoryItemKind, WeaponWeight, ArtifactColor, GameData } from '../types/character'
+import { DEFAULT_GAME_DATA } from '../types/character'
 
 const ATTRIBUTE_GROUPS = [
   { label: 'Physical', attrs: ['Strength', 'Dexterity', 'Stamina'] },
@@ -71,6 +72,7 @@ interface Props {
   sheet: SheetData
   editMode: boolean
   onChange: (sheet: SheetData) => void
+  gameData?: GameData
 }
 
 function SectionHeader({ title }: { title: string }) {
@@ -418,30 +420,35 @@ function EffectPanel({ categories, onChange, dragEnabled }: {
 
 // ── Inventory ──────────────────────────────────────────────────────────────
 
-function ItemModal({ item, onSave, onClose }: {
+function ItemModal({ item, onSave, onClose, gameData }: {
   item: Partial<InventoryItem> & { kind: InventoryItemKind }
   onSave: (item: InventoryItem) => void
   onClose: () => void
+  gameData: GameData
 }) {
+  const normTags = (t: unknown): string[] =>
+    Array.isArray(t) ? t : typeof t === 'string' && t ? t.split(',').map(s => s.trim()).filter(Boolean) : []
+
   const [form, setForm] = useState<InventoryItem>({
     id: item.id ?? crypto.randomUUID(),
     kind: item.kind,
     name: item.name ?? '',
     type: item.type ?? '',
     equipped: item.equipped ?? false,
-    weight: item.weight ?? 'Medium',
+    weight: item.weight,
     artifact: item.artifact ?? false,
     artifactColor: item.artifactColor,
-    accuracy: item.accuracy ?? 0,
-    damage: item.damage ?? 0,
-    defense: item.defense ?? 0,
-    overwhelming: item.overwhelming ?? 1,
-    soak: item.soak ?? 0,
-    mobilityPen: item.mobilityPen ?? 0,
-    hardness: item.hardness ?? 0,
-    tags: item.tags ?? '',
+    accuracy: item.accuracy,
+    damage: item.damage,
+    defense: item.defense,
+    overwhelming: item.overwhelming,
+    soak: item.soak,
+    mobilityPen: item.mobilityPen,
+    hardness: item.hardness,
+    tags: normTags(item.tags),
     notes: item.notes ?? '',
   })
+  const [customTag, setCustomTag] = useState('')
 
   const set = (patch: Partial<InventoryItem>) => setForm(f => ({ ...f, ...patch }))
   const nf = "w-full bg-stone-800 border border-stone-600 text-stone-100 rounded px-2 py-1 text-xs focus:outline-none focus:border-amber-500 placeholder-stone-500"
@@ -464,11 +471,79 @@ function ItemModal({ item, onSave, onClose }: {
     other: 'bg-stone-700 text-stone-300',
   }
 
+  function selectWeightRow(category: string) {
+    const r = gameData.weapons.find(w => w.category === category)
+    set({
+      weight: category as WeaponWeight,
+      ...(r ? { accuracy: r.accuracy, damage: r.damage, defense: r.defense, overwhelming: r.overwhelming } : {}),
+    })
+  }
+
+  function selectArmorRow(category: string) {
+    const r = gameData.armor.find(a => a.category === category)
+    set({
+      type: category,
+      ...(r ? { soak: r.soak, mobilityPen: r.mobilityPenalty, hardness: r.hardness } : {}),
+    })
+  }
+
+  function toggleTag(name: string) {
+    const tags = form.tags ?? []
+    set({ tags: tags.includes(name) ? tags.filter(t => t !== name) : [...tags, name] })
+  }
+
+  function addCustomTag() {
+    const name = customTag.trim()
+    if (!name) return
+    const tags = form.tags ?? []
+    if (!tags.includes(name)) set({ tags: [...tags, name] })
+    setCustomTag('')
+  }
+
+  function renderTagPicker() {
+    return (
+      <div className="space-y-2">
+        {gameData.tagGroups.map((group, gi) => (
+          <div key={gi}>
+            <p className="text-[9px] uppercase tracking-wider text-stone-500 mb-1">{group.group}</p>
+            <div className="flex flex-wrap gap-1">
+              {group.tags.map(tag => {
+                const active = (form.tags ?? []).includes(tag.name)
+                return (
+                  <button key={tag.name} title={tag.description} onClick={() => toggleTag(tag.name)}
+                    className={`px-1.5 py-0.5 rounded text-[10px] transition-colors border ${active ? 'bg-amber-600/30 border-amber-500 text-amber-300' : 'bg-stone-800 border-stone-600 text-stone-400 hover:border-stone-400'}`}>
+                    {tag.name}
+                  </button>
+                )
+              })}
+            </div>
+          </div>
+        ))}
+        <div className="flex gap-1 pt-0.5">
+          <input type="text" value={customTag} onChange={e => setCustomTag(e.target.value)}
+            onKeyDown={e => e.key === 'Enter' && addCustomTag()}
+            placeholder="Custom tag…" className="flex-1 bg-stone-800 border border-stone-600 text-stone-100 rounded px-2 py-0.5 text-xs focus:outline-none focus:border-amber-500 placeholder-stone-500" />
+          <button onClick={addCustomTag} className="px-2 py-0.5 text-xs bg-stone-700 hover:bg-stone-600 text-stone-300 rounded transition-colors">+</button>
+        </div>
+        {(form.tags ?? []).length > 0 && (
+          <div className="flex flex-wrap gap-1 pt-0.5">
+            {(form.tags ?? []).map(t => (
+              <span key={t} className="flex items-center gap-0.5 px-1.5 py-0.5 rounded bg-amber-600/20 border border-amber-600/40 text-amber-300 text-[10px]">
+                {t}
+                <button onClick={() => set({ tags: (form.tags ?? []).filter(x => x !== t) })} className="text-amber-500 hover:text-red-400 ml-0.5">×</button>
+              </span>
+            ))}
+          </div>
+        )}
+      </div>
+    )
+  }
+
   return (
     <div className="fixed inset-0 z-[100] flex items-center justify-center bg-black/60" onClick={onClose}>
-      <div className="bg-stone-900 border border-stone-600 rounded-xl w-80 shadow-2xl" onClick={e => e.stopPropagation()}>
+      <div className="bg-stone-900 border border-stone-600 rounded-xl w-80 shadow-2xl flex flex-col max-h-[90vh]" onClick={e => e.stopPropagation()}>
         {/* Header */}
-        <div className="flex items-center justify-between px-4 py-3 border-b border-stone-700">
+        <div className="flex items-center justify-between px-4 py-3 border-b border-stone-700 shrink-0">
           <div className="flex items-center gap-2">
             <span className={`text-[10px] font-bold uppercase px-1.5 py-0.5 rounded ${kindBadge[form.kind]}`}>{form.kind}</span>
             <span className="text-sm font-semibold text-stone-100">{form.name || 'New Item'}</span>
@@ -476,7 +551,7 @@ function ItemModal({ item, onSave, onClose }: {
           <button onClick={onClose} className="text-stone-500 hover:text-stone-300 text-sm">✕</button>
         </div>
 
-        <div className="px-4 py-3 space-y-2.5">
+        <div className="px-4 py-3 space-y-2.5 overflow-y-auto no-scrollbar flex-1">
           {/* Kind selector */}
           <div className={row}>
             <span className={lbl}>Kind</span>
@@ -498,15 +573,17 @@ function ItemModal({ item, onSave, onClose }: {
 
           {/* Weapon fields */}
           {form.kind === 'weapon' && <>
-            {/* Weight dropdown */}
-            <div className={row}>
+            {/* Weight — buttons from gameData */}
+            <div className="space-y-1">
               <span className={lbl}>Weight</span>
-              <select value={form.weight ?? 'Medium'} onChange={e => set({ weight: e.target.value as WeaponWeight })}
-                className="bg-stone-800 border border-stone-600 text-stone-100 rounded px-2 py-1 text-xs focus:outline-none focus:border-amber-500">
-                <option>Light</option>
-                <option>Medium</option>
-                <option>Heavy</option>
-              </select>
+              <div className="flex flex-wrap gap-1">
+                {gameData.weapons.map(w => (
+                  <button key={w.category} onClick={() => selectWeightRow(w.category)}
+                    className={`px-2 py-0.5 rounded text-xs transition-colors ${form.weight === w.category ? 'bg-amber-600 text-white' : 'bg-stone-700 text-stone-400 hover:bg-stone-600'}`}>
+                    {w.category}
+                  </button>
+                ))}
+              </div>
             </div>
 
             {/* Artifact + color */}
@@ -540,18 +617,29 @@ function ItemModal({ item, onSave, onClose }: {
                 </div>
               ))}
             </div>
-            <div className="space-y-0.5">
+
+            {/* Tags */}
+            <div className="space-y-1">
               <span className={lbl}>Tags</span>
-              <input type="text" value={form.tags ?? ''} onChange={e => set({ tags: e.target.value })} placeholder="e.g. Lethal, Bashing…" className={nf} />
+              {renderTagPicker()}
             </div>
           </>}
 
           {/* Armor fields */}
           {form.kind === 'armor' && <>
-            <div className="space-y-0.5">
-              <span className={lbl}>Type</span>
-              <input type="text" value={form.type} onChange={e => set({ type: e.target.value })} placeholder="e.g. Light, Heavy…" className={nf} />
+            {/* Category — buttons from gameData */}
+            <div className="space-y-1">
+              <span className={lbl}>Category</span>
+              <div className="flex flex-wrap gap-1">
+                {gameData.armor.map(a => (
+                  <button key={a.category} onClick={() => selectArmorRow(a.category)}
+                    className={`px-2 py-0.5 rounded text-xs transition-colors ${form.type === a.category ? 'bg-amber-600 text-white' : 'bg-stone-700 text-stone-400 hover:bg-stone-600'}`}>
+                    {a.category}
+                  </button>
+                ))}
+              </div>
             </div>
+
             <div className="grid grid-cols-2 gap-2">
               {([['soak', 'Soak'], ['mobilityPen', 'Mobility Pen'], ['hardness', 'Hardness']] as const).map(([k, label]) => (
                 <div key={k} className={row}>
@@ -560,9 +648,11 @@ function ItemModal({ item, onSave, onClose }: {
                 </div>
               ))}
             </div>
-            <div className="space-y-0.5">
+
+            {/* Tags */}
+            <div className="space-y-1">
               <span className={lbl}>Tags</span>
-              <input type="text" value={form.tags ?? ''} onChange={e => set({ tags: e.target.value })} placeholder="e.g. Artifact, Magical…" className={nf} />
+              {renderTagPicker()}
             </div>
           </>}
 
@@ -589,7 +679,7 @@ function ItemModal({ item, onSave, onClose }: {
         </div>
 
         {/* Footer */}
-        <div className="flex justify-end gap-2 px-4 py-3 border-t border-stone-700">
+        <div className="flex justify-end gap-2 px-4 py-3 border-t border-stone-700 shrink-0">
           <button onClick={onClose} className="px-3 py-1 text-xs text-stone-400 hover:text-stone-200 transition-colors">Cancel</button>
           <button onClick={() => { if (form.name.trim()) onSave(form) }}
             className="px-3 py-1 text-xs bg-amber-600 hover:bg-amber-500 text-white rounded transition-colors">
@@ -607,10 +697,11 @@ const INVENTORY_KINDS: { kind: InventoryItemKind; label: string }[] = [
   { kind: 'other',  label: 'Other' },
 ]
 
-function InventoryPanel({ items, onChange, dragEnabled }: {
+function InventoryPanel({ items, onChange, dragEnabled, gameData }: {
   items: InventoryItem[]
   onChange: (items: InventoryItem[]) => void
   dragEnabled: boolean
+  gameData: GameData
 }) {
   const [modal, setModal] = useState<Partial<InventoryItem> & { kind: InventoryItemKind } | null>(null)
   const [dropBeforeId, setDropBeforeId] = useState<string | null>(null)
@@ -658,7 +749,7 @@ function InventoryPanel({ items, onChange, dragEnabled }: {
 
   return (
     <>
-      {modal && <ItemModal item={modal} onSave={saveItem} onClose={() => setModal(null)} />}
+      {modal && <ItemModal item={modal} onSave={saveItem} onClose={() => setModal(null)} gameData={gameData} />}
       <div className="bg-stone-900 border border-stone-700 rounded-lg p-2 overflow-hidden h-full flex flex-col">
         <div className="flex items-center justify-between mb-2 shrink-0">
           <SectionHeader title="Inventory" />
@@ -714,7 +805,8 @@ function InventoryPanel({ items, onChange, dragEnabled }: {
 
 const numInput = "w-[30px] text-center bg-stone-800 border border-stone-600 text-stone-100 rounded px-1 py-0.5 text-xs focus:outline-none focus:border-amber-500"
 
-export default function SheetTab({ sheet, onChange, editMode }: Props) {
+export default function SheetTab({ sheet, onChange, editMode, gameData: gd }: Props) {
+  const gameData = gd ?? DEFAULT_GAME_DATA
   const def = defaultSheet()
   const data: SheetData = {
     attributes: { ...def.attributes, ...sheet.attributes },
@@ -1072,6 +1164,7 @@ export default function SheetTab({ sheet, onChange, editMode }: Props) {
         items={data.inventory}
         onChange={items => update({ inventory: items })}
         dragEnabled={!editMode}
+        gameData={gameData}
       />
     ),
   }

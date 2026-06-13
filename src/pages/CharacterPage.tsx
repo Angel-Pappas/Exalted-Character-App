@@ -1,7 +1,9 @@
 import { useEffect, useState, useCallback } from 'react'
 import { useParams, useNavigate } from 'react-router-dom'
 import { supabase } from '../lib/supabase'
-import type { Character, CharacterData } from '../types/character'
+import { useAuth } from '../contexts/AuthContext'
+import type { Character, CharacterData, GameData } from '../types/character'
+import { DEFAULT_GAME_DATA } from '../types/character'
 import TabBar from '../components/TabBar'
 import SheetTab from '../tabs/SheetTab'
 import MilestonesTab from '../tabs/MilestonesTab'
@@ -18,8 +20,10 @@ const defaultData: CharacterData = {
 export default function CharacterPage() {
   const { id } = useParams<{ id: string }>()
   const navigate = useNavigate()
+  const { user } = useAuth()
   const [character, setCharacter] = useState<Character | null>(null)
   const [data, setData] = useState<CharacterData>(defaultData)
+  const [gameData, setGameData] = useState<GameData>(DEFAULT_GAME_DATA)
   const [activeTab, setActiveTab] = useState('sheet')
   const [sheetEditMode, setSheetEditMode] = useState(false)
   const [saving, setSaving] = useState(false)
@@ -38,6 +42,24 @@ export default function CharacterPage() {
         setData({ ...defaultData, ...char.data })
       })
   }, [id, navigate])
+
+  useEffect(() => {
+    if (!user) return
+    supabase
+      .from('game_data')
+      .select('data')
+      .eq('user_id', user.id)
+      .maybeSingle()
+      .then(({ data: row }) => {
+        if (row?.data) {
+          setGameData({
+            weapons:   row.data.weapons   ?? DEFAULT_GAME_DATA.weapons,
+            armor:     row.data.armor     ?? DEFAULT_GAME_DATA.armor,
+            tagGroups: row.data.tagGroups ?? DEFAULT_GAME_DATA.tagGroups,
+          })
+        }
+      })
+  }, [user])
 
   const save = useCallback(async (newData: CharacterData) => {
     if (!id) return
@@ -99,6 +121,7 @@ export default function CharacterPage() {
             sheet={data.sheet}
             onChange={sheet => updateData({ sheet })}
             editMode={sheetEditMode}
+            gameData={gameData}
           />
         )}
         {activeTab === 'milestones' && (

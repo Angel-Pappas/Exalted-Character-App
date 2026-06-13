@@ -46,7 +46,7 @@ export interface InventoryItem {
   mobilityPen?: number
   hardness?: number
   // weapon + armor
-  tags?: string
+  tags?: string[]
   // other
   notes?: string
 }

@@ -42,8 +42,8 @@ characters (
 ```ts
 {
   sheet: {
-    attributes: Record<string, number>,       // e.g. { "Strength": 4 }
-    abilities: Record<string, {               // keyed by ability name
+    attributes: Record<string, number>,
+    abilities: Record<string, {
       rating: number,
       specialty: string,
       excellency: boolean
@@ -54,7 +54,10 @@ characters (
     intimacies: { id, intensity: 'Minor'|'Major'|'Defining', description }[],
     motes: { current: number, committed: number, total: number },
     health: { penalty: string, checked: boolean }[],
-    layout: { i: string, x: number, y: number, w: number, h: number }[]
+    layout: { i: string, x: number, y: number, w: number, h: number }[],
+    charms: { id, name, charms: { id, name, text }[] }[],
+    effects: { id, name, effects: { id, name, text }[] }[],
+    inventory: { id, name, items: { id, name }[] }[]
   },
   milestones: {
     id: string,
@@ -67,7 +70,7 @@ characters (
     date: string (ISO)
   }[],
   notes: string,
-  npcs: { id, name, description }[]
+  npcs: { id, name, notes }[]
 }
 ```
 
@@ -75,7 +78,7 @@ characters (
 ```
 src/
   App.tsx                        # Router + AuthProvider
-  index.css                      # Global styles (Tailwind import, spinner removal)
+  index.css                      # Global styles (Tailwind import, spinner removal, no-scrollbar utility)
   main.tsx
   lib/
     supabase.ts                  # Supabase client
@@ -89,7 +92,7 @@ src/
     CharacterListPage.tsx         # Create/select/delete characters
     CharacterPage.tsx             # Main character view with tabs + auto-save
   tabs/
-    SheetTab.tsx                  # Character sheet (grid layout)
+    SheetTab.tsx                  # Character sheet (grid layout, all panels)
     MilestonesTab.tsx             # XP tracking
     NotesTab.tsx                  # Free-form notes
     CharactersTab.tsx             # NPC/character log
@@ -118,18 +121,33 @@ Athletics, Awareness, Close Combat, Craft, Embassy, Integrity, Navigate, Perform
 **Health track:** -0, -1, -1, -2, -2, -4, Incap (7 boxes, no damage types)
 
 ## Layout System (SheetTab)
-- Uses `react-grid-layout` and `react-resizable` for drag-and-drop panel layout
-- 64-column grid, row height = 10px, margins = 6px
-- 8 independent panels: `attributes`, `abilities`, `defenses`, `motes`, `health`, `merits`, `languages`, `intimacies`
-- Default layout places panels in 3 column groups (widths ~8, 8, 14 cols) with the rest reserved
+- Uses `react-grid-layout` v2 (`GridLayout`, `useContainerWidth`, `noCompactor` imports) and `react-resizable`
+- **128-column grid**, row height = 10px, margins = [0,0], containerPadding = [0,0]
+- `freeCompactor = { ...noCompactor, allowOverlap: true }` — prevents panels from colliding/flinging during drag
+- `autoSize={false}` + `minHeight: 2000px` — grid canvas extends well below content
+- **11 independent panels:** `attributes`, `abilities`, `defenses`, `motes`, `health`, `merits`, `languages`, `intimacies`, `charms`, `effects`, `inventory`
+- Default layout (DEFAULT_LAYOUT) positions panels in column groups across the 128-unit grid
+- If the saved layout is missing entries for new panels, those panels are auto-added from DEFAULT_LAYOUT on load
 - Layout is stored in `SheetData.layout: PanelLayout[]` and saved to Supabase via auto-save
-- **Edit mode toggle** (top-right button): when ON, panels are draggable/resizable with an amber drag handle bar at the top; grid lines are shown as a faint amber crosshatch background. When OFF, layout is locked and handles are hidden.
-- `draggableHandle=".drag-handle"` — only the top handle bar triggers dragging in edit mode
+- **Edit mode toggle** (top-right of window header): when ON, panels are draggable/resizable with an amber drag handle bar at top; amber grid lines are shown. When OFF, layout is locked and handles are hidden.
+- `dragConfig={{ handle: '.drag-handle' }}` — only the top handle bar triggers panel dragging
+- Resize handle: 20×20px amber corner (z-index 50), above drag handle (z-index 5)
 
 ### PanelLayout type (in character.ts)
 ```ts
-interface PanelLayout { i: string; x: number; y: number; w: number; h: number }
+interface PanelLayout { i: string; x: number; y: number; w: number; h: number; minW?: number; minH?: number }
 ```
+
+## Panel Components (all defined in SheetTab.tsx)
+- **CharmPanel** — categories of charms; each charm is clickable to expand its description; charms and categories are draggable to reorder (when grid is locked); charms can be dragged between categories
+- **EffectPanel** — identical structure to CharmPanel but for effects; categories and effects are draggable to reorder
+- **InventoryPanel** — categories of items (name only for now); items are draggable to reorder within/between categories; categories are not yet draggable (items only)
+
+All category-based panels support: add/remove/edit categories, add/remove/edit entries, inline editing.
+
+## CSS Utilities (index.css)
+- `.no-scrollbar` — hides scrollbars on an element and all its descendants (cross-browser: `scrollbar-width: none`, `-webkit-scrollbar: display none`)
+- `.react-resizable-handle` — custom amber resize corner, 20×20px, z-index 50
 
 ## Auto-save
 - Triggered 1 second after any data change (debounced `setTimeout`)
@@ -140,3 +158,4 @@ interface PanelLayout { i: string; x: number; y: number; w: number; h: number }
 - GitHub repo must be **public** — Vercel free (Hobby) plan blocks deploys from private repos by non-owner committers
 - Git user email must be `ange.pap@hotmail.com` to match the GitHub account linked to Vercel
 - Number inputs have spinners removed globally via CSS in `index.css`
+- Saved layouts from before new panels were added will be missing those panel entries — handled by auto-merging DEFAULT_LAYOUT on load

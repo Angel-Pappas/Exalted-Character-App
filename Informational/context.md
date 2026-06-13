@@ -14,11 +14,14 @@ This is a custom/modified version of the Exalted tabletop RPG. Not all standard 
 - **Health track** has no damage types — boxes are simply checked/unchecked. Standard track: -0, -1, -1, -2, -2, -4, Incap
 - **Defenses**: Parry, Evasion, Soak, Hardness, Resolve — currently simple number fields, planned to be made dynamic/calculated later
 - **Motes**: one pool with Current, Committed, Total — all manually entered for now
+- **Charms**: grouped into categories (e.g. combat, utility); each charm has a name and description text; clickable to expand in-panel
+- **Effects**: same structure as Charms — categories of named effects with description text
+- **Inventory**: categories of items; items currently have name only (more fields to be added later)
 
 ## The User
 - **Angel** (angel.y.pappas@gmail.com / ange.pap@hotmail.com — GitHub/Vercel use the hotmail)
 - Solo player, one primary character currently named **Kaien, Wall of the Sun**
-- Comfortable giving layout/design direction in grid-unit terms (e.g. "make col 1 be 4 wide on a 64-unit grid")
+- Comfortable giving layout/design direction in grid-unit terms
 - Prefers to be walked through setup steps one at a time
 
 ## Workflow
@@ -27,23 +30,32 @@ This is a custom/modified version of the Exalted tabletop RPG. Not all standard 
 - Vercel auto-deploys on every push to `main`
 - **Important:** the GitHub repo must be **public** for Vercel free-tier auto-deploy to work
 - Angel reviews changes on the live Vercel URL — does not run a local dev server
-- Angel says "push" when ready to deploy — do not push until told
+- Angel says "push" (or "yes") when ready to deploy — do not push until told
 
 ## What's Been Built So Far
 - Auth (email/password via Supabase)
 - Character list with create/delete
 - Character page with 4 tabs: Sheet, Milestones, Notes, Characters
-- Character Sheet: Attributes, Abilities (with Excellency + Specialty), Defenses, Motes, Health track, Languages, Merits, Intimacies
+- **Character Sheet panels (11 total):**
+  - Attributes, Abilities (with Excellency + Specialty), Defenses, Motes, Health track, Languages, Merits, Intimacies
+  - Charms — categories + expandable entries with description; drag to reorder charms and categories
+  - Effects — same structure as Charms
+  - Inventory — categories + items (name only for now); drag to reorder items
 - Milestones: 4-type XP log with session reward form, purchase form, editable transaction table
 - Notes: free-form textarea
 - Characters tab: NPC list with per-NPC notes
 - Auto-save to Supabase (1 second debounce)
 - 404-on-refresh fix via vercel.json rewrites
-- **Drag-and-drop grid layout editor** on the character sheet:
-  - 8 independent panels, each freely movable and resizable
-  - "Edit Layout" toggle button top-right; amber grid lines visible in edit mode only
+- **Drag-and-drop grid layout editor:**
+  - 11 independent panels, freely movable and resizable
+  - 128-column grid, row height 10px
+  - "Edit Layout" toggle button in top-right of window header (outside the grid)
+  - Amber grid lines visible in edit mode only; amber drag handle bar at top of each panel
+  - Resize handle: amber corner bottom-right of each panel
+  - Panels can freely overlap (no collision/push behavior)
   - Layout persisted per character in Supabase
+  - New panels missing from a saved layout are automatically added at their default positions
 
 ## Next Planned Features
-- Additional panels in the large empty area to the right (reserved space on the grid)
+- Additional fields for Inventory items (user will specify)
 - Calculated/dynamic defenses (currently manual number fields)
