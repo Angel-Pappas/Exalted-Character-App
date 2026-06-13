@@ -540,8 +540,8 @@ function ItemModal({ item, onSave, onClose, gameData }: {
   }
 
   return (
-    <div className="fixed inset-0 z-[100] flex items-center justify-center bg-black/60" onClick={onClose}>
-      <div className="bg-stone-900 border border-stone-600 rounded-xl w-80 shadow-2xl flex flex-col max-h-[90vh]" onClick={e => e.stopPropagation()}>
+    <div className="fixed inset-0 z-[100] flex items-center justify-center bg-black/60 p-4" onClick={onClose}>
+      <div className="bg-stone-900 border border-stone-600 rounded-xl w-[480px] shadow-2xl flex flex-col max-h-full" onClick={e => e.stopPropagation()}>
         {/* Header */}
         <div className="flex items-center justify-between px-4 py-3 border-b border-stone-700 shrink-0">
           <div className="flex items-center gap-2">
