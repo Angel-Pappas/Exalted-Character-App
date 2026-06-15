@@ -1518,7 +1518,10 @@ export default function SheetTab({ sheet, onChange, editMode, gameData: gd }: Pr
       const counterBtn = "w-5 h-5 flex items-center justify-center rounded text-stone-400 hover:text-stone-100 hover:bg-stone-700 transition-colors text-sm font-bold shrink-0"
       return (
         <div className={panelBase}>
-          <SectionHeader title="Anima" />
+          <div className="flex items-center justify-between mb-2">
+            <SectionHeader title="Anima" />
+            <button onClick={() => update({ anima: 0 })} className="text-[10px] text-stone-500 hover:text-amber-400 transition-colors px-1.5 py-0.5 rounded border border-stone-700 hover:border-amber-500">Reset</button>
+          </div>
           <div className="flex flex-col items-center gap-1 pt-1">
             <div className="flex items-center gap-3">
               <button onClick={() => setAnima(-1)} className={counterBtn}>−</button>
