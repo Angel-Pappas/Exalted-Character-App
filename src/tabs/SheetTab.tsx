@@ -37,8 +37,9 @@ const DEFAULT_LAYOUT: PanelLayout[] = [
   { i: 'abilities',  x: 0,  y: 22, w: 16, h: 38, minW: 4, minH: 8 },
   { i: 'defenses',   x: 16, y: 0,  w: 16, h: 12, minW: 4, minH: 8 },
   { i: 'essence',    x: 16, y: 12, w: 16, h: 6,  minW: 4, minH: 6 },
-  { i: 'motes',      x: 16, y: 18, w: 16, h: 8,  minW: 4, minH: 8 },
-  { i: 'health',     x: 16, y: 26, w: 16, h: 8,  minW: 4, minH: 8 },
+  { i: 'motes',      x: 16, y: 18, w: 16, h: 10, minW: 4, minH: 8 },
+  { i: 'anima',      x: 16, y: 28, w: 16, h: 10, minW: 4, minH: 8 },
+  { i: 'health',     x: 16, y: 38, w: 16, h: 8,  minW: 4, minH: 8 },
   { i: 'merits',     x: 32, y: 0,  w: 28, h: 18, minW: 4, minH: 8 },
   { i: 'languages',  x: 32, y: 18, w: 28, h: 10, minW: 4, minH: 8 },
   { i: 'intimacies', x: 32, y: 28, w: 28, h: 18, minW: 4, minH: 8 },
@@ -60,6 +61,7 @@ function defaultSheet(): SheetData {
     attributes, abilities, defenses,
     defenseOther: false, fullDefense: false,
     essence: 1,
+    anima: 0,
     defenseBonus: { parry: 0, evasion: 0, soak: 0, hardness: 0, resolve: 0 },
     languages: [], merits: [], intimacies: [],
     motes: { current: 0, committed: 0, total: 0 },
@@ -315,10 +317,11 @@ function CharmPanel({ categories, onChange, dragEnabled }: {
 }
 
 // EffectPanel — same structure as CharmPanel (categories + entries with name & description)
-function EffectPanel({ categories, onChange, dragEnabled }: {
+function EffectPanel({ categories, onChange, dragEnabled, anima }: {
   categories: EffectCategory[]
   onChange: (c: EffectCategory[]) => void
   dragEnabled: boolean
+  anima?: number
 }) {
   const [expandedIds, setExpandedIds] = useState<Set<string>>(new Set())
   const [addingCat, setAddingCat] = useState(false)
@@ -405,10 +408,23 @@ function EffectPanel({ categories, onChange, dragEnabled }: {
               {cat.effects.length === 0 && addingEffectCatId !== cat.id && <p className="text-xs text-stone-600 px-1.5 pb-1">No effects.</p>}
               {cat.effects.map(effect => (
                 <div key={effect.id} draggable={dragEnabled} onDragStart={e => dragEnabled && onDragStart(e, cat.id, effect.id)} onDragOver={e => { e.preventDefault(); e.stopPropagation() }} onDrop={e => onDrop(e, cat.id, effect.id)} className={`border-t border-stone-800 px-1.5 ${dragEnabled ? 'cursor-grab active:cursor-grabbing' : ''}`}>
-                  <div className="flex items-center justify-between py-1 text-xs gap-1">
-                    <button onClick={() => setExpandedIds(s => { const n = new Set(s); n.has(effect.id) ? n.delete(effect.id) : n.add(effect.id); return n })} className="text-left text-stone-200 hover:text-amber-300 transition-colors flex-1 min-w-0 truncate">{effect.name}</button>
-                    <div className="flex gap-1 shrink-0"><button onClick={() => { setEditingEffect({ catId: cat.id, effect }); setEditEffectName(effect.name); setEditEffectText(effect.text) }} className="text-stone-500 hover:text-amber-400 transition-colors">✎</button><button onClick={() => removeEffect(cat.id, effect.id)} className="text-stone-500 hover:text-red-400 transition-colors">✕</button></div>
-                  </div>
+                  {(() => {
+                    const isDawnCat = cat.name.toLowerCase().includes('dawn')
+                    const eName = effect.name.toLowerCase()
+                    let dotLit: boolean | null = null
+                    if (isDawnCat) {
+                      if (eName.startsWith('passive')) dotLit = true
+                      else if (eName.startsWith('active')) dotLit = (anima ?? 0) >= 3
+                      else if (eName.startsWith('iconic')) dotLit = (anima ?? 0) === 10
+                    }
+                    return (
+                      <div className="flex items-center justify-between py-1 text-xs gap-1">
+                        {dotLit !== null && <span className={`shrink-0 w-2 h-2 rounded-full ${dotLit ? 'bg-amber-400 shadow-[0_0_4px_1px_rgba(251,191,36,0.7)]' : 'bg-stone-700'}`} />}
+                        <button onClick={() => setExpandedIds(s => { const n = new Set(s); n.has(effect.id) ? n.delete(effect.id) : n.add(effect.id); return n })} className="text-left text-stone-200 hover:text-amber-300 transition-colors flex-1 min-w-0 truncate">{effect.name}</button>
+                        <div className="flex gap-1 shrink-0"><button onClick={() => { setEditingEffect({ catId: cat.id, effect }); setEditEffectName(effect.name); setEditEffectText(effect.text) }} className="text-stone-500 hover:text-amber-400 transition-colors">✎</button><button onClick={() => removeEffect(cat.id, effect.id)} className="text-stone-500 hover:text-red-400 transition-colors">✕</button></div>
+                      </div>
+                    )
+                  })()}
                   {expandedIds.has(effect.id) && editingEffect?.effect.id !== effect.id && <p className="text-xs text-stone-400 pb-1.5 whitespace-pre-wrap leading-relaxed">{effect.text || <em className="text-stone-600">No description.</em>}</p>}
                   {editingEffect?.effect.id === effect.id && <div className="pb-1.5 space-y-1"><input type="text" value={editEffectName} onChange={e => setEditEffectName(e.target.value)} className={inputActive} /><textarea value={editEffectText} onChange={e => setEditEffectText(e.target.value)} rows={4} className="w-full bg-stone-800 border border-stone-600 text-stone-100 rounded px-2 py-1 text-xs focus:outline-none focus:border-amber-500 resize-none" /><div className="flex gap-1 justify-end"><button onClick={saveEffect} className="bg-amber-600 hover:bg-amber-500 text-white rounded px-2 py-0.5 text-xs">Save</button><button onClick={() => setEditingEffect(null)} className="text-stone-500 hover:text-stone-300 text-xs px-1">Cancel</button></div></div>}
                 </div>
@@ -1202,6 +1218,7 @@ export default function SheetTab({ sheet, onChange, editMode, gameData: gd }: Pr
     abilities: { ...def.abilities, ...sheet.abilities },
     defenses: { ...def.defenses, ...sheet.defenses },
     essence: sheet.essence ?? 1,
+    anima: sheet.anima ?? 0,
     defenseBonus: { ...def.defenseBonus, ...sheet.defenseBonus },
     languages: sheet.languages ?? [],
     merits: sheet.merits ?? [],
@@ -1441,12 +1458,14 @@ export default function SheetTab({ sheet, onChange, editMode, gameData: gd }: Pr
         if (newCommitted < 0) return
         const newCurrent = current - delta
         if (newCurrent < 0) return
-        update({ motes: { ...data.motes, committed: newCommitted, current: newCurrent } })
+        const newAnima = delta > 0 ? Math.min(10, (data.anima ?? 0) + 1) : data.anima ?? 0
+        update({ motes: { ...data.motes, committed: newCommitted, current: newCurrent }, anima: newAnima })
       }
       const setCurrent = (delta: number) => {
         const newCurrent = current + delta
         if (newCurrent < 0 || newCurrent > totalMotes) return
-        update({ motes: { ...data.motes, current: newCurrent } })
+        const newAnima = delta < 0 ? Math.min(10, (data.anima ?? 0) + 1) : data.anima ?? 0
+        update({ motes: { ...data.motes, current: newCurrent }, anima: newAnima })
       }
       const counterBtn = "w-5 h-5 flex items-center justify-center rounded text-stone-400 hover:text-stone-100 hover:bg-stone-700 transition-colors text-sm font-bold shrink-0"
       return (
@@ -1476,6 +1495,37 @@ export default function SheetTab({ sheet, onChange, editMode, gameData: gd }: Pr
                 <button onClick={() => setCommitted(+1)} className={counterBtn}>+</button>
               </div>
             </div>
+          </div>
+        </div>
+      )
+    })(),
+
+    anima: (() => {
+      const animaLevel = data.anima ?? 0
+      const animaTable = gameData.animaStates ?? DEFAULT_GAME_DATA.animaStates
+      const animaState = animaTable.find(r => r.level === animaLevel)?.label ?? ''
+      const animaColor =
+        animaLevel === 0  ? 'text-stone-500' :
+        animaLevel <= 2   ? 'text-blue-400' :
+        animaLevel <= 4   ? 'text-amber-300' :
+        animaLevel <= 6   ? 'text-orange-400' :
+        animaLevel <= 9   ? 'text-red-400' :
+                            'text-amber-400'
+      const setAnima = (delta: number) => {
+        const next = Math.max(0, Math.min(10, animaLevel + delta))
+        update({ anima: next })
+      }
+      const counterBtn = "w-5 h-5 flex items-center justify-center rounded text-stone-400 hover:text-stone-100 hover:bg-stone-700 transition-colors text-sm font-bold shrink-0"
+      return (
+        <div className={panelBase}>
+          <SectionHeader title="Anima" />
+          <div className="flex flex-col items-center gap-1 pt-1">
+            <div className="flex items-center gap-3">
+              <button onClick={() => setAnima(-1)} className={counterBtn}>−</button>
+              <span className={`text-3xl font-bold w-10 text-center ${animaColor}`}>{animaLevel}</span>
+              <button onClick={() => setAnima(+1)} className={counterBtn}>+</button>
+            </div>
+            <span className={`text-xs font-medium ${animaColor}`}>{animaState}</span>
           </div>
         </div>
       )
@@ -1636,6 +1686,7 @@ export default function SheetTab({ sheet, onChange, editMode, gameData: gd }: Pr
         categories={data.effects}
         onChange={c => update({ effects: c })}
         dragEnabled={!editMode}
+        anima={data.anima}
       />
     ),
 
