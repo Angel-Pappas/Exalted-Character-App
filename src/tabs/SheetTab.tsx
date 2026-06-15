@@ -1523,7 +1523,7 @@ export default function SheetTab({ sheet, onChange, editMode, gameData: gd }: Pr
             <button onClick={() => update({ anima: 0 })} className="text-[10px] text-stone-500 hover:text-amber-400 transition-colors px-1.5 py-0.5 rounded border border-stone-700 hover:border-amber-500">Reset</button>
           </div>
           <div className="flex flex-col items-center gap-1 pt-1">
-            <div className="flex items-center gap-3">
+            <div className="flex items-center gap-1">
               <button onClick={() => setAnima(-1)} className={counterBtn}>−</button>
               <span className={`text-3xl font-bold w-10 text-center ${animaColor}`}>{animaLevel}</span>
               <button onClick={() => setAnima(+1)} className={counterBtn}>+</button>
