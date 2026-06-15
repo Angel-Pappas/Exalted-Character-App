@@ -2,7 +2,7 @@ import { useEffect, useState, useCallback } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { supabase } from '../lib/supabase'
 import { useAuth } from '../contexts/AuthContext'
-import type { GameData, WeaponTableRow, ArmorTableRow, TagEntry, EssenceMoteRow } from '../types/character'
+import type { GameData, WeaponTableRow, ArmorTableRow, TagEntry, EssenceMoteRow, AnimaStateRow } from '../types/character'
 import { DEFAULT_GAME_DATA } from '../types/character'
 
 const TABS = ['Information'] as const
@@ -66,6 +66,7 @@ export default function OptionsPage() {
             armor:     row.data.armor     ?? DEFAULT_GAME_DATA.armor,
             tagGroups:    row.data.tagGroups    ?? DEFAULT_GAME_DATA.tagGroups,
             essenceMotes: row.data.essenceMotes ?? DEFAULT_GAME_DATA.essenceMotes,
+            animaStates:  row.data.animaStates  ?? DEFAULT_GAME_DATA.animaStates,
           })
         }
         setLoaded(true)
@@ -113,6 +114,17 @@ export default function OptionsPage() {
   }
   function removeEssenceMoteRow(idx: number) {
     update({ ...data, essenceMotes: data.essenceMotes.filter((_, i) => i !== idx) })
+  }
+
+  function updateAnimaState(idx: number, patch: Partial<AnimaStateRow>) {
+    update({ ...data, animaStates: data.animaStates.map((r, i) => i === idx ? { ...r, ...patch } : r) })
+  }
+  function addAnimaStateRow() {
+    const nextLevel = (data.animaStates ?? []).length
+    update({ ...data, animaStates: [...(data.animaStates ?? []), { level: nextLevel, label: '' }] })
+  }
+  function removeAnimaStateRow(idx: number) {
+    update({ ...data, animaStates: (data.animaStates ?? []).filter((_, i) => i !== idx) })
   }
 
   function updateTag(gIdx: number, tIdx: number, patch: Partial<TagEntry>) {
@@ -236,6 +248,29 @@ export default function OptionsPage() {
                   </div>
                 ))}
                 {(data.essenceMotes ?? []).length === 0 && <p className="text-xs text-stone-600 px-3 py-2">No rows.</p>}
+              </div>
+            </section>
+
+            {/* ── Anima States ── */}
+            <section>
+              <div className="flex items-center justify-between mb-3">
+                <h2 className="text-base font-semibold text-amber-400">Anima States</h2>
+                <button onClick={addAnimaStateRow} className="text-xs text-stone-500 hover:text-amber-400 transition-colors">+ row</button>
+              </div>
+              <div className="rounded-lg border border-stone-700 overflow-hidden">
+                <div className="grid grid-cols-[3rem_1fr_1.5rem] gap-2 px-3 py-2 bg-stone-800 border-b border-stone-700">
+                  <span className="text-[10px] font-bold uppercase tracking-wider text-stone-400">Level</span>
+                  <span className="text-[10px] font-bold uppercase tracking-wider text-stone-400">Label</span>
+                  <span />
+                </div>
+                {(data.animaStates ?? DEFAULT_GAME_DATA.animaStates).map((row, idx) => (
+                  <div key={idx} className="grid grid-cols-[3rem_1fr_1.5rem] gap-2 px-3 py-1.5 items-center border-b border-stone-800 last:border-0">
+                    <input type="number" value={row.level} onChange={e => updateAnimaState(idx, { level: parseInt(e.target.value) || 0 })} className={numInput} />
+                    <input type="text"   value={row.label} onChange={e => updateAnimaState(idx, { label: e.target.value })} placeholder="Label…" className={textInput} />
+                    <button onClick={() => removeAnimaStateRow(idx)} className="text-stone-600 hover:text-red-400 transition-colors text-xs text-center">✕</button>
+                  </div>
+                ))}
+                {(data.animaStates ?? []).length === 0 && <p className="text-xs text-stone-600 px-3 py-2">No rows.</p>}
               </div>
             </section>
 

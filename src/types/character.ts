@@ -123,6 +123,7 @@ export interface SheetData {
   defenseOther: boolean
   fullDefense: boolean
   essence: number
+  anima: number
   defenseBonus: { parry: number; evasion: number; soak: number; hardness: number; resolve: number }
   languages: string[]
   merits: MeritEntry[]
@@ -174,11 +175,17 @@ export interface EssenceMoteRow {
   motes: number
 }
 
+export interface AnimaStateRow {
+  level: number
+  label: string
+}
+
 export interface GameData {
   weapons: WeaponTableRow[]
   armor: ArmorTableRow[]
   tagGroups: TagGroup[]
   essenceMotes: EssenceMoteRow[]
+  animaStates: AnimaStateRow[]
 }
 
 export const DEFAULT_GAME_DATA: GameData = {
@@ -251,5 +258,18 @@ export const DEFAULT_GAME_DATA: GameData = {
     { essence: 3, motes: 10 },
     { essence: 4, motes: 12 },
     { essence: 5, motes: 15 },
+  ],
+  animaStates: [
+    { level: 0,  label: 'No Anima' },
+    { level: 1,  label: 'Dim' },
+    { level: 2,  label: 'Dim' },
+    { level: 3,  label: 'Glowing' },
+    { level: 4,  label: 'Glowing' },
+    { level: 5,  label: 'Burning' },
+    { level: 6,  label: 'Burning' },
+    { level: 7,  label: 'Bonfire' },
+    { level: 8,  label: 'Bonfire' },
+    { level: 9,  label: 'Bonfire' },
+    { level: 10, label: 'Iconic' },
   ],
 }
