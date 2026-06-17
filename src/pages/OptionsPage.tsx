@@ -81,7 +81,7 @@ export default function OptionsPage() {
   const [charms, setCharms] = useState<LibraryCharm[]>([])
   const [charmsLoaded, setCharmsLoaded] = useState(false)
   const [charmSaving, setCharmSaving] = useState(false)
-  const isOwner = user?.email === 'angel.y.pappas@gmail.com'
+  const isOwner = !!user
 
   // New charm form
   const [newCharmAbility, setNewCharmAbility] = useState('')
