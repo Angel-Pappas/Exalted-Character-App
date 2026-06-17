@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react'
-import { useNavigate } from 'react-router-dom'
+import { useNavigate, useLocation } from 'react-router-dom'
 import { useTheme } from '../contexts/ThemeContext'
 import { useAuth } from '../contexts/AuthContext'
 import { supabase } from '../lib/supabase'
@@ -53,9 +53,12 @@ function PasswordInput({
 
 export default function SettingsPage() {
   const navigate = useNavigate()
+  const location = useLocation()
   const { role, user } = useAuth()
   const { theme, setTheme } = useTheme()
-  const [active, setActive] = useState<Section>('Account')
+  const [active, setActive] = useState<Section>(
+    (location.state as { section?: Section } | null)?.section ?? 'Account'
+  )
 
   const [username, setUsername] = useState('')
   const [usernameSaving, setUsernameSaving] = useState(false)

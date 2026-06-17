@@ -20,7 +20,7 @@ const defaultData: CharacterData = {
 export default function CharacterPage() {
   const { id } = useParams<{ id: string }>()
   const navigate = useNavigate()
-  const { user, role } = useAuth()
+  const { user } = useAuth()
   const [character, setCharacter] = useState<Character | null>(null)
   const [data, setData] = useState<CharacterData>(defaultData)
   const [gameData, setGameData] = useState<GameData>(DEFAULT_GAME_DATA)
@@ -91,15 +91,11 @@ export default function CharacterPage() {
     <div className="min-h-screen bg-stone-950 text-stone-100 flex flex-col">
       <header className="flex items-center justify-between px-4 py-3 border-b border-stone-700 shrink-0">
         <div className="flex items-center gap-3">
-          <button onClick={() => navigate('/')} className="text-stone-400 hover:text-stone-200 text-sm">← Back</button>
+          <button onClick={() => navigate('/characters')} className="text-stone-400 hover:text-stone-200 text-sm">← Back</button>
           <h1 className="text-amber-400 font-semibold">{character.name}</h1>
         </div>
         <div className="flex items-center gap-3">
           {saving && <span className="text-xs text-stone-500">Saving…</span>}
-          <button onClick={() => navigate('/options')} className="text-xs text-stone-400 hover:text-stone-200 transition-colors">Settings</button>
-          {role === 'admin' && (
-            <button onClick={() => navigate('/setup')} className="text-xs text-stone-400 hover:text-stone-200 transition-colors">Setup</button>
-          )}
           {activeTab === 'sheet' && (
             <button
               onClick={() => setSheetEditMode(v => !v)}
