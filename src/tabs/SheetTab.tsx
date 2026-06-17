@@ -33,8 +33,7 @@ const DEFAULT_HEALTH: HealthBox[] = [
 ]
 
 const DEFAULT_LAYOUT: PanelLayout[] = [
-  { i: 'identity',   x: 0,  y: 0,  w: 16, h: 10, minW: 4, minH: 8 },
-  { i: 'attributes', x: 0,  y: 10, w: 16, h: 22, minW: 4, minH: 8 },
+  { i: 'attributes', x: 0,  y: 0,  w: 16, h: 22, minW: 4, minH: 8 },
   { i: 'abilities',  x: 0,  y: 22, w: 16, h: 38, minW: 4, minH: 8 },
   { i: 'defenses',   x: 16, y: 0,  w: 16, h: 12, minW: 4, minH: 8 },
   { i: 'essence',    x: 16, y: 12, w: 16, h: 6,  minW: 4, minH: 6 },
@@ -1287,51 +1286,6 @@ export default function SheetTab({ sheet, onChange, editMode, gameData: gd }: Pr
   const selectedExalt = exaltTypes.find(e => e.name === data.exaltType) ?? null
 
   const panels: Record<string, React.ReactNode> = {
-    identity: (() => {
-      const casteLabel = selectedExalt?.casteLabel ?? 'Caste'
-      const castes = selectedExalt?.castes ?? []
-      return (
-        <div className={panelBase}>
-          <SectionHeader title="Identity" />
-          <div className="space-y-2">
-            <div>
-              <div className="text-[10px] text-stone-500 uppercase tracking-wider mb-0.5">Exalt Type</div>
-              <select
-                value={data.exaltType}
-                onChange={e => update({ exaltType: e.target.value, caste: '' })}
-                className="w-full bg-stone-800 border border-stone-600 text-stone-100 rounded px-2 py-1 text-xs focus:outline-none focus:border-amber-500"
-              >
-                <option value="">— Select —</option>
-                {exaltTypes.map(et => <option key={et.id} value={et.name}>{et.name}</option>)}
-              </select>
-            </div>
-            {data.exaltType && (
-              <div>
-                <div className="text-[10px] text-stone-500 uppercase tracking-wider mb-0.5">{casteLabel}</div>
-                {castes.length > 0 ? (
-                  <select
-                    value={data.caste}
-                    onChange={e => update({ caste: e.target.value })}
-                    className="w-full bg-stone-800 border border-stone-600 text-stone-100 rounded px-2 py-1 text-xs focus:outline-none focus:border-amber-500"
-                  >
-                    <option value="">— Select —</option>
-                    {castes.map(c => <option key={c} value={c}>{c}</option>)}
-                  </select>
-                ) : (
-                  <input
-                    type="text"
-                    value={data.caste}
-                    onChange={e => update({ caste: e.target.value })}
-                    placeholder={`Custom ${casteLabel.toLowerCase()}…`}
-                    className={inputCls}
-                  />
-                )}
-              </div>
-            )}
-          </div>
-        </div>
-      )
-    })(),
     attributes: (
       <div className={panelBase}>
         <SectionHeader title="Attributes" />
@@ -1463,19 +1417,35 @@ export default function SheetTab({ sheet, onChange, editMode, gameData: gd }: Pr
       )
     })(),
 
-    essence: (
-      <div className={panelBase}>
-        <SectionHeader title="Essence" />
-        <div className="space-y-1">
-          <div className="flex items-center justify-between">
-            <span className="text-xs text-stone-300">Essence</span>
-            <input type="number" min={1} value={data.essence ?? 1}
-              onChange={e => update({ essence: parseInt(e.target.value) || 1 })}
-              className={numInput} />
+    essence: (() => {
+      const casteLabel = selectedExalt?.casteLabel ?? 'Caste'
+      return (
+        <div className={panelBase}>
+          <SectionHeader title="Identity" />
+          <div className="space-y-1.5">
+            {data.exaltType && (
+              <div className="flex items-center justify-between">
+                <span className="text-[10px] text-stone-500 uppercase tracking-wider">Exalt Type</span>
+                <span className="text-xs text-stone-200 text-right max-w-[60%] truncate">{data.exaltType}</span>
+              </div>
+            )}
+            {data.caste && (
+              <div className="flex items-center justify-between">
+                <span className="text-[10px] text-stone-500 uppercase tracking-wider">{casteLabel}</span>
+                <span className="text-xs text-stone-200">{data.caste}</span>
+              </div>
+            )}
+            {(data.exaltType || data.caste) && <div className="border-t border-stone-700/60 my-1" />}
+            <div className="flex items-center justify-between">
+              <span className="text-xs text-stone-300">Essence</span>
+              <input type="number" min={1} value={data.essence ?? 1}
+                onChange={e => update({ essence: parseInt(e.target.value) || 1 })}
+                className={numInput} />
+            </div>
           </div>
         </div>
-      </div>
-    ),
+      )
+    })(),
 
     motes: (() => {
       const essence = data.essence ?? 1
