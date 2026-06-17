@@ -329,19 +329,20 @@ export default function SetupPage() {
       <header className="flex items-center justify-between px-4 py-3 border-b border-stone-700 shrink-0">
         <div className="flex items-center gap-3">
           <button onClick={() => navigate(-1)} className="text-stone-400 hover:text-stone-200 text-sm">← Back</button>
-          <h1 className="text-amber-400 font-semibold">Setup</h1>
+          <h1 className="text-amber-400 font-semibold">Admin</h1>
         </div>
         {saving && <span className="text-xs text-stone-500">Saving…</span>}
       </header>
 
-      <div className="flex border-b border-stone-700 px-4 shrink-0">
-        {TABS.map(tab => (
-          <button key={tab} onClick={() => setActiveTab(tab)}
-            className={`px-4 py-2 text-sm font-medium border-b-2 transition-colors -mb-px ${activeTab === tab ? 'border-amber-400 text-amber-400' : 'border-transparent text-stone-400 hover:text-stone-200'}`}>
-            {tab}
-          </button>
-        ))}
-      </div>
+      <div className="flex flex-1 overflow-hidden">
+        <nav className="w-44 shrink-0 border-r border-stone-700 py-4 px-2 space-y-0.5">
+          {TABS.map(tab => (
+            <button key={tab} onClick={() => setActiveTab(tab)}
+              className={`w-full text-left px-3 py-2 rounded text-sm transition-colors ${activeTab === tab ? 'bg-stone-800 text-stone-100 font-medium' : 'text-stone-400 hover:text-stone-200 hover:bg-stone-900'}`}>
+              {tab}
+            </button>
+          ))}
+        </nav>
 
       <div className="flex-1 overflow-auto p-4">
         {!loaded ? <p className="text-stone-500 text-sm">Loading…</p> : activeTab === 'Tables' ? (
@@ -618,6 +619,7 @@ export default function SetupPage() {
             })()}
           </div>
         ) : null}
+      </div>
       </div>
     </div>
   )
