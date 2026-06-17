@@ -1439,9 +1439,9 @@ export default function SheetTab({ sheet, onChange, editMode, gameData: gd }: Pr
       const counterBtn = "w-5 h-5 flex items-center justify-center rounded text-stone-400 hover:text-stone-100 hover:bg-stone-700 transition-colors text-sm font-bold shrink-0"
       return (
         <div className={panelBase}>
-          <div className="flex items-center justify-between mb-0.5">
+          <div className="relative flex items-center justify-center mb-0.5">
             <span className="text-xs font-semibold uppercase tracking-wider text-stone-400">Motes</span>
-            <button onClick={resetMotes} className="text-[10px] text-stone-500 hover:text-amber-400 transition-colors px-1.5 py-0.5 rounded border border-stone-700 hover:border-amber-500">Reset</button>
+            <button onClick={resetMotes} className="absolute right-0 text-[10px] text-stone-500 hover:text-amber-400 transition-colors px-1.5 py-0.5 rounded border border-stone-700 hover:border-amber-500">Reset</button>
           </div>
           <div className="flex flex-col items-center mb-1.5">
             <span className="text-[10px] text-stone-500">Total</span>
