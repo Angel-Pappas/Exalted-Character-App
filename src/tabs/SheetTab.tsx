@@ -1382,8 +1382,8 @@ export default function SheetTab({ sheet, onChange, editMode, gameData: gd }: Pr
       const soakBase     = 1 + (phys >= 3 ? 1 : 0)
       const hardnessBase = 2 + (data.essence ?? 1)
       const resolveBase  = (integ >= 3 ? 4 : integ >= 1 ? 3 : 2) + (db.resolve ?? 0)
-      const parry    = parryBase    + (data.fullDefense ? bestWpnDef : 0) + (db.parry    ?? 0)
-      const evasion  = evasionBase                                         + (db.evasion  ?? 0)
+      const parry    = parryBase   + (data.fullDefense ? bestWpnDef : 0) + (db.parry   ?? 0)
+      const evasion  = evasionBase + (data.fullDefense ? bestWpnDef : 0) + (db.evasion ?? 0)
       const soak     = soakBase     + bestArmorSoak                        + (db.soak     ?? 0)
       const hardness = hardnessBase + bestArmorHard                        + (db.hardness ?? 0)
       const bonusInput = (key: keyof typeof db) => (
@@ -1408,7 +1408,7 @@ export default function SheetTab({ sheet, onChange, editMode, gameData: gd }: Pr
           <SectionHeader title="Defenses" />
           <div className="space-y-1.5">
             {calcRow('Parry',    parry,    `floor((Stamina ${stamina} + Close Combat ${cc}) / 2)${data.fullDefense ? ` + Weapon Defense ${bestWpnDef}` : ' (Full Defense off)'} + Bonus ${db.parry ?? 0}`, bonusInput('parry'))}
-            {calcRow('Evasion',  evasion,  `floor((Dexterity ${dex} + Athletics ${ath}) / 2) + Bonus ${db.evasion ?? 0}`, bonusInput('evasion'))}
+            {calcRow('Evasion',  evasion,  `floor((Dexterity ${dex} + Athletics ${ath}) / 2)${data.fullDefense ? ` + Weapon Defense ${bestWpnDef}` : ' (Full Defense off)'} + Bonus ${db.evasion ?? 0}`, bonusInput('evasion'))}
             {calcRow('Soak',     soak,     `${soakBase} base + Best Armor Soak ${bestArmorSoak} + Bonus ${db.soak ?? 0}`, bonusInput('soak'))}
             {calcRow('Hardness', hardness, `${hardnessBase} base (2 + Essence ${data.essence ?? 1}) + Best Armor Hardness ${bestArmorHard} + Bonus ${db.hardness ?? 0}`, bonusInput('hardness'))}
             {calcRow('Resolve', resolveBase, `2 base + Integrity ${integ} bonus`, bonusInput('resolve'))}
