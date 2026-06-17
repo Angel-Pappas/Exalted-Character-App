@@ -1011,8 +1011,11 @@ function InventoryPanel({ items, onChange, dragEnabled, gameData }: {
       const baseTags = (i.tags ?? []).filter(t => t !== foi.tag && !(foi.artifact && t === 'Artifact'))
       let newTags = newFoi.tag ? [...baseTags, newFoi.tag] : baseTags
       if (newFoi.artifact) newTags = [...newTags, 'Artifact']
-      if (newFoi.tag === 'Shield') dmg = Math.max(0, dmg - 1)
-      return { ...i, accuracy: acc, damage: dmg, defense: def, overwhelming: ovw, tags: newTags }
+      if (newFoi.tag === 'Shield')     dmg = Math.max(0, dmg - 1)
+      if (newFoi.tag === 'Balanced')   ovw += 1
+      if (newFoi.tag === 'Improvised') acc = Math.max(0, acc - 2)
+      if (newFoi.tag === 'Defensive')  def += 1
+      return { ...i, accuracy: Math.max(0, acc), damage: Math.max(0, dmg), defense: Math.max(0, def), overwhelming: Math.max(0, ovw), tags: newTags }
     })
 
     setFoiOriginals(newOriginals)
