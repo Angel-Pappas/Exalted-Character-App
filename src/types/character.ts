@@ -116,6 +116,13 @@ export interface PanelLayout {
   minH?: number
 }
 
+export interface FoiState {
+  active: boolean
+  weight: string | null
+  tag: string | null
+  artifact: boolean
+}
+
 export interface SheetData {
   attributes: Record<string, number>
   abilities: Record<string, AbilityData>
@@ -134,6 +141,8 @@ export interface SheetData {
   charms: CharmCategory[]
   effects: EffectCategory[]
   inventory: InventoryItem[]
+  foi: FoiState
+  foiOriginals: Record<string, Partial<InventoryItem>>
 }
 
 export interface CharacterData {

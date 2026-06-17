@@ -5,7 +5,7 @@ import { GridLayout, useContainerWidth, noCompactor } from 'react-grid-layout'
 // Override it so panels can freely overlap — no collision resolution, no compaction.
 const freeCompactor = { ...noCompactor, allowOverlap: true }
 import 'react-grid-layout/css/styles.css'
-import type { SheetData, AbilityData, MeritEntry, IntimacyEntry, HealthBox, PanelLayout, CharmCategory, CharmEntry, EffectCategory, EffectEntry, InventoryItem, InventoryItemKind, WeaponWeight, ArtifactColor, GameData } from '../types/character'
+import type { SheetData, FoiState, AbilityData, MeritEntry, IntimacyEntry, HealthBox, PanelLayout, CharmCategory, CharmEntry, EffectCategory, EffectEntry, InventoryItem, InventoryItemKind, WeaponWeight, ArtifactColor, GameData } from '../types/character'
 import { DEFAULT_GAME_DATA } from '../types/character'
 
 const ATTRIBUTE_GROUPS = [
@@ -70,6 +70,8 @@ function defaultSheet(): SheetData {
     charms: [],
     effects: [],
     inventory: [],
+    foi: { active: false, weight: null, tag: null, artifact: false },
+    foiOriginals: {},
   }
 }
 
@@ -805,8 +807,6 @@ const INVENTORY_KINDS: { kind: InventoryItemKind; label: string }[] = [
   { kind: 'other',  label: 'Other' },
 ]
 
-interface FoiState { active: boolean; weight: string | null; tag: string | null; artifact: boolean }
-
 function FoiModal({ current, foiWeights, foiTags, onSave, onClose }: {
   current: FoiState
   foiWeights: import('../types/character').WeaponTableRow[]
@@ -884,16 +884,17 @@ function FoiModal({ current, foiWeights, foiTags, onSave, onClose }: {
   )
 }
 
-function InventoryPanel({ items, onChange, dragEnabled, gameData }: {
+function InventoryPanel({ items, onChange, foi, foiOriginals, onFoiChange, dragEnabled, gameData }: {
   items: InventoryItem[]
   onChange: (items: InventoryItem[]) => void
+  foi: FoiState
+  foiOriginals: Record<string, Partial<InventoryItem>>
+  onFoiChange: (foi: FoiState, originals: Record<string, Partial<InventoryItem>>, items: InventoryItem[]) => void
   dragEnabled: boolean
   gameData: GameData
 }) {
   const [modal, setModal] = useState<Partial<InventoryItem> & { kind: InventoryItemKind } | null>(null)
   const [foiModalOpen, setFoiModalOpen] = useState(false)
-  const [foi, setFoi] = useState<FoiState>({ active: false, weight: null, tag: null, artifact: false })
-  const [foiOriginals, setFoiOriginals] = useState<Record<string, Partial<InventoryItem>>>({})
   const [dropBeforeId, setDropBeforeId] = useState<string | null>(null)
   const [expanded, setExpanded] = useState<Record<string, boolean>>({})
   const dragging = useRef<string | null>(null)
@@ -1018,16 +1019,12 @@ function InventoryPanel({ items, onChange, dragEnabled, gameData }: {
       return { ...i, accuracy: Math.max(0, acc), damage: Math.max(0, dmg), defense: Math.max(0, def), overwhelming: Math.max(0, ovw), tags: newTags }
     })
 
-    setFoiOriginals(newOriginals)
-    setFoi(newFoi)
-    onChange(newItems)
+    onFoiChange(newFoi, newOriginals, newItems)
   }
 
   function deactivateFoi() {
     const restored = items.map(i => foiOriginals[i.id] ? { ...i, ...foiOriginals[i.id] } : i)
-    setFoi({ active: false, weight: null, tag: null, artifact: false })
-    setFoiOriginals({})
-    onChange(restored)
+    onFoiChange({ active: false, weight: null, tag: null, artifact: false }, {}, restored)
   }
 
   function saveItem(item: InventoryItem) {
@@ -1046,10 +1043,10 @@ function InventoryPanel({ items, onChange, dragEnabled, gameData }: {
     const newItems = items.filter(i => i.id !== id)
     const stillHasUnarmed = newItems.some(i => i.kind === 'weapon' && i.weight === 'Unarmed')
     if (foi.active && !stillHasUnarmed) {
-      setFoi({ active: false, weight: null, tag: null, artifact: false })
-      setFoiOriginals({})
+      onFoiChange({ active: false, weight: null, tag: null, artifact: false }, {}, newItems)
+    } else {
+      onChange(newItems)
     }
-    onChange(newItems)
   }
   function toggleEquipped(id: string) {
     const target = items.find(i => i.id === id)
@@ -1248,6 +1245,8 @@ export default function SheetTab({ sheet, onChange, editMode, gameData: gd }: Pr
     inventory: sheet.inventory ?? [],
     defenseOther: sheet.defenseOther ?? false,
     fullDefense: sheet.fullDefense ?? false,
+    foi: sheet.foi ?? { active: false, weight: null, tag: null, artifact: false },
+    foiOriginals: sheet.foiOriginals ?? {},
   }
 
   const [newLanguage, setNewLanguage] = useState('')
@@ -1710,6 +1709,9 @@ export default function SheetTab({ sheet, onChange, editMode, gameData: gd }: Pr
       <InventoryPanel
         items={data.inventory}
         onChange={items => update({ inventory: items })}
+        foi={data.foi ?? { active: false, weight: null, tag: null, artifact: false }}
+        foiOriginals={data.foiOriginals ?? {}}
+        onFoiChange={(foi, foiOriginals, inventory) => update({ foi, foiOriginals, inventory })}
         dragEnabled={!editMode}
         gameData={gameData}
       />
