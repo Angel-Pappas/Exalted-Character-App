@@ -19,6 +19,7 @@ export default function SettingsPage() {
 
   const [newPassword, setNewPassword] = useState('')
   const [confirmPassword, setConfirmPassword] = useState('')
+  const [showPassword, setShowPassword] = useState(false)
   const [passwordSaving, setPasswordSaving] = useState(false)
   const [passwordMsg, setPasswordMsg] = useState<{ text: string; error: boolean } | null>(null)
 
@@ -145,16 +146,25 @@ export default function SettingsPage() {
 
               {/* Password */}
               <div className="bg-stone-900 border border-stone-700 rounded-lg p-4 space-y-3">
-                <label className="text-sm font-medium text-stone-300">Change Password</label>
+                <div className="flex items-center justify-between">
+                  <label className="text-sm font-medium text-stone-300">Change Password</label>
+                  <button
+                    type="button"
+                    onClick={() => setShowPassword(v => !v)}
+                    className="text-xs text-stone-500 hover:text-stone-300 transition-colors select-none"
+                  >
+                    {showPassword ? 'Hide' : 'Show'}
+                  </button>
+                </div>
                 <input
-                  type="password"
+                  type={showPassword ? 'text' : 'password'}
                   value={newPassword}
                   onChange={e => setNewPassword(e.target.value)}
                   placeholder="New password…"
                   className="w-full bg-stone-800 border border-stone-600 text-stone-100 rounded px-3 py-1.5 text-sm focus:outline-none focus:border-amber-500 placeholder-stone-500"
                 />
                 <input
-                  type="password"
+                  type={showPassword ? 'text' : 'password'}
                   value={confirmPassword}
                   onChange={e => setConfirmPassword(e.target.value)}
                   onKeyDown={e => e.key === 'Enter' && savePassword()}
