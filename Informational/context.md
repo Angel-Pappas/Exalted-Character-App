@@ -12,11 +12,26 @@ This is a custom/modified version of the Exalted tabletop RPG. Not all standard 
 - **Merits** have a type: Primary, Secondary, or Tertiary
 - **Intimacies** have an intensity: Minor, Major, or Defining
 - **Health track** has no damage types — boxes are simply checked/unchecked. Standard track: -0, -1, -1, -2, -2, -4, Incap
-- **Defenses**: Parry, Evasion, Soak, Hardness, Resolve — currently simple number fields. Also has **Defend Other** and **Full Defense** toggle switches at the bottom of the panel
-- **Motes**: one pool with Current, Committed, Total — all manually entered for now
-- **Charms**: grouped into categories (e.g. combat, utility); each charm has a name and description text; clickable to expand in-panel; categories and charms draggable to reorder
-- **Effects**: same structure as Charms — categories of named effects with description text; same drag behavior
-- **Inventory**: flat item list with 3 fixed sections (Weapons, Armor, Other) — see below
+- **Defenses**: Parry, Evasion, Soak, Hardness, Resolve — all **calculated** from attributes, abilities, and equipped items (not manually entered)
+- **Motes**: one pool with Current, Committed, Total — Total is looked up from the EssenceMotes GameData table by essence level
+- **Charms**: a global library in Supabase; players add charms from the library to their character sheet; some charms have mechanical implementations (e.g. FoI)
+
+> **Important:** The book refers to "highest appropriate attribute" for some calculations. This app uses 9 custom attributes (not 3), with each stat mapped to a specific fixed attribute. Ignore any "highest attribute" wording from book quotes — the mappings are hardcoded.
+
+## Defense Calculations
+All five defenses are calculated automatically in SheetTab. Manual bonus fields (`defenseBonus`) are additive on top.
+
+| Defense | Formula |
+|---|---|
+| Parry | `Math.ceil((Stamina + Close Combat) / 2) + wpnBonus + defenseBonus.parry` |
+| Evasion | `Math.ceil((Dexterity + Athletics) / 2) + wpnBonus + defenseBonus.evasion` |
+| Soak | `Math.ceil(Stamina / 2) + bestArmorSoak + defenseBonus.soak` |
+| Hardness | `Essence + bestArmorHardness + defenseBonus.hardness` |
+| Resolve | `Math.ceil((Wits + Integrity) / 2) + defenseBonus.resolve` |
+
+**Weapon bonus (`wpnBonus`):** added to both Parry and Evasion. It equals the highest `defense` value among equipped weapons, but only when **Full Defense** or **Defend Other** is active. Otherwise 0.
+
+**Armor:** only one armor can be equipped at a time. Equipping a new armor auto-unequips any other. Only the equipped armor's `soak` and `hardness` values contribute to defenses.
 
 ## Inventory System
 Items are stored as a flat `InventoryItem[]` array, grouped by `kind` at render time. Sections are always: Weapons → Armor → Other (in that order).
@@ -43,7 +58,7 @@ Armor-specific: `type` (category from gameData), `soak`, `mobilityPen`, `hardnes
 - Other: ▸/▾ chevron; clicking name expands notes inline
 
 ### Fists of Iron Technique (FoI)
-A charm toggle on the **Weapons section header**. Disabled (greyed, tooltip) if no Unarmed weapon exists.
+A charm whose button appears on the **Weapons section header** only when a charm with `mechanicalKey = 'foi'` is in the character's charm list and has `mechanicalEnabled = true`.
 
 Clicking opens a modal:
 - Header: title + toggle switch (active/inactive)
@@ -51,65 +66,120 @@ Clicking opens a modal:
 - Tag picker: Universal + Melee tags only, single-select, excludes Artifact
 - Footer: Cancel | Save
 
-When activated: writes the chosen weight's stats (+ item artifact bonus + FoI artifact bonus) to all Unarmed weapons; adds chosen tag to `item.tags`; applies tag stat effects (Shield → −1 damage, min 0). Pre-FoI stats saved as originals for restoration.
+When activated: writes the chosen weight's stats (+ item artifact bonus + FoI artifact bonus) to all Unarmed weapons; adds chosen tag to `item.tags`; applies tag stat effects:
+- Shield → −1 damage (min 0)
+- Balanced → +1 overwhelming
+- Improvised → −2 accuracy (min 0)
+- Defensive → +1 defense
 
 When deactivated: restores originals exactly. Removing the last Unarmed weapon auto-clears FoI.
 
+**FoI state is persisted to Supabase** (stored in `SheetData.foi` and `SheetData.foiOriginals`) — survives refresh and week-long gaps.
+
 On unarmed weapon rows: tag chip (hover = description) + colored weight badge (L=blue, M=green, H=yellow) shown before stats.
 
-## Options Page
-Route: `/options` — accessible from header of CharacterListPage and CharacterPage. Character-independent.
+## Charm System
 
-Currently has one tab: **Information**, which contains three editable reference tables:
+### Global Charm Library (`charm_library` table)
+A shared Supabase table containing all available charms for the game. Readable by all users; writable only by admins.
 
-### Weapons Table
-Rows: Category (text), Accuracy, Damage, Defense, Overwhelming (numbers). Default rows: Light, Medium, Heavy, Unarmed with rulebook values. Hover column headers for stat descriptions.
+Each library charm has:
+- `id`, `ability` (which ability it belongs to), `name`, `description`
+- `mechanical_key` (optional) — links to a coded implementation (e.g. `"foi"`)
+- `sort_order`
 
-### Armor Table
-Rows: Category (text), Soak, Mobility Penalty, Hardness (numbers). Default rows: Light Armor, Heavy Armor.
+### Per-Character Charms (`CharacterCharm[]` in SheetData)
+Players add charms from the library to their character sheet. Each character charm record has:
+```ts
+interface CharacterCharm {
+  id: string
+  libraryId: string
+  name: string
+  libraryMechanicalKey: string | null   // denormalized from library at add time
+  customDescription: string | null      // player-specific override text
+  mechanicalKeyOverride: string | null  // player-specific mechanical key override
+  mechanicalEnabled: boolean            // toggles the mechanical effect on/off
+}
+```
 
-### Equipment Tags
-Groups of tags, each tag has Name + Description. Five default groups:
-- **Type Tags**: Artifact, Melee, Ranged
-- **Universal Tags**: Balanced, Concealable, Flexible, Improvised, Natural/Worn, Paired, Piercing, Pulling, Thrown
-- **Armor Tags**: Buoyant, Silent
-- **Melee Tags**: Chopping, Defensive, Disarming, Off-Hand, Reaching, Shield, Smashing, Two-Handed
-- **Ranged Tags**: Flame, Mounted, One-Handed, Powerful
+The **effective mechanical key** is: `mechanicalKeyOverride ?? libraryMechanicalKey`
 
-All tables are editable inline. Rows/groups/tags can be added and removed. Saved to Supabase `game_data` table per user (upsert on conflict). 1-second debounce auto-save.
+### Charm UI (CharmPanel in SheetTab)
+- Flat list of `CharacterCharm[]` per character
+- "Browse" button opens `CharmBrowseModal` — fetches library from Supabase, grouped by ability, searchable, with "Add" button per charm
+- Each charm row: name, description (custom or library), edit/revert/toggle controls
+- Custom description overrides library text per character
+- Reverting restores library description
+- `mechanicalEnabled` toggle controls whether coded effects (like FoI button visibility) are active
 
-GameData is loaded in CharacterPage and passed down to SheetTab → InventoryPanel → ItemModal so the item creation modal always reflects the user's current Options data.
+### Mechanical Key Gating
+Any UI feature gated by a mechanical key checks: does the character have a charm with that effective key AND `mechanicalEnabled = true`? If not, the feature is hidden. Example: FoI button only shows if a `'foi'` charm is present and enabled.
+
+## Pages & Navigation
+
+### Character List Page (`/`)
+Header: Settings link (all users) + Setup link (admins only) + Sign out.
+
+### Character Page (`/character/:id`)
+Header: Settings link + Setup link (admins only) + Edit Layout toggle.
+
+### Settings Page (`/options`) — all users
+Left sidebar with sections:
+- **Account**: email (read-only), role (read-only), editable username (saves to `user_profiles.display_name`), Change Password button
+- **Appearance**: light/dark theme toggle (persisted to localStorage via ThemeContext)
+
+Password change uses a modal with Current Password / New Password / Confirm Password fields, each with an inline eye toggle. Re-authenticates with current password before applying the change.
+
+### Setup Page (`/setup`) — admin only
+The admin configuration area. Left tabs:
+- **Tables**: editable reference tables (Weapons, Armor, Equipment Tags, Essence Motes, Anima States)
+- **Charms**: full CRUD for the global charm library, grouped by ability
+
+## User & Role System
+
+### Roles
+Two roles: `admin` and `player`. Stored in the `user_profiles` table. New users auto-get `player` role via a Supabase trigger on signup.
+
+- **Admin**: can write to `charm_library`, can access `/setup`, sees "Setup" button in headers
+- **Player**: read-only access to charm library, sees only "Settings" in headers
+
+Role is fetched from `user_profiles` on login and exposed via `AuthContext.role`.
+
+Angel's account (`c5d208d8-3d47-4dc3-b76b-c211d8486c3b`) has `role = 'admin'`.
 
 ## The User
 - **Angel** (angel.y.pappas@gmail.com / ange.pap@hotmail.com — GitHub/Vercel use the hotmail)
-- Solo player, one primary character currently named **Kaien, Wall of the Sun**
+- Solo player currently, building toward multi-player with co-players joining
+- One primary character: **Kaien, Wall of the Sun**
 - Comfortable giving layout/design direction in grid-unit terms
 - Prefers to be walked through setup steps one at a time
 
 ## Workflow
 - Development happens locally on Angel's Windows 11 PC at `C:\Users\AngeP\Exalted-Character-App`
-- Changes are pushed to GitHub by Claude Code using the stored token
+- Changes are pushed to GitHub by Claude Code — always push immediately after every code change
 - Vercel auto-deploys on every push to `main`
 - **Important:** the GitHub repo must be **public** for Vercel free-tier auto-deploy to work
 - Angel reviews changes on the live Vercel URL — does not run a local dev server
-- Angel says "push" (or "yes") when ready to deploy — do not push until told
 
 ## What's Been Built
 - Auth (email/password via Supabase)
-- Character list with create/delete; Options link in header
-- Character page with 4 tabs: Sheet, Milestones, Notes, Characters; Options link in header
-- **Options page** (`/options`): Information tab with editable Weapons, Armor, Equipment Tags reference tables; saved to `game_data` Supabase table
-- **Character Sheet panels (11 total):**
-  - Attributes, Abilities (with Excellency + Specialty), Defenses (with Defend Other + Full Defense toggles), Motes, Health track, Languages, Merits, Intimacies
-  - Charms — categories + expandable entries; drag to reorder charms and categories
-  - Effects — same structure as Charms
-  - Inventory — 3 fixed sections (Weapons/Armor/Other); full item modal with kind-specific fields, auto-fill from GameData, tag picker; FoI charm toggle on Weapons header
+- Character list with create/delete; Settings + Setup links in header
+- Character page with 4 tabs: Sheet, Milestones, Notes, Characters
+- **Settings page** (`/options`): Account (username/password edit) + Appearance (theme toggle)
+- **Setup page** (`/setup`, admin only): Tables tab (editable Weapons/Armor/Tags/EssenceMotes/AnimaStates) + Charms tab (global charm library CRUD)
+- **Character Sheet panels (13 total):**
+  - Attributes, Abilities (with Excellency + Specialty), Defenses (calculated, with Defend Other + Full Defense toggles + manual bonus fields), Motes (Current/Committed/Total with auto-total from essence), Health track, Languages, Merits, Intimacies
+  - Charms — flat CharacterCharm list, browse-from-library modal, custom descriptions, mechanical gating
+  - Effects — categories + expandable entries; drag to reorder
+  - Inventory — 3 fixed sections (Weapons/Armor/Other); full item modal; FoI charm toggle gated by mechanical key
+  - Anima, Essence panels
 - Milestones: 4-type XP log with session reward form, purchase form, editable transaction table
 - Notes: free-form textarea
 - Characters tab: NPC list with per-NPC notes
 - Auto-save to Supabase (1 second debounce)
-- 404-on-refresh fix via vercel.json rewrites
-- **Drag-and-drop grid layout editor** (11 panels, 128-column grid, Edit Layout toggle)
+- **Drag-and-drop grid layout editor** (13 panels, 128-column grid, Edit Layout toggle)
+- **User role system**: admin/player, DB-enforced via RLS, UI gates Setup access
 
 ## Next Planned Features
-- Calculated/dynamic defenses (currently manual number fields)
+- Light mode CSS variable theming (toggle exists, colors not yet wired up)
+- More charm mechanical implementations (one-by-one as needed)
