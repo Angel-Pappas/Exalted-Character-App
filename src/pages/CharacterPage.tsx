@@ -96,7 +96,7 @@ export default function CharacterPage() {
         </div>
         <div className="flex items-center gap-3">
           {saving && <span className="text-xs text-stone-500">Saving…</span>}
-          <button onClick={() => navigate('/options')} className="text-xs text-stone-400 hover:text-stone-200 transition-colors">Options</button>
+          <button onClick={() => navigate('/options')} className="text-xs text-stone-400 hover:text-stone-200 transition-colors">Settings</button>
           {activeTab === 'sheet' && (
             <button
               onClick={() => setSheetEditMode(v => !v)}

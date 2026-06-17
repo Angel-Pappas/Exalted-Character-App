@@ -242,7 +242,7 @@ export default function OptionsPage() {
       <header className="flex items-center justify-between px-4 py-3 border-b border-stone-700 shrink-0">
         <div className="flex items-center gap-3">
           <button onClick={() => navigate(-1)} className="text-stone-400 hover:text-stone-200 text-sm">← Back</button>
-          <h1 className="text-amber-400 font-semibold">Options</h1>
+          <h1 className="text-amber-400 font-semibold">Settings</h1>
         </div>
         {saving && <span className="text-xs text-stone-500">Saving…</span>}
       </header>
