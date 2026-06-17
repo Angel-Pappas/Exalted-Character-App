@@ -1281,7 +1281,7 @@ export default function SheetTab({ sheet, onChange, editMode, gameData: gd }: Pr
     update({ health: data.health.map((h, idx) => idx === i ? { ...h, checked: !h.checked } : h) })
   }
 
-  const panelBase = "bg-stone-900 border border-stone-700 rounded-lg p-2 overflow-hidden h-full"
+  const panelBase = "bg-stone-900 border border-stone-700 rounded-lg p-2 overflow-y-auto no-scrollbar h-full"
 
   const selectedExalt = exaltTypes.find(e => e.name === data.exaltType) ?? null
 
