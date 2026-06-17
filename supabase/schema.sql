@@ -65,3 +65,39 @@ create policy "Users can update own game data"
 create trigger game_data_updated_at
   before update on public.game_data
   for each row execute function public.set_updated_at();
+
+-- Charm library table (global, shared across all users)
+create table if not exists public.charm_library (
+  id uuid primary key default gen_random_uuid(),
+  ability text not null default '',
+  name text not null default '',
+  description text not null default '',
+  mechanical_key text,
+  sort_order integer not null default 0,
+  created_at timestamptz default now(),
+  updated_at timestamptz default now()
+);
+
+alter table public.charm_library enable row level security;
+
+-- Everyone can read
+create policy "Anyone can read charm library"
+  on public.charm_library for select
+  using (true);
+
+-- Only angel.y.pappas@gmail.com can write
+create policy "Owner can insert charms"
+  on public.charm_library for insert
+  with check (auth.email() = 'angel.y.pappas@gmail.com');
+
+create policy "Owner can update charms"
+  on public.charm_library for update
+  using (auth.email() = 'angel.y.pappas@gmail.com');
+
+create policy "Owner can delete charms"
+  on public.charm_library for delete
+  using (auth.email() = 'angel.y.pappas@gmail.com');
+
+create trigger charm_library_updated_at
+  before update on public.charm_library
+  for each row execute function public.set_updated_at();

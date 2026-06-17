@@ -5,7 +5,7 @@ import { GridLayout, useContainerWidth, noCompactor } from 'react-grid-layout'
 // Override it so panels can freely overlap — no collision resolution, no compaction.
 const freeCompactor = { ...noCompactor, allowOverlap: true }
 import 'react-grid-layout/css/styles.css'
-import type { SheetData, FoiState, AbilityData, MeritEntry, IntimacyEntry, HealthBox, PanelLayout, CharmCategory, CharmEntry, EffectCategory, EffectEntry, InventoryItem, InventoryItemKind, WeaponWeight, ArtifactColor, GameData } from '../types/character'
+import type { SheetData, FoiState, AbilityData, MeritEntry, IntimacyEntry, HealthBox, PanelLayout, CharacterCharm, EffectCategory, EffectEntry, InventoryItem, InventoryItemKind, WeaponWeight, ArtifactColor, GameData } from '../types/character'
 import { DEFAULT_GAME_DATA } from '../types/character'
 
 const ATTRIBUTE_GROUPS = [
@@ -89,228 +89,181 @@ function SectionHeader({ title }: { title: string }) {
 const inputCls = "w-full bg-stone-800 border border-stone-600 text-stone-100 rounded px-2 py-0.5 text-xs focus:outline-none focus:border-amber-500 placeholder-stone-500"
 const inputActive = "w-full bg-stone-800 border border-amber-500 text-stone-100 rounded px-2 py-0.5 text-xs focus:outline-none"
 
-function CharmPanel({ categories, onChange, dragEnabled }: {
-  categories: CharmCategory[]
-  onChange: (c: CharmCategory[]) => void
-  dragEnabled: boolean
+function CharmBrowseModal({ existing, onAdd, onClose }: {
+  existing: import('../types/character').CharacterCharm[]
+  onAdd: (charm: import('../types/character').LibraryCharm) => void
+  onClose: () => void
 }) {
+  const [library, setLibrary] = useState<import('../types/character').LibraryCharm[]>([])
+  const [loading, setLoading] = useState(true)
+  const [search, setSearch] = useState('')
+  const existingIds = new Set(existing.map(c => c.libraryId))
+
+  useEffect(() => {
+    import('../lib/supabase').then(({ supabase }) =>
+      supabase.from('charm_library').select('*').order('ability').order('sort_order').order('name')
+        .then(({ data }) => {
+          if (data) setLibrary(data.map((r: any) => ({ id: r.id, ability: r.ability, name: r.name, description: r.description, mechanicalKey: r.mechanical_key ?? null, sort_order: r.sort_order })))
+          setLoading(false)
+        })
+    )
+  }, [])
+
+  const filtered = library.filter(c =>
+    !search || c.name.toLowerCase().includes(search.toLowerCase()) || c.ability.toLowerCase().includes(search.toLowerCase())
+  )
+  const abilities = [...new Set(filtered.map(c => c.ability))].sort()
+
+  return (
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/70" onClick={onClose}>
+      <div className="bg-stone-900 border border-stone-700 rounded-xl w-[480px] max-h-[80vh] flex flex-col shadow-2xl" onClick={e => e.stopPropagation()}>
+        <div className="flex items-center justify-between px-4 py-3 border-b border-stone-700 shrink-0">
+          <span className="text-sm font-semibold text-amber-400">Add Charm</span>
+          <button onClick={onClose} className="text-stone-500 hover:text-stone-300 text-xs">✕</button>
+        </div>
+        <div className="px-4 py-2 border-b border-stone-800 shrink-0">
+          <input autoFocus value={search} onChange={e => setSearch(e.target.value)} placeholder="Search charms…"
+            className="w-full bg-stone-800 border border-stone-700 text-stone-100 rounded px-2 py-1 text-xs focus:outline-none focus:border-amber-500" />
+        </div>
+        <div className="overflow-y-auto flex-1 no-scrollbar">
+          {loading && <p className="text-xs text-stone-500 p-4">Loading…</p>}
+          {!loading && filtered.length === 0 && <p className="text-xs text-stone-500 p-4">No charms found.</p>}
+          {abilities.map(ability => (
+            <div key={ability || '__none__'}>
+              <div className="px-4 py-1.5 bg-stone-800/50 border-b border-stone-700/50">
+                <span className="text-[10px] font-bold uppercase tracking-wider text-amber-400/70">{ability || 'General'}</span>
+              </div>
+              {filtered.filter(c => c.ability === ability).map(charm => {
+                const owned = existingIds.has(charm.id)
+                return (
+                  <div key={charm.id} className={`px-4 py-2 border-b border-stone-800 last:border-0 ${owned ? 'opacity-40' : 'hover:bg-stone-800/40'}`}>
+                    <div className="flex items-center justify-between gap-2">
+                      <div className="flex-1 min-w-0">
+                        <div className="flex items-center gap-2">
+                          <span className="text-xs font-semibold text-stone-100">{charm.name}</span>
+                          {charm.mechanicalKey && <span className="text-[9px] px-1 py-0.5 rounded bg-amber-900/40 border border-amber-700/50 text-amber-400">{charm.mechanicalKey}</span>}
+                        </div>
+                        <p className="text-xs text-stone-400 mt-0.5 leading-relaxed line-clamp-2">{charm.description}</p>
+                      </div>
+                      {!owned && (
+                        <button onClick={() => onAdd(charm)} className="shrink-0 text-xs bg-amber-600 hover:bg-amber-500 text-white px-2 py-1 rounded transition-colors">Add</button>
+                      )}
+                      {owned && <span className="shrink-0 text-xs text-stone-600">Added</span>}
+                    </div>
+                  </div>
+                )
+              })}
+            </div>
+          ))}
+        </div>
+      </div>
+    </div>
+  )
+}
+
+function CharmPanel({ charms, onChange }: {
+  charms: import('../types/character').CharacterCharm[]
+  onChange: (c: import('../types/character').CharacterCharm[]) => void
+}) {
+  const [browsing, setBrowsing] = useState(false)
   const [expandedIds, setExpandedIds] = useState<Set<string>>(new Set())
-  const [addingCat, setAddingCat] = useState(false)
-  const [newCatName, setNewCatName] = useState('')
-  const [addingCharmCatId, setAddingCharmCatId] = useState<string | null>(null)
-  const [newCharmName, setNewCharmName] = useState('')
-  const [newCharmText, setNewCharmText] = useState('')
-  const [editingCatId, setEditingCatId] = useState<string | null>(null)
-  const [editCatName, setEditCatName] = useState('')
-  const [editingCharm, setEditingCharm] = useState<{ catId: string; charm: CharmEntry } | null>(null)
-  const [editCharmName, setEditCharmName] = useState('')
-  const [editCharmText, setEditCharmText] = useState('')
-  const [dropTargetCatId, setDropTargetCatId] = useState<string | null>(null)
-  const [catDropBeforeId, setCatDropBeforeId] = useState<string | null>(null)
+  const [editingId, setEditingId] = useState<string | null>(null)
+  const [editDesc, setEditDesc] = useState('')
 
-  const dragging = useRef<{ fromCatId: string; charmId: string } | null>(null)
-  const draggingCat = useRef<string | null>(null)
-
-  function onCatDragStart(e: React.DragEvent, catId: string) {
-    draggingCat.current = catId
-    dragging.current = null
-    e.dataTransfer.effectAllowed = 'move'
-    e.stopPropagation()
-  }
-  function onCatDragOver(e: React.DragEvent, catId: string) {
-    if (!draggingCat.current || draggingCat.current === catId) return
-    e.preventDefault(); e.stopPropagation()
-    setCatDropBeforeId(catId)
-  }
-  function onCatDrop(e: React.DragEvent, beforeCatId: string) {
-    e.preventDefault(); e.stopPropagation()
-    if (!draggingCat.current || draggingCat.current === beforeCatId) { draggingCat.current = null; setCatDropBeforeId(null); return }
-    const fromId = draggingCat.current
-    const next = categories.filter(c => c.id !== fromId)
-    const moving = categories.find(c => c.id === fromId)!
-    const idx = next.findIndex(c => c.id === beforeCatId)
-    next.splice(idx < 0 ? next.length : idx, 0, moving)
-    onChange(next)
-    draggingCat.current = null; setCatDropBeforeId(null)
-  }
-  function onCatDragEnd() { draggingCat.current = null; setCatDropBeforeId(null) }
-
-  function addCategory() {
-    if (!newCatName.trim()) return
-    onChange([...categories, { id: crypto.randomUUID(), name: newCatName.trim(), charms: [] }])
-    setNewCatName(''); setAddingCat(false)
-  }
-  function removeCategory(id: string) { onChange(categories.filter(c => c.id !== id)) }
-  function saveCategory() {
-    if (!editingCatId || !editCatName.trim()) return
-    onChange(categories.map(c => c.id === editingCatId ? { ...c, name: editCatName.trim() } : c))
-    setEditingCatId(null)
-  }
-  function addCharm(catId: string) {
-    if (!newCharmName.trim()) return
-    onChange(categories.map(c => c.id === catId
-      ? { ...c, charms: [...c.charms, { id: crypto.randomUUID(), name: newCharmName.trim(), text: newCharmText }] }
-      : c))
-    setNewCharmName(''); setNewCharmText(''); setAddingCharmCatId(null)
-  }
-  function removeCharm(catId: string, charmId: string) {
-    onChange(categories.map(c => c.id === catId ? { ...c, charms: c.charms.filter(ch => ch.id !== charmId) } : c))
-    setExpandedIds(s => { const n = new Set(s); n.delete(charmId); return n })
-  }
-  function saveCharm() {
-    if (!editingCharm || !editCharmName.trim()) return
-    onChange(categories.map(c => c.id === editingCharm.catId
-      ? { ...c, charms: c.charms.map(ch => ch.id === editingCharm.charm.id ? { ...ch, name: editCharmName.trim(), text: editCharmText } : ch) }
-      : c))
-    setEditingCharm(null)
+  function addCharm(lib: import('../types/character').LibraryCharm) {
+    onChange([...charms, {
+      id: crypto.randomUUID(),
+      libraryId: lib.id,
+      name: lib.name,
+      libraryMechanicalKey: lib.mechanicalKey,
+      customDescription: null,
+      mechanicalKeyOverride: null,
+      mechanicalEnabled: true,
+    }])
   }
 
-  function onCharmDragStart(e: React.DragEvent, fromCatId: string, charmId: string) {
-    dragging.current = { fromCatId, charmId }
-    e.dataTransfer.effectAllowed = 'move'
-  }
-  function onCharmDrop(e: React.DragEvent, toCatId: string, beforeCharmId?: string) {
-    e.preventDefault(); e.stopPropagation()
-    if (!dragging.current) return
-    const { fromCatId, charmId } = dragging.current
-    const charm = categories.find(c => c.id === fromCatId)?.charms.find(ch => ch.id === charmId)
-    if (!charm) return
-    onChange(categories.map(c => {
-      if (c.id === fromCatId && c.id === toCatId) {
-        const filtered = c.charms.filter(ch => ch.id !== charmId)
-        const idx = beforeCharmId ? filtered.findIndex(ch => ch.id === beforeCharmId) : filtered.length
-        filtered.splice(idx < 0 ? filtered.length : idx, 0, charm)
-        return { ...c, charms: filtered }
-      }
-      if (c.id === fromCatId) return { ...c, charms: c.charms.filter(ch => ch.id !== charmId) }
-      if (c.id === toCatId) {
-        const idx = beforeCharmId ? c.charms.findIndex(ch => ch.id === beforeCharmId) : c.charms.length
-        const next = [...c.charms]; next.splice(idx < 0 ? next.length : idx, 0, charm)
-        return { ...c, charms: next }
-      }
-      return c
-    }))
-    dragging.current = null; setDropTargetCatId(null)
+  function removeCharm(id: string) {
+    onChange(charms.filter(c => c.id !== id))
+    setExpandedIds(s => { const n = new Set(s); n.delete(id); return n })
   }
 
-  const btnGhost = "text-stone-500 hover:text-amber-400 transition-colors text-xs"
+  function startEdit(charm: import('../types/character').CharacterCharm, libraryDesc: string) {
+    setEditingId(charm.id)
+    setEditDesc(charm.customDescription ?? libraryDesc)
+  }
+
+  function saveEdit(charm: import('../types/character').CharacterCharm) {
+    onChange(charms.map(c => c.id === charm.id ? { ...c, customDescription: editDesc.trim() || null } : c))
+    setEditingId(null)
+  }
+
+  function revert(id: string) {
+    onChange(charms.map(c => c.id === id ? { ...c, customDescription: null } : c))
+  }
+
+  function toggleMechanical(id: string) {
+    onChange(charms.map(c => c.id === id ? { ...c, mechanicalEnabled: !c.mechanicalEnabled } : c))
+  }
 
   return (
     <div className="bg-stone-900 border border-stone-700 rounded-lg p-2 overflow-hidden h-full flex flex-col">
+      {browsing && <CharmBrowseModal existing={charms} onAdd={charm => { addCharm(charm); }} onClose={() => setBrowsing(false)} />}
+
       <div className="flex items-center justify-between mb-2 shrink-0">
         <SectionHeader title="Charms" />
-        <button onClick={() => setAddingCat(v => !v)} className={btnGhost}>+ category</button>
+        <button onClick={() => setBrowsing(true)} className="text-stone-500 hover:text-amber-400 transition-colors text-xs">+ add</button>
       </div>
 
-      {addingCat && (
-        <div className="flex gap-1 mb-2 shrink-0">
-          <input autoFocus type="text" value={newCatName} onChange={e => setNewCatName(e.target.value)}
-            onKeyDown={e => { if (e.key === 'Enter') addCategory(); if (e.key === 'Escape') setAddingCat(false) }}
-            placeholder="Category name…" className={inputCls} />
-          <button onClick={addCategory} className="bg-amber-600 hover:bg-amber-500 text-white rounded px-2 py-0.5 text-xs">✓</button>
-          <button onClick={() => setAddingCat(false)} className="text-stone-500 hover:text-stone-300 text-xs px-1">✕</button>
-        </div>
-      )}
-
-      <div className="space-y-2 overflow-y-auto no-scrollbar flex-1">
-        {categories.length === 0 && <p className="text-xs text-stone-500">No categories yet.</p>}
-        {categories.map(cat => (
-          <div key={cat.id}
-            onDragOver={e => { if (draggingCat.current) onCatDragOver(e, cat.id); else { e.preventDefault(); setDropTargetCatId(cat.id) } }}
-            onDragLeave={e => { if (!e.currentTarget.contains(e.relatedTarget as Node)) { setDropTargetCatId(null); setCatDropBeforeId(null) } }}
-            onDrop={e => { if (draggingCat.current) onCatDrop(e, cat.id); else onCharmDrop(e, cat.id) }}
-            onDragEnd={onCatDragEnd}
-            className={`rounded border transition-colors ${catDropBeforeId === cat.id ? 'border-amber-400 border-t-2' : dropTargetCatId === cat.id ? 'border-amber-500/60 bg-amber-500/5' : 'border-stone-700/50'}`}
-          >
-            {/* Category header */}
-            <div
-              draggable={dragEnabled}
-              onDragStart={e => dragEnabled && onCatDragStart(e, cat.id)}
-              className={`flex items-center justify-between px-1.5 py-1 ${dragEnabled ? 'cursor-grab active:cursor-grabbing' : ''}`}
-            >
-              {editingCatId === cat.id ? (
-                <div className="flex gap-1 flex-1">
-                  <input autoFocus type="text" value={editCatName} onChange={e => setEditCatName(e.target.value)}
-                    onKeyDown={e => { if (e.key === 'Enter') saveCategory(); if (e.key === 'Escape') setEditingCatId(null) }}
-                    className={inputActive} />
-                  <button onClick={saveCategory} className="bg-amber-600 hover:bg-amber-500 text-white rounded px-1.5 py-0.5 text-xs">✓</button>
-                  <button onClick={() => setEditingCatId(null)} className="text-stone-500 hover:text-stone-300 text-xs">✕</button>
-                </div>
-              ) : (
-                <>
-                  <span className="text-xs font-semibold text-amber-400/80 uppercase tracking-wider">{cat.name}</span>
-                  <div className="flex gap-2">
-                    <button onClick={() => setAddingCharmCatId(cat.id === addingCharmCatId ? null : cat.id)} className={btnGhost}>+ charm</button>
-                    <button onClick={() => { setEditingCatId(cat.id); setEditCatName(cat.name) }} className={btnGhost}>✎</button>
-                    <button onClick={() => removeCategory(cat.id)} className="text-stone-500 hover:text-red-400 transition-colors text-xs">✕</button>
-                  </div>
-                </>
+      <div className="space-y-px overflow-y-auto no-scrollbar flex-1">
+        {charms.length === 0 && <p className="text-xs text-stone-500">No charms. Click + add to browse the library.</p>}
+        {charms.map(charm => (
+          <div key={charm.id} className="rounded border border-stone-700/50">
+            {/* Row */}
+            <div className="flex items-center gap-1 px-1.5 py-1 text-xs">
+              <button onClick={() => setExpandedIds(s => { const n = new Set(s); n.has(charm.id) ? n.delete(charm.id) : n.add(charm.id); return n })}
+                className="text-left text-stone-200 hover:text-amber-300 transition-colors flex-1 min-w-0 truncate">
+                {charm.name}
+              </button>
+              {charm.customDescription !== null && (
+                <span title="Customized" className="w-1.5 h-1.5 rounded-full bg-amber-500 shrink-0" />
               )}
+              {(charm.mechanicalKeyOverride ?? null) !== null || charms.find(c => c.id === charm.id)?.mechanicalEnabled !== undefined ? null : null}
+              <button onClick={() => removeCharm(charm.id)} className="text-stone-600 hover:text-red-400 transition-colors shrink-0">✕</button>
             </div>
 
-            {/* Add charm form */}
-            {addingCharmCatId === cat.id && (
-              <div className="px-1.5 pb-1.5 space-y-1 border-t border-stone-700/50 pt-1">
-                <input autoFocus type="text" value={newCharmName} onChange={e => setNewCharmName(e.target.value)}
-                  placeholder="Charm name…" className={inputCls} />
-                <textarea value={newCharmText} onChange={e => setNewCharmText(e.target.value)}
-                  placeholder="Description…" rows={3}
-                  className="w-full bg-stone-800 border border-stone-600 text-stone-100 rounded px-2 py-1 text-xs focus:outline-none focus:border-amber-500 placeholder-stone-500 resize-none" />
-                <div className="flex gap-1 justify-end">
-                  <button onClick={() => addCharm(cat.id)} className="bg-amber-600 hover:bg-amber-500 text-white rounded px-2 py-0.5 text-xs">Add</button>
-                  <button onClick={() => { setAddingCharmCatId(null); setNewCharmName(''); setNewCharmText('') }} className="text-stone-500 hover:text-stone-300 text-xs px-1">Cancel</button>
-                </div>
+            {/* Expanded */}
+            {expandedIds.has(charm.id) && (
+              <div className="border-t border-stone-800 px-1.5 pb-1.5 pt-1 space-y-1.5">
+                {editingId === charm.id ? (
+                  <>
+                    <textarea value={editDesc} onChange={e => setEditDesc(e.target.value)} rows={4}
+                      className="w-full bg-stone-800 border border-stone-600 text-stone-100 rounded px-2 py-1 text-xs focus:outline-none focus:border-amber-500 resize-none" />
+                    <div className="flex gap-1 justify-end">
+                      <button onClick={() => saveEdit(charm)} className="bg-amber-600 hover:bg-amber-500 text-white rounded px-2 py-0.5 text-xs">Save</button>
+                      <button onClick={() => setEditingId(null)} className="text-stone-500 hover:text-stone-300 text-xs px-1">Cancel</button>
+                    </div>
+                  </>
+                ) : (
+                  <>
+                    <p className="text-xs text-stone-400 leading-relaxed whitespace-pre-wrap">
+                      {charm.customDescription ?? <em className="text-stone-600">No description loaded — library text shown in browse.</em>}
+                    </p>
+                    <div className="flex items-center gap-2 flex-wrap">
+                      <button onClick={() => startEdit(charm, charm.customDescription ?? '')} className="text-xs text-stone-500 hover:text-amber-400 transition-colors">edit</button>
+                      {charm.customDescription !== null && (
+                        <button onClick={() => revert(charm.id)} className="text-xs text-stone-500 hover:text-amber-400 transition-colors">revert to original</button>
+                      )}
+                      {(charm.mechanicalKeyOverride ?? null) !== null || charm.mechanicalEnabled !== undefined ? (
+                        <button onClick={() => toggleMechanical(charm.id)}
+                          className={`text-xs transition-colors ${charm.mechanicalEnabled ? 'text-amber-500 hover:text-stone-400' : 'text-stone-600 hover:text-amber-400'}`}>
+                          {charm.mechanicalEnabled ? 'implementation on' : 'implementation off'}
+                        </button>
+                      ) : null}
+                    </div>
+                  </>
+                )}
               </div>
             )}
-
-            {/* Charm list */}
-            <div>
-              {cat.charms.length === 0 && addingCharmCatId !== cat.id && (
-                <p className="text-xs text-stone-600 px-1.5 pb-1">No charms.</p>
-              )}
-              {cat.charms.map(charm => (
-                <div key={charm.id}
-                  draggable={dragEnabled}
-                  onDragStart={e => dragEnabled && onCharmDragStart(e, cat.id, charm.id)}
-                  onDragOver={e => { e.preventDefault(); e.stopPropagation() }}
-                  onDrop={e => onCharmDrop(e, cat.id, charm.id)}
-                  className={`border-t border-stone-800 px-1.5 ${dragEnabled ? 'cursor-grab active:cursor-grabbing' : ''}`}
-                >
-                  <div className="flex items-center justify-between py-1 text-xs gap-1">
-                    <button onClick={() => setExpandedIds(s => { const n = new Set(s); n.has(charm.id) ? n.delete(charm.id) : n.add(charm.id); return n })}
-                      className="text-left text-stone-200 hover:text-amber-300 transition-colors flex-1 min-w-0 truncate">
-                      {charm.name}
-                    </button>
-                    <div className="flex gap-1 shrink-0">
-                      <button onClick={() => { setEditingCharm({ catId: cat.id, charm }); setEditCharmName(charm.name); setEditCharmText(charm.text) }}
-                        className="text-stone-500 hover:text-amber-400 transition-colors">✎</button>
-                      <button onClick={() => removeCharm(cat.id, charm.id)}
-                        className="text-stone-500 hover:text-red-400 transition-colors">✕</button>
-                    </div>
-                  </div>
-
-                  {expandedIds.has(charm.id) && editingCharm?.charm.id !== charm.id && (
-                    <p className="text-xs text-stone-400 pb-1.5 whitespace-pre-wrap leading-relaxed">
-                      {charm.text || <em className="text-stone-600">No description.</em>}
-                    </p>
-                  )}
-
-                  {editingCharm?.charm.id === charm.id && (
-                    <div className="pb-1.5 space-y-1">
-                      <input type="text" value={editCharmName} onChange={e => setEditCharmName(e.target.value)}
-                        className={inputActive} />
-                      <textarea value={editCharmText} onChange={e => setEditCharmText(e.target.value)}
-                        rows={4}
-                        className="w-full bg-stone-800 border border-stone-600 text-stone-100 rounded px-2 py-1 text-xs focus:outline-none focus:border-amber-500 resize-none" />
-                      <div className="flex gap-1 justify-end">
-                        <button onClick={saveCharm} className="bg-amber-600 hover:bg-amber-500 text-white rounded px-2 py-0.5 text-xs">Save</button>
-                        <button onClick={() => setEditingCharm(null)} className="text-stone-500 hover:text-stone-300 text-xs px-1">Cancel</button>
-                      </div>
-                    </div>
-                  )}
-                </div>
-              ))}
-            </div>
           </div>
         ))}
       </div>
@@ -884,7 +837,7 @@ function FoiModal({ current, foiWeights, foiTags, onSave, onClose }: {
   )
 }
 
-function InventoryPanel({ items, onChange, foi, foiOriginals, onFoiChange, dragEnabled, gameData }: {
+function InventoryPanel({ items, onChange, foi, foiOriginals, onFoiChange, dragEnabled, gameData, charms }: {
   items: InventoryItem[]
   onChange: (items: InventoryItem[]) => void
   foi: FoiState
@@ -892,6 +845,7 @@ function InventoryPanel({ items, onChange, foi, foiOriginals, onFoiChange, dragE
   onFoiChange: (foi: FoiState, originals: Record<string, Partial<InventoryItem>>, items: InventoryItem[]) => void
   dragEnabled: boolean
   gameData: GameData
+  charms: CharacterCharm[]
 }) {
   const [modal, setModal] = useState<Partial<InventoryItem> & { kind: InventoryItemKind } | null>(null)
   const [foiModalOpen, setFoiModalOpen] = useState(false)
@@ -1113,6 +1067,9 @@ function InventoryPanel({ items, onChange, foi, foiOriginals, onFoiChange, dragE
                   <span className="text-xs font-semibold text-amber-400/80 uppercase tracking-wider">{label}</span>
                   <div className="flex items-center gap-1.5">
                     {kind === 'weapon' && (() => {
+                      const activeKey = (c: CharacterCharm) => c.mechanicalKeyOverride ?? c.libraryMechanicalKey
+                      const foiCharm = charms.find(c => activeKey(c) === 'foi' && c.mechanicalEnabled)
+                      if (!foiCharm) return null
                       const hasUnarmed = kindItems.some(i => i.weight === 'Unarmed')
                       return (
                         <button
@@ -1690,9 +1647,8 @@ export default function SheetTab({ sheet, onChange, editMode, gameData: gd }: Pr
 
     charms: (
       <CharmPanel
-        categories={data.charms}
+        charms={data.charms}
         onChange={c => update({ charms: c })}
-        dragEnabled={!editMode}
       />
     ),
 
@@ -1714,6 +1670,7 @@ export default function SheetTab({ sheet, onChange, editMode, gameData: gd }: Pr
         onFoiChange={(foi, foiOriginals, inventory) => update({ foi, foiOriginals, inventory })}
         dragEnabled={!editMode}
         gameData={gameData}
+        charms={data.charms}
       />
     ),
   }

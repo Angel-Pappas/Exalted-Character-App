@@ -1,13 +1,24 @@
-export interface CharmEntry {
+// ── Charm Library (global, stored in Supabase charm_library table) ──────────
+
+export interface LibraryCharm {
   id: string
+  ability: string
   name: string
-  text: string
+  description: string
+  mechanicalKey: string | null
+  sort_order: number
 }
 
-export interface CharmCategory {
-  id: string
-  name: string
-  charms: CharmEntry[]
+// ── Per-character charm (references library) ─────────────────────────────────
+
+export interface CharacterCharm {
+  id: string               // local uuid for list operations
+  libraryId: string
+  name: string             // denormalized snapshot
+  libraryMechanicalKey: string | null  // denormalized from library at add time
+  customDescription: string | null
+  mechanicalKeyOverride: string | null  // null = use libraryMechanicalKey
+  mechanicalEnabled: boolean
 }
 
 export interface EffectEntry {
@@ -138,7 +149,7 @@ export interface SheetData {
   motes: { current: number; committed: number; total: number }
   health: HealthBox[]
   layout: PanelLayout[]
-  charms: CharmCategory[]
+  charms: CharacterCharm[]
   effects: EffectCategory[]
   inventory: InventoryItem[]
   foi: FoiState

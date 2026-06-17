@@ -2,7 +2,7 @@ import { useEffect, useState, useCallback } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { supabase } from '../lib/supabase'
 import { useAuth } from '../contexts/AuthContext'
-import type { GameData, WeaponTableRow, ArmorTableRow, TagEntry, EssenceMoteRow, AnimaStateRow } from '../types/character'
+import type { GameData, WeaponTableRow, ArmorTableRow, TagEntry, EssenceMoteRow, AnimaStateRow, LibraryCharm } from '../types/character'
 import { DEFAULT_GAME_DATA } from '../types/character'
 
 const TABS = ['Tables', 'Charms'] as const
@@ -43,6 +43,31 @@ const STAT_TIPS: Record<string, string> = {
   Hardness: "An armor's Hardness increases the amount of Power required for a character to make a decisive attack against the wearer.",
 }
 
+function EditCharmRow({ charm, onSave, onCancel, saving, textInput }: {
+  charm: LibraryCharm
+  onSave: (c: LibraryCharm) => void
+  onCancel: () => void
+  saving: boolean
+  textInput: string
+}) {
+  const [form, setForm] = useState({ ...charm })
+  const set = (patch: Partial<LibraryCharm>) => setForm(f => ({ ...f, ...patch }))
+  return (
+    <div className="px-3 py-2 space-y-1.5 bg-stone-800/50">
+      <input value={form.ability} onChange={e => set({ ability: e.target.value })} placeholder="Ability group…" className={textInput} />
+      <input value={form.name} onChange={e => set({ name: e.target.value })} placeholder="Name…" className={textInput} />
+      <textarea value={form.description} onChange={e => set({ description: e.target.value })} placeholder="Description…" rows={3} className={`${textInput} resize-none`} />
+      <input value={form.mechanicalKey ?? ''} onChange={e => set({ mechanicalKey: e.target.value || null })} placeholder="Mechanical key (optional)…" className={textInput} />
+      <div className="flex justify-end gap-2">
+        <button onClick={onCancel} className="text-xs text-stone-500 hover:text-stone-300 transition-colors">Cancel</button>
+        <button onClick={() => onSave(form)} disabled={saving || !form.name.trim()} className="text-xs bg-amber-600 hover:bg-amber-500 disabled:opacity-40 text-white px-3 py-1 rounded transition-colors">
+          {saving ? 'Saving…' : 'Save'}
+        </button>
+      </div>
+    </div>
+  )
+}
+
 export default function OptionsPage() {
   const { user } = useAuth()
   const navigate = useNavigate()
@@ -51,6 +76,20 @@ export default function OptionsPage() {
   const [saving, setSaving] = useState(false)
   const [saveTimeout, setSaveTimeoutState] = useState<ReturnType<typeof setTimeout> | null>(null)
   const [loaded, setLoaded] = useState(false)
+
+  // Charm library
+  const [charms, setCharms] = useState<LibraryCharm[]>([])
+  const [charmsLoaded, setCharmsLoaded] = useState(false)
+  const [charmSaving, setCharmSaving] = useState(false)
+  const isOwner = user?.email === 'angel.y.pappas@gmail.com'
+
+  // New charm form
+  const [newCharmAbility, setNewCharmAbility] = useState('')
+  const [newCharmName, setNewCharmName] = useState('')
+  const [newCharmDesc, setNewCharmDesc] = useState('')
+  const [newCharmKey, setNewCharmKey] = useState('')
+  const [addingCharm, setAddingCharm] = useState(false)
+  const [editingCharmId, setEditingCharmId] = useState<string | null>(null)
 
   useEffect(() => {
     if (!user) return
@@ -148,6 +187,51 @@ export default function OptionsPage() {
   }
   function removeTagGroup(gIdx: number) {
     update({ ...data, tagGroups: data.tagGroups.filter((_, gi) => gi !== gIdx) })
+  }
+
+  // Load charm library (all users)
+  useEffect(() => {
+    supabase.from('charm_library').select('*').order('ability').order('sort_order').order('name')
+      .then(({ data: rows }) => {
+        if (rows) setCharms(rows.map(r => ({
+          id: r.id, ability: r.ability, name: r.name,
+          description: r.description, mechanicalKey: r.mechanical_key ?? null, sort_order: r.sort_order,
+        })))
+        setCharmsLoaded(true)
+      })
+  }, [])
+
+  async function addCharm() {
+    if (!newCharmName.trim()) return
+    setCharmSaving(true)
+    const { data: row } = await supabase.from('charm_library').insert({
+      ability: newCharmAbility.trim(),
+      name: newCharmName.trim(),
+      description: newCharmDesc.trim(),
+      mechanical_key: newCharmKey.trim() || null,
+      sort_order: charms.filter(c => c.ability === newCharmAbility.trim()).length,
+    }).select().single()
+    if (row) setCharms(prev => [...prev, { id: row.id, ability: row.ability, name: row.name, description: row.description, mechanicalKey: row.mechanical_key ?? null, sort_order: row.sort_order }])
+    setNewCharmName(''); setNewCharmDesc(''); setNewCharmKey(''); setAddingCharm(false)
+    setCharmSaving(false)
+  }
+
+  async function saveCharm(charm: LibraryCharm) {
+    setCharmSaving(true)
+    await supabase.from('charm_library').update({
+      ability: charm.ability, name: charm.name, description: charm.description,
+      mechanical_key: charm.mechanicalKey ?? null,
+    }).eq('id', charm.id)
+    setCharms(prev => prev.map(c => c.id === charm.id ? charm : c))
+    setEditingCharmId(null)
+    setCharmSaving(false)
+  }
+
+  async function deleteCharm(id: string) {
+    setCharmSaving(true)
+    await supabase.from('charm_library').delete().eq('id', id)
+    setCharms(prev => prev.filter(c => c.id !== id))
+    setCharmSaving(false)
   }
 
   const textInput = "bg-stone-800 border border-stone-700 text-stone-100 rounded px-2 py-1 text-xs focus:outline-none focus:border-amber-500 w-full"
@@ -327,8 +411,67 @@ export default function OptionsPage() {
 
           </div>
         ) : activeTab === 'Charms' ? (
-          <div className="max-w-2xl">
-            <p className="text-xs text-stone-600">Coming soon.</p>
+          <div className="max-w-2xl space-y-4">
+            {!charmsLoaded ? <p className="text-xs text-stone-500">Loading…</p> : (() => {
+              const abilities = [...new Set(charms.map(c => c.ability))].sort()
+              const ungrouped = charms.filter(c => !c.ability)
+              const groups = [...abilities.filter(a => a), ...(ungrouped.length ? [''] : [])]
+              return (
+                <>
+                  {isOwner && (
+                    <div className="flex justify-end">
+                      <button onClick={() => setAddingCharm(v => !v)} className="text-xs text-stone-500 hover:text-amber-400 transition-colors">
+                        {addingCharm ? 'Cancel' : '+ charm'}
+                      </button>
+                    </div>
+                  )}
+
+                  {addingCharm && isOwner && (
+                    <div className="rounded-lg border border-stone-700 bg-stone-900 p-3 space-y-2">
+                      <p className="text-xs font-semibold text-amber-400">New Charm</p>
+                      <input value={newCharmAbility} onChange={e => setNewCharmAbility(e.target.value)} placeholder="Ability group…" className={textInput} />
+                      <input value={newCharmName} onChange={e => setNewCharmName(e.target.value)} placeholder="Name…" className={textInput} />
+                      <textarea value={newCharmDesc} onChange={e => setNewCharmDesc(e.target.value)} placeholder="Description…" rows={3} className={`${textInput} resize-none`} />
+                      <input value={newCharmKey} onChange={e => setNewCharmKey(e.target.value)} placeholder="Mechanical key (optional, e.g. foi)…" className={textInput} />
+                      <div className="flex justify-end">
+                        <button onClick={addCharm} disabled={charmSaving || !newCharmName.trim()} className="text-xs bg-amber-600 hover:bg-amber-500 disabled:opacity-40 text-white px-3 py-1 rounded transition-colors">
+                          {charmSaving ? 'Saving…' : 'Add'}
+                        </button>
+                      </div>
+                    </div>
+                  )}
+
+                  {groups.length === 0 && <p className="text-xs text-stone-600">No charms yet.</p>}
+
+                  {groups.map(ability => (
+                    <section key={ability || '__none__'}>
+                      <h2 className="text-xs font-bold uppercase tracking-wider text-amber-400/70 mb-1.5">{ability || 'Ungrouped'}</h2>
+                      <div className="rounded-lg border border-stone-700 overflow-hidden divide-y divide-stone-800">
+                        {charms.filter(c => c.ability === ability).map(charm => (
+                          editingCharmId === charm.id && isOwner ? (
+                            <EditCharmRow key={charm.id} charm={charm} onSave={saveCharm} onCancel={() => setEditingCharmId(null)} saving={charmSaving} textInput={textInput} />
+                          ) : (
+                            <div key={charm.id} className="px-3 py-2 space-y-0.5">
+                              <div className="flex items-center justify-between gap-2">
+                                <span className="text-xs font-semibold text-stone-100">{charm.name}</span>
+                                <div className="flex items-center gap-2 shrink-0">
+                                  {charm.mechanicalKey && <span className="text-[9px] px-1.5 py-0.5 rounded bg-amber-900/40 border border-amber-700/50 text-amber-400">{charm.mechanicalKey}</span>}
+                                  {isOwner && <>
+                                    <button onClick={() => setEditingCharmId(charm.id)} className="text-stone-600 hover:text-amber-400 text-xs transition-colors">edit</button>
+                                    <button onClick={() => deleteCharm(charm.id)} className="text-stone-600 hover:text-red-400 text-xs transition-colors">✕</button>
+                                  </>}
+                                </div>
+                              </div>
+                              <p className="text-xs text-stone-400 leading-relaxed">{charm.description}</p>
+                            </div>
+                          )
+                        ))}
+                      </div>
+                    </section>
+                  ))}
+                </>
+              )
+            })()}
           </div>
         ) : null}
       </div>
