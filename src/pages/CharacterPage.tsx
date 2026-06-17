@@ -20,7 +20,7 @@ const defaultData: CharacterData = {
 export default function CharacterPage() {
   const { id } = useParams<{ id: string }>()
   const navigate = useNavigate()
-  const { user } = useAuth()
+  const { user, role } = useAuth()
   const [character, setCharacter] = useState<Character | null>(null)
   const [data, setData] = useState<CharacterData>(defaultData)
   const [gameData, setGameData] = useState<GameData>(DEFAULT_GAME_DATA)
@@ -97,6 +97,9 @@ export default function CharacterPage() {
         <div className="flex items-center gap-3">
           {saving && <span className="text-xs text-stone-500">Saving…</span>}
           <button onClick={() => navigate('/options')} className="text-xs text-stone-400 hover:text-stone-200 transition-colors">Settings</button>
+          {role === 'admin' && (
+            <button onClick={() => navigate('/setup')} className="text-xs text-stone-400 hover:text-stone-200 transition-colors">Setup</button>
+          )}
           {activeTab === 'sheet' && (
             <button
               onClick={() => setSheetEditMode(v => !v)}

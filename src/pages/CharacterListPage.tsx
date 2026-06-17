@@ -4,8 +4,9 @@ import { supabase } from '../lib/supabase'
 import { useAuth } from '../contexts/AuthContext'
 import type { Character } from '../types/character'
 
+
 export default function CharacterListPage() {
-  const { user, signOut } = useAuth()
+  const { user, signOut, role } = useAuth()
   const navigate = useNavigate()
   const [characters, setCharacters] = useState<Character[]>([])
   const [newName, setNewName] = useState('')
@@ -46,6 +47,11 @@ export default function CharacterListPage() {
           <button onClick={() => navigate('/options')} className="text-sm text-stone-400 hover:text-stone-200 transition-colors">
             Settings
           </button>
+          {role === 'admin' && (
+            <button onClick={() => navigate('/setup')} className="text-sm text-stone-400 hover:text-stone-200 transition-colors">
+              Setup
+            </button>
+          )}
           <button onClick={signOut} className="text-sm text-stone-400 hover:text-stone-200 transition-colors">
             Sign out
           </button>
