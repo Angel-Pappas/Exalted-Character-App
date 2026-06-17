@@ -64,6 +64,11 @@ export default function SettingsPage() {
   const [displayNameSaving, setDisplayNameSaving] = useState(false)
   const [displayNameMsg, setDisplayNameMsg] = useState<string | null>(null)
 
+  const [showUsernameModal, setShowUsernameModal] = useState(false)
+  const [newUsername, setNewUsername] = useState('')
+  const [usernameSaving, setUsernameSaving] = useState(false)
+  const [usernameMsg, setUsernameMsg] = useState<{ text: string; error: boolean } | null>(null)
+
   const [showPasswordModal, setShowPasswordModal] = useState(false)
   const [currentPassword, setCurrentPassword] = useState('')
   const [newPassword, setNewPassword] = useState('')
@@ -94,6 +99,29 @@ export default function SettingsPage() {
     setDisplayNameSaving(false)
     setDisplayNameMsg(error ? 'Failed to save.' : 'Saved.')
     setTimeout(() => setDisplayNameMsg(null), 2000)
+  }
+
+  function closeUsernameModal() {
+    setShowUsernameModal(false)
+    setNewUsername('')
+    setUsernameMsg(null)
+  }
+
+  async function saveUsername() {
+    const trimmed = newUsername.trim()
+    if (!trimmed) { setUsernameMsg({ text: 'Enter a username.', error: true }); return }
+    if (trimmed.includes(' ')) { setUsernameMsg({ text: 'No spaces allowed.', error: true }); return }
+    setUsernameSaving(true)
+    setUsernameMsg(null)
+    const newEmail = trimmed.includes('@') ? trimmed : usernameToEmail(trimmed)
+    const { error } = await supabase.auth.updateUser({ email: newEmail })
+    setUsernameSaving(false)
+    if (error) {
+      setUsernameMsg({ text: error.message, error: true })
+    } else {
+      setUsernameMsg({ text: 'Username updated.', error: false })
+      setTimeout(() => closeUsernameModal(), 1500)
+    }
   }
 
   function closeModal() {
@@ -182,7 +210,15 @@ export default function SettingsPage() {
               <div className="bg-stone-900 border border-stone-700 rounded-lg divide-y divide-stone-700">
                 <div className="flex items-center justify-between px-4 py-3">
                   <span className="text-sm text-stone-400">Username</span>
-                  <span className="text-sm text-stone-300">{username}</span>
+                  <div className="flex items-center gap-3">
+                    <span className="text-sm text-stone-300">{username}</span>
+                    <button
+                      onClick={() => setShowUsernameModal(true)}
+                      className="text-xs text-stone-500 hover:text-stone-300 transition-colors"
+                    >
+                      Change
+                    </button>
+                  </div>
                 </div>
                 <div className="flex items-center justify-between px-4 py-3">
                   <span className="text-sm text-stone-400">Role</span>
@@ -258,6 +294,48 @@ export default function SettingsPage() {
           )}
         </div>
       </div>
+
+      {/* Change Username Modal */}
+      {showUsernameModal && (
+        <div className="fixed inset-0 bg-black/60 flex items-center justify-center z-50 p-4">
+          <div className="bg-stone-900 border border-stone-700 rounded-xl w-full max-w-sm p-6 space-y-4 shadow-2xl">
+            <h3 className="text-base font-semibold text-stone-200">Change Username</h3>
+            <div className="space-y-1">
+              <label className="text-xs text-stone-400">New Username</label>
+              <input
+                type="text"
+                value={newUsername}
+                onChange={e => setNewUsername(e.target.value)}
+                onKeyDown={e => e.key === 'Enter' && saveUsername()}
+                placeholder="new_username"
+                autoFocus
+                className="w-full bg-stone-800 border border-stone-600 text-stone-100 rounded px-3 py-1.5 text-sm focus:outline-none focus:border-amber-500 placeholder-stone-500"
+              />
+              <p className="text-xs text-stone-500 pt-0.5">You'll log in with this name going forward.</p>
+            </div>
+            {usernameMsg && (
+              <p className={`text-xs ${usernameMsg.error ? 'text-red-400' : 'text-green-400'}`}>
+                {usernameMsg.text}
+              </p>
+            )}
+            <div className="flex gap-2 pt-1">
+              <button
+                onClick={saveUsername}
+                disabled={usernameSaving}
+                className="flex-1 py-2 bg-amber-600 hover:bg-amber-500 disabled:opacity-50 text-white text-sm font-medium rounded transition-colors"
+              >
+                {usernameSaving ? 'Saving…' : 'Save'}
+              </button>
+              <button
+                onClick={closeUsernameModal}
+                className="px-4 py-2 bg-stone-800 hover:bg-stone-700 border border-stone-600 text-stone-300 text-sm rounded transition-colors"
+              >
+                Cancel
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* Change Password Modal */}
       {showPasswordModal && (
