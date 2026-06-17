@@ -66,6 +66,40 @@ create trigger game_data_updated_at
   before update on public.game_data
   for each row execute function public.set_updated_at();
 
+-- User profiles table (role management)
+create table if not exists public.user_profiles (
+  user_id uuid primary key references auth.users(id) on delete cascade,
+  role text not null default 'player' check (role in ('admin', 'player')),
+  display_name text,
+  created_at timestamptz default now()
+);
+
+alter table public.user_profiles enable row level security;
+
+-- Anyone logged in can read all profiles
+create policy "Users can read all profiles"
+  on public.user_profiles for select
+  using (auth.uid() is not null);
+
+-- Users can only update their own profile
+create policy "Users can update own profile"
+  on public.user_profiles for update
+  using (auth.uid() = user_id);
+
+-- Auto-create a player profile on signup
+create or replace function public.handle_new_user()
+returns trigger language plpgsql security definer as $$
+begin
+  insert into public.user_profiles (user_id, role)
+  values (new.id, 'player');
+  return new;
+end;
+$$;
+
+create or replace trigger on_auth_user_created
+  after insert on auth.users
+  for each row execute function public.handle_new_user();
+
 -- Charm library table (global, shared across all users)
 create table if not exists public.charm_library (
   id uuid primary key default gen_random_uuid(),
@@ -86,17 +120,17 @@ create policy "Anyone can read charm library"
   using (true);
 
 -- Only angel.y.pappas@gmail.com can write
-create policy "Owner can insert charms"
+create policy "Admins can insert charms"
   on public.charm_library for insert
-  with check (auth.email() = 'angel.y.pappas@gmail.com');
+  with check (exists (select 1 from public.user_profiles where user_id = auth.uid() and role = 'admin'));
 
-create policy "Owner can update charms"
+create policy "Admins can update charms"
   on public.charm_library for update
-  using (auth.email() = 'angel.y.pappas@gmail.com');
+  using (exists (select 1 from public.user_profiles where user_id = auth.uid() and role = 'admin'));
 
-create policy "Owner can delete charms"
+create policy "Admins can delete charms"
   on public.charm_library for delete
-  using (auth.email() = 'angel.y.pappas@gmail.com');
+  using (exists (select 1 from public.user_profiles where user_id = auth.uid() and role = 'admin'));
 
 create trigger charm_library_updated_at
   before update on public.charm_library

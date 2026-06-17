@@ -69,7 +69,7 @@ function EditCharmRow({ charm, onSave, onCancel, saving, textInput }: {
 }
 
 export default function OptionsPage() {
-  const { user } = useAuth()
+  const { user, role } = useAuth()
   const navigate = useNavigate()
   const [activeTab, setActiveTab] = useState<Tab>('Tables')
   const [data, setData] = useState<GameData>(DEFAULT_GAME_DATA)
@@ -81,7 +81,7 @@ export default function OptionsPage() {
   const [charms, setCharms] = useState<LibraryCharm[]>([])
   const [charmsLoaded, setCharmsLoaded] = useState(false)
   const [charmSaving, setCharmSaving] = useState(false)
-  const isOwner = !!user
+  const isOwner = role === 'admin'
 
   // New charm form
   const [newCharmAbility, setNewCharmAbility] = useState('')
