@@ -1373,19 +1373,19 @@ export default function SheetTab({ sheet, onChange, editMode, gameData: gd }: Pr
       const integ   = data.abilities['Integrity']?.rating    ?? 0
       const equippedWeapons = data.inventory.filter(i => i.kind === 'weapon' && i.equipped)
       const equippedArmors  = data.inventory.filter(i => i.kind === 'armor'  && i.equipped)
-      const bestWpnDef     = equippedWeapons.length ? Math.max(...equippedWeapons.map(i => i.defense ?? 0)) : 0
-      const totalArmorSoak = equippedArmors.reduce((s, i) => s + (i.soak ?? 0), 0)
-      const totalArmorHard = equippedArmors.reduce((s, i) => s + (i.hardness ?? 0), 0)
+      const bestWpnDef  = equippedWeapons.length ? Math.max(...equippedWeapons.map(i => i.defense ?? 0)) : 0
+      const bestArmorSoak = equippedArmors.length ? Math.max(...equippedArmors.map(i => i.soak ?? 0)) : 0
+      const bestArmorHard = equippedArmors.length ? Math.max(...equippedArmors.map(i => i.hardness ?? 0)) : 0
       const db = data.defenseBonus
-      const parryBase    = Math.ceil((stamina + cc) / 2)
-      const evasionBase  = Math.ceil((dex + ath) / 2)
+      const parryBase    = Math.floor((stamina + cc) / 2)
+      const evasionBase  = Math.floor((dex + ath) / 2)
       const soakBase     = 1 + (phys >= 3 ? 1 : 0)
       const hardnessBase = 2 + (data.essence ?? 1)
       const resolveBase  = (integ >= 3 ? 4 : integ >= 1 ? 3 : 2) + (db.resolve ?? 0)
-      const parry    = parryBase    + bestWpnDef    + (db.parry    ?? 0)
-      const evasion  = evasionBase                  + (db.evasion  ?? 0)
-      const soak     = soakBase     + totalArmorSoak + (db.soak     ?? 0)
-      const hardness = hardnessBase + totalArmorHard + (db.hardness ?? 0)
+      const parry    = parryBase    + (data.fullDefense ? bestWpnDef : 0) + (db.parry    ?? 0)
+      const evasion  = evasionBase                                         + (db.evasion  ?? 0)
+      const soak     = soakBase     + bestArmorSoak                        + (db.soak     ?? 0)
+      const hardness = hardnessBase + bestArmorHard                        + (db.hardness ?? 0)
       const bonusInput = (key: keyof typeof db) => (
         <input type="number" value={db[key] ?? 0}
           onChange={e => update({ defenseBonus: { ...db, [key]: parseInt(e.target.value) || 0 } })}
@@ -1407,10 +1407,10 @@ export default function SheetTab({ sheet, onChange, editMode, gameData: gd }: Pr
         <div className="bg-stone-900 border border-stone-700 rounded-lg p-2 overflow-visible h-full" data-tooltip-panel>
           <SectionHeader title="Defenses" />
           <div className="space-y-1.5">
-            {calcRow('Parry',    parry,    `(Stamina ${stamina} + Close Combat ${cc}) / 2 + Weapon Defense ${bestWpnDef} + Bonus ${db.parry ?? 0}`, bonusInput('parry'))}
-            {calcRow('Evasion',  evasion,  `(Dexterity ${dex} + Athletics ${ath}) / 2 + Bonus ${db.evasion ?? 0}`, bonusInput('evasion'))}
-            {calcRow('Soak',     soak,     `${soakBase} base + Armor ${totalArmorSoak} + Bonus ${db.soak ?? 0}`, bonusInput('soak'))}
-            {calcRow('Hardness', hardness, `${hardnessBase} base (2 + Essence ${data.essence ?? 1}) + Armor ${totalArmorHard} + Bonus ${db.hardness ?? 0}`, bonusInput('hardness'))}
+            {calcRow('Parry',    parry,    `floor((Stamina ${stamina} + Close Combat ${cc}) / 2)${data.fullDefense ? ` + Weapon Defense ${bestWpnDef}` : ' (Full Defense off)'} + Bonus ${db.parry ?? 0}`, bonusInput('parry'))}
+            {calcRow('Evasion',  evasion,  `floor((Dexterity ${dex} + Athletics ${ath}) / 2) + Bonus ${db.evasion ?? 0}`, bonusInput('evasion'))}
+            {calcRow('Soak',     soak,     `${soakBase} base + Best Armor Soak ${bestArmorSoak} + Bonus ${db.soak ?? 0}`, bonusInput('soak'))}
+            {calcRow('Hardness', hardness, `${hardnessBase} base (2 + Essence ${data.essence ?? 1}) + Best Armor Hardness ${bestArmorHard} + Bonus ${db.hardness ?? 0}`, bonusInput('hardness'))}
             {calcRow('Resolve', resolveBase, `2 base + Integrity ${integ} bonus`, bonusInput('resolve'))}
             <div className="border-t border-stone-700 pt-1 mt-1 space-y-1">
               {([['defenseOther', 'Defend Other'], ['fullDefense', 'Full Defense']] as const).map(([key, label]) => (
