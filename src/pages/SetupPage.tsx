@@ -2,7 +2,7 @@ import { useEffect, useState, useCallback } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { supabase } from '../lib/supabase'
 import { useAuth } from '../contexts/AuthContext'
-import type { GameData, WeaponTableRow, ArmorTableRow, TagEntry, EssenceMoteRow, AnimaStateRow, LibraryCharm } from '../types/character'
+import type { GameData, WeaponTableRow, ArmorTableRow, TagEntry, EssenceMoteRow, AnimaStateRow, LibraryCharm, ExaltType } from '../types/character'
 import { DEFAULT_GAME_DATA } from '../types/character'
 
 const TABS = ['Tables', 'Charms'] as const
@@ -61,6 +61,38 @@ function EditCharmRow({ charm, onSave, onCancel, saving, textInput }: {
       <div className="flex justify-end gap-2">
         <button onClick={onCancel} className="text-xs text-stone-500 hover:text-stone-300 transition-colors">Cancel</button>
         <button onClick={() => onSave(form)} disabled={saving || !form.name.trim()} className="text-xs bg-amber-600 hover:bg-amber-500 disabled:opacity-40 text-white px-3 py-1 rounded transition-colors">
+          {saving ? 'Saving…' : 'Save'}
+        </button>
+      </div>
+    </div>
+  )
+}
+
+function EditExaltRow({ et, onSave, onCancel, saving, textInput }: {
+  et: ExaltType
+  onSave: (et: ExaltType, castesText: string) => void
+  onCancel: () => void
+  saving: boolean
+  textInput: string
+}) {
+  const [form, setForm] = useState({ ...et })
+  const [castesText, setCastesText] = useState(et.castes.join(', '))
+  return (
+    <div className="px-3 py-2 space-y-1.5 bg-stone-800/50">
+      <input value={form.name} onChange={e => setForm(f => ({ ...f, name: e.target.value }))} placeholder="Name…" className={textInput} />
+      <div className="flex gap-2 items-center">
+        <span className="text-xs text-stone-400 shrink-0">Label:</span>
+        {(['Caste', 'Aspect'] as const).map(l => (
+          <button key={l} onClick={() => setForm(f => ({ ...f, casteLabel: l }))}
+            className={`px-2 py-0.5 rounded text-xs transition-colors ${form.casteLabel === l ? 'bg-amber-500 text-stone-950' : 'bg-stone-800 border border-stone-600 text-stone-400 hover:text-stone-200'}`}>
+            {l}
+          </button>
+        ))}
+      </div>
+      <input value={castesText} onChange={e => setCastesText(e.target.value)} placeholder="Castes/Aspects, comma-separated…" className={textInput} />
+      <div className="flex justify-end gap-2">
+        <button onClick={onCancel} className="text-xs text-stone-500 hover:text-stone-300 transition-colors">Cancel</button>
+        <button onClick={() => onSave(form, castesText)} disabled={saving || !form.name.trim()} className="text-xs bg-amber-600 hover:bg-amber-500 disabled:opacity-40 text-white px-3 py-1 rounded transition-colors">
           {saving ? 'Saving…' : 'Save'}
         </button>
       </div>
@@ -187,6 +219,61 @@ export default function SetupPage() {
   }
   function removeTagGroup(gIdx: number) {
     update({ ...data, tagGroups: data.tagGroups.filter((_, gi) => gi !== gIdx) })
+  }
+
+  // Exalt types
+  const [exaltTypes, setExaltTypes] = useState<ExaltType[]>([])
+  const [exaltTypesLoaded, setExaltTypesLoaded] = useState(false)
+  const [exaltSaving, setExaltSaving] = useState(false)
+  const [editingExaltId, setEditingExaltId] = useState<string | null>(null)
+  const [addingExalt, setAddingExalt] = useState(false)
+  const [newExalt, setNewExalt] = useState<Omit<ExaltType, 'id' | 'sort_order'>>({ name: '', casteLabel: 'Caste', castes: [] })
+  const [newExaltCastesText, setNewExaltCastesText] = useState('')
+
+  useEffect(() => {
+    supabase.from('exalt_types').select('*').order('sort_order').order('name')
+      .then(({ data: rows }) => {
+        if (rows) setExaltTypes(rows.map(r => ({
+          id: r.id, name: r.name, casteLabel: r.caste_label as 'Caste' | 'Aspect',
+          castes: r.castes ?? [], sort_order: r.sort_order,
+        })))
+        setExaltTypesLoaded(true)
+      })
+  }, [])
+
+  async function addExaltType() {
+    if (!newExalt.name.trim()) return
+    setExaltSaving(true)
+    const castesArr = newExaltCastesText.split(',').map(s => s.trim()).filter(Boolean)
+    const { data: row } = await supabase.from('exalt_types').insert({
+      name: newExalt.name.trim(),
+      caste_label: newExalt.casteLabel,
+      castes: castesArr,
+      sort_order: exaltTypes.length,
+    }).select().single()
+    if (row) setExaltTypes(prev => [...prev, { id: row.id, name: row.name, casteLabel: row.caste_label, castes: row.castes, sort_order: row.sort_order }])
+    setNewExalt({ name: '', casteLabel: 'Caste', castes: [] })
+    setNewExaltCastesText('')
+    setAddingExalt(false)
+    setExaltSaving(false)
+  }
+
+  async function saveExaltType(et: ExaltType, castesText: string) {
+    setExaltSaving(true)
+    const castesArr = castesText.split(',').map(s => s.trim()).filter(Boolean)
+    await supabase.from('exalt_types').update({
+      name: et.name, caste_label: et.casteLabel, castes: castesArr,
+    }).eq('id', et.id)
+    setExaltTypes(prev => prev.map(e => e.id === et.id ? { ...et, castes: castesArr } : e))
+    setEditingExaltId(null)
+    setExaltSaving(false)
+  }
+
+  async function deleteExaltType(id: string) {
+    setExaltSaving(true)
+    await supabase.from('exalt_types').delete().eq('id', id)
+    setExaltTypes(prev => prev.filter(e => e.id !== id))
+    setExaltSaving(false)
   }
 
   // Load charm library (all users)
@@ -407,6 +494,63 @@ export default function SetupPage() {
                   </div>
                 ))}
               </div>
+            </section>
+
+            {/* ── Exalt Types ── */}
+            <section>
+              <div className="flex items-center justify-between mb-1.5">
+                <h2 className="text-base font-semibold text-amber-400">Exalt Types</h2>
+                {isOwner && <button onClick={() => setAddingExalt(v => !v)} className="text-xs text-stone-500 hover:text-amber-400 transition-colors">{addingExalt ? 'Cancel' : '+ type'}</button>}
+              </div>
+
+              {addingExalt && isOwner && (
+                <div className="rounded-lg border border-stone-700 bg-stone-900 p-3 space-y-2 mb-2">
+                  <p className="text-xs font-semibold text-amber-400">New Exalt Type</p>
+                  <input value={newExalt.name} onChange={e => setNewExalt(f => ({ ...f, name: e.target.value }))} placeholder="Name… (e.g. Solar Exalted)" className={textInput} />
+                  <div className="flex gap-2 items-center">
+                    <span className="text-xs text-stone-400 shrink-0">Label:</span>
+                    {(['Caste', 'Aspect'] as const).map(l => (
+                      <button key={l} onClick={() => setNewExalt(f => ({ ...f, casteLabel: l }))}
+                        className={`px-2 py-0.5 rounded text-xs transition-colors ${newExalt.casteLabel === l ? 'bg-amber-500 text-stone-950' : 'bg-stone-800 border border-stone-600 text-stone-400 hover:text-stone-200'}`}>
+                        {l}
+                      </button>
+                    ))}
+                  </div>
+                  <input value={newExaltCastesText} onChange={e => setNewExaltCastesText(e.target.value)} placeholder="Castes/Aspects, comma-separated… (e.g. Dawn, Zenith, Twilight)" className={textInput} />
+                  <div className="flex justify-end">
+                    <button onClick={addExaltType} disabled={exaltSaving || !newExalt.name.trim()} className="text-xs bg-amber-600 hover:bg-amber-500 disabled:opacity-40 text-white px-3 py-1 rounded transition-colors">
+                      {exaltSaving ? 'Saving…' : 'Add'}
+                    </button>
+                  </div>
+                </div>
+              )}
+
+              {!exaltTypesLoaded ? <p className="text-xs text-stone-500">Loading…</p> : (
+                <div className="rounded-lg border border-stone-700 overflow-hidden divide-y divide-stone-800">
+                  {exaltTypes.length === 0 && <p className="text-xs text-stone-600 px-3 py-2">No exalt types yet.</p>}
+                  {exaltTypes.map(et => (
+                    editingExaltId === et.id && isOwner
+                      ? <EditExaltRow key={et.id} et={et} onSave={saveExaltType} onCancel={() => setEditingExaltId(null)} saving={exaltSaving} textInput={textInput} />
+                      : (
+                        <div key={et.id} className="px-3 py-2 flex items-start justify-between gap-2">
+                          <div className="min-w-0">
+                            <div className="flex items-center gap-2">
+                              <span className="text-xs font-semibold text-stone-100">{et.name}</span>
+                              <span className="text-[9px] px-1.5 py-0.5 rounded bg-stone-800 border border-stone-700 text-stone-400">{et.casteLabel}</span>
+                            </div>
+                            <p className="text-xs text-stone-500 mt-0.5">{et.castes.length ? et.castes.join(', ') : <em>No {et.casteLabel.toLowerCase()}s</em>}</p>
+                          </div>
+                          {isOwner && (
+                            <div className="flex gap-2 shrink-0">
+                              <button onClick={() => setEditingExaltId(et.id)} className="text-stone-600 hover:text-amber-400 text-xs transition-colors">edit</button>
+                              <button onClick={() => deleteExaltType(et.id)} className="text-stone-600 hover:text-red-400 text-xs transition-colors">✕</button>
+                            </div>
+                          )}
+                        </div>
+                      )
+                  ))}
+                </div>
+              )}
             </section>
 
           </div>

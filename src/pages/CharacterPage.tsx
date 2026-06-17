@@ -11,7 +11,7 @@ import NotesTab from '../tabs/NotesTab'
 import CharactersTab from '../tabs/CharactersTab'
 
 const defaultData: CharacterData = {
-  sheet: { attributes: {}, abilities: {}, defenses: {}, defenseOther: false, fullDefense: false, essence: 1, anima: 0, defenseBonus: { parry: 0, evasion: 0, soak: 0, hardness: 0, resolve: 0 }, languages: [], merits: [], intimacies: [], motes: { current: 0, committed: 0, total: 0 }, health: [], layout: [], charms: [], effects: [], inventory: [], foi: { active: false, weight: null, tag: null, artifact: false }, foiOriginals: {} },
+  sheet: { attributes: {}, abilities: {}, defenses: {}, defenseOther: false, fullDefense: false, essence: 1, anima: 0, defenseBonus: { parry: 0, evasion: 0, soak: 0, hardness: 0, resolve: 0 }, languages: [], merits: [], intimacies: [], motes: { current: 0, committed: 0, total: 0 }, health: [], layout: [], charms: [], effects: [], inventory: [], foi: { active: false, weight: null, tag: null, artifact: false }, foiOriginals: {}, exaltType: '', caste: '' },
   milestones: [],
   notes: '',
   npcs: [],

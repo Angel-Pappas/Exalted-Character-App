@@ -154,6 +154,8 @@ export interface SheetData {
   inventory: InventoryItem[]
   foi: FoiState
   foiOriginals: Record<string, Partial<InventoryItem>>
+  exaltType: string
+  caste: string
 }
 
 export interface CharacterData {
@@ -198,6 +200,14 @@ export interface EssenceMoteRow {
 export interface AnimaStateRow {
   level: number
   label: string
+}
+
+export interface ExaltType {
+  id: string
+  name: string
+  casteLabel: 'Caste' | 'Aspect'
+  castes: string[]
+  sort_order: number
 }
 
 export interface GameData {

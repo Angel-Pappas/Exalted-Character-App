@@ -33,7 +33,8 @@ const DEFAULT_HEALTH: HealthBox[] = [
 ]
 
 const DEFAULT_LAYOUT: PanelLayout[] = [
-  { i: 'attributes', x: 0,  y: 0,  w: 16, h: 22, minW: 4, minH: 8 },
+  { i: 'identity',   x: 0,  y: 0,  w: 16, h: 10, minW: 4, minH: 8 },
+  { i: 'attributes', x: 0,  y: 10, w: 16, h: 22, minW: 4, minH: 8 },
   { i: 'abilities',  x: 0,  y: 22, w: 16, h: 38, minW: 4, minH: 8 },
   { i: 'defenses',   x: 16, y: 0,  w: 16, h: 12, minW: 4, minH: 8 },
   { i: 'essence',    x: 16, y: 12, w: 16, h: 6,  minW: 4, minH: 6 },
@@ -72,6 +73,8 @@ function defaultSheet(): SheetData {
     inventory: [],
     foi: { active: false, weight: null, tag: null, artifact: false },
     foiOriginals: {},
+    exaltType: '',
+    caste: '',
   }
 }
 
@@ -1178,6 +1181,18 @@ const numInput = "w-[30px] text-center bg-stone-800 border border-stone-600 text
 
 export default function SheetTab({ sheet, onChange, editMode, gameData: gd }: Props) {
   const gameData = gd ?? DEFAULT_GAME_DATA
+  const [exaltTypes, setExaltTypes] = useState<import('../types/character').ExaltType[]>([])
+  useEffect(() => {
+    import('../lib/supabase').then(({ supabase }) =>
+      supabase.from('exalt_types').select('*').order('sort_order').order('name')
+        .then(({ data: rows }) => {
+          if (rows) setExaltTypes(rows.map((r: { id: string; name: string; caste_label: string; castes: string[]; sort_order: number }) => ({
+            id: r.id, name: r.name, casteLabel: r.caste_label as 'Caste' | 'Aspect',
+            castes: r.castes ?? [], sort_order: r.sort_order,
+          })))
+        })
+    )
+  }, [])
   const def = defaultSheet()
   const data: SheetData = {
     attributes: { ...def.attributes, ...sheet.attributes },
@@ -1204,6 +1219,8 @@ export default function SheetTab({ sheet, onChange, editMode, gameData: gd }: Pr
     fullDefense: sheet.fullDefense ?? false,
     foi: sheet.foi ?? { active: false, weight: null, tag: null, artifact: false },
     foiOriginals: sheet.foiOriginals ?? {},
+    exaltType: sheet.exaltType ?? '',
+    caste: sheet.caste ?? '',
   }
 
   const [newLanguage, setNewLanguage] = useState('')
@@ -1267,7 +1284,54 @@ export default function SheetTab({ sheet, onChange, editMode, gameData: gd }: Pr
 
   const panelBase = "bg-stone-900 border border-stone-700 rounded-lg p-2 overflow-hidden h-full"
 
+  const selectedExalt = exaltTypes.find(e => e.name === data.exaltType) ?? null
+
   const panels: Record<string, React.ReactNode> = {
+    identity: (() => {
+      const casteLabel = selectedExalt?.casteLabel ?? 'Caste'
+      const castes = selectedExalt?.castes ?? []
+      return (
+        <div className={panelBase}>
+          <SectionHeader title="Identity" />
+          <div className="space-y-2">
+            <div>
+              <div className="text-[10px] text-stone-500 uppercase tracking-wider mb-0.5">Exalt Type</div>
+              <select
+                value={data.exaltType}
+                onChange={e => update({ exaltType: e.target.value, caste: '' })}
+                className="w-full bg-stone-800 border border-stone-600 text-stone-100 rounded px-2 py-1 text-xs focus:outline-none focus:border-amber-500"
+              >
+                <option value="">— Select —</option>
+                {exaltTypes.map(et => <option key={et.id} value={et.name}>{et.name}</option>)}
+              </select>
+            </div>
+            {data.exaltType && (
+              <div>
+                <div className="text-[10px] text-stone-500 uppercase tracking-wider mb-0.5">{casteLabel}</div>
+                {castes.length > 0 ? (
+                  <select
+                    value={data.caste}
+                    onChange={e => update({ caste: e.target.value })}
+                    className="w-full bg-stone-800 border border-stone-600 text-stone-100 rounded px-2 py-1 text-xs focus:outline-none focus:border-amber-500"
+                  >
+                    <option value="">— Select —</option>
+                    {castes.map(c => <option key={c} value={c}>{c}</option>)}
+                  </select>
+                ) : (
+                  <input
+                    type="text"
+                    value={data.caste}
+                    onChange={e => update({ caste: e.target.value })}
+                    placeholder={`Custom ${casteLabel.toLowerCase()}…`}
+                    className={inputCls}
+                  />
+                )}
+              </div>
+            )}
+          </div>
+        </div>
+      )
+    })(),
     attributes: (
       <div className={panelBase}>
         <SectionHeader title="Attributes" />

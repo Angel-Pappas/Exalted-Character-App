@@ -135,3 +135,36 @@ create policy "Admins can delete charms"
 create trigger charm_library_updated_at
   before update on public.charm_library
   for each row execute function public.set_updated_at();
+
+-- Exalt types table (global, shared across all users)
+create table if not exists public.exalt_types (
+  id uuid primary key default gen_random_uuid(),
+  name text not null default '',
+  caste_label text not null default 'Caste',
+  castes text[] not null default '{}',
+  sort_order integer not null default 0,
+  created_at timestamptz default now(),
+  updated_at timestamptz default now()
+);
+
+alter table public.exalt_types enable row level security;
+
+create policy "Anyone can read exalt types"
+  on public.exalt_types for select
+  using (true);
+
+create policy "Admins can insert exalt types"
+  on public.exalt_types for insert
+  with check (exists (select 1 from public.user_profiles where user_id = auth.uid() and role = 'admin'));
+
+create policy "Admins can update exalt types"
+  on public.exalt_types for update
+  using (exists (select 1 from public.user_profiles where user_id = auth.uid() and role = 'admin'));
+
+create policy "Admins can delete exalt types"
+  on public.exalt_types for delete
+  using (exists (select 1 from public.user_profiles where user_id = auth.uid() and role = 'admin'));
+
+create trigger exalt_types_updated_at
+  before update on public.exalt_types
+  for each row execute function public.set_updated_at();
