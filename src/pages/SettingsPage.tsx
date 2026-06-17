@@ -119,9 +119,10 @@ export default function SettingsPage() {
     }
     setPasswordSaving(true)
     setPasswordMsg(null)
-    // Re-authenticate first
+    // Re-authenticate first — support both real emails and @exalted.local usernames
+    const loginEmail = username.includes('@') ? username : usernameToEmail(username)
     const { error: signInError } = await supabase.auth.signInWithPassword({
-      email: usernameToEmail(username),
+      email: loginEmail,
       password: currentPassword,
     })
     if (signInError) {
