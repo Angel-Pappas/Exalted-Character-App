@@ -5,7 +5,7 @@ import { useAuth } from '../contexts/AuthContext'
 import type { GameData, WeaponTableRow, ArmorTableRow, TagEntry, EssenceMoteRow, AnimaStateRow } from '../types/character'
 import { DEFAULT_GAME_DATA } from '../types/character'
 
-const TABS = ['Tables'] as const
+const TABS = ['Tables', 'Charms'] as const
 type Tab = typeof TABS[number]
 
 // Tooltip shown on column header hover
@@ -325,6 +325,10 @@ export default function OptionsPage() {
               </div>
             </section>
 
+          </div>
+        ) : activeTab === 'Charms' ? (
+          <div className="max-w-2xl">
+            <p className="text-xs text-stone-600">Coming soon.</p>
           </div>
         ) : null}
       </div>
