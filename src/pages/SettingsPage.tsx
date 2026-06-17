@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react'
 import { useNavigate, useLocation } from 'react-router-dom'
 import { useTheme } from '../contexts/ThemeContext'
-import { useAuth } from '../contexts/AuthContext'
+import { useAuth, usernameToEmail } from '../contexts/AuthContext'
 import { supabase } from '../lib/supabase'
 
 const SECTIONS = ['Account', 'Appearance'] as const
@@ -54,15 +54,15 @@ function PasswordInput({
 export default function SettingsPage() {
   const navigate = useNavigate()
   const location = useLocation()
-  const { role, user } = useAuth()
+  const { role, user, username } = useAuth()
   const { theme, setTheme } = useTheme()
   const [active, setActive] = useState<Section>(
     (location.state as { section?: Section } | null)?.section ?? 'Account'
   )
 
-  const [username, setUsername] = useState('')
-  const [usernameSaving, setUsernameSaving] = useState(false)
-  const [usernameMsg, setUsernameMsg] = useState<string | null>(null)
+  const [displayName, setDisplayName] = useState('')
+  const [displayNameSaving, setDisplayNameSaving] = useState(false)
+  const [displayNameMsg, setDisplayNameMsg] = useState<string | null>(null)
 
   const [showPasswordModal, setShowPasswordModal] = useState(false)
   const [currentPassword, setCurrentPassword] = useState('')
@@ -79,21 +79,21 @@ export default function SettingsPage() {
       .eq('user_id', user.id)
       .single()
       .then(({ data }) => {
-        if (data?.display_name) setUsername(data.display_name)
+        if (data?.display_name) setDisplayName(data.display_name)
       })
   }, [user])
 
-  async function saveUsername() {
-    if (!user || !username.trim()) return
-    setUsernameSaving(true)
-    setUsernameMsg(null)
+  async function saveDisplayName() {
+    if (!user || !displayName.trim()) return
+    setDisplayNameSaving(true)
+    setDisplayNameMsg(null)
     const { error } = await supabase
       .from('user_profiles')
-      .update({ display_name: username.trim() })
+      .update({ display_name: displayName.trim() })
       .eq('user_id', user.id)
-    setUsernameSaving(false)
-    setUsernameMsg(error ? 'Failed to save.' : 'Saved.')
-    setTimeout(() => setUsernameMsg(null), 2000)
+    setDisplayNameSaving(false)
+    setDisplayNameMsg(error ? 'Failed to save.' : 'Saved.')
+    setTimeout(() => setDisplayNameMsg(null), 2000)
   }
 
   function closeModal() {
@@ -121,7 +121,7 @@ export default function SettingsPage() {
     setPasswordMsg(null)
     // Re-authenticate first
     const { error: signInError } = await supabase.auth.signInWithPassword({
-      email: user!.email!,
+      email: usernameToEmail(username),
       password: currentPassword,
     })
     if (signInError) {
@@ -180,8 +180,8 @@ export default function SettingsPage() {
               {/* Read-only info */}
               <div className="bg-stone-900 border border-stone-700 rounded-lg divide-y divide-stone-700">
                 <div className="flex items-center justify-between px-4 py-3">
-                  <span className="text-sm text-stone-400">Email</span>
-                  <span className="text-sm text-stone-300">{user?.email}</span>
+                  <span className="text-sm text-stone-400">Username</span>
+                  <span className="text-sm text-stone-300">{username}</span>
                 </div>
                 <div className="flex items-center justify-between px-4 py-3">
                   <span className="text-sm text-stone-400">Role</span>
@@ -189,27 +189,27 @@ export default function SettingsPage() {
                 </div>
               </div>
 
-              {/* Username */}
+              {/* Display Name */}
               <div className="bg-stone-900 border border-stone-700 rounded-lg p-4 space-y-3">
-                <label className="text-sm font-medium text-stone-300">Username</label>
+                <label className="text-sm font-medium text-stone-300">Display Name</label>
                 <div className="flex gap-2">
                   <input
                     type="text"
-                    value={username}
-                    onChange={e => setUsername(e.target.value)}
-                    onKeyDown={e => e.key === 'Enter' && saveUsername()}
+                    value={displayName}
+                    onChange={e => setDisplayName(e.target.value)}
+                    onKeyDown={e => e.key === 'Enter' && saveDisplayName()}
                     placeholder="Display name…"
                     className="flex-1 bg-stone-800 border border-stone-600 text-stone-100 rounded px-3 py-1.5 text-sm focus:outline-none focus:border-amber-500 placeholder-stone-500"
                   />
                   <button
-                    onClick={saveUsername}
-                    disabled={usernameSaving}
+                    onClick={saveDisplayName}
+                    disabled={displayNameSaving}
                     className="px-3 py-1.5 bg-amber-600 hover:bg-amber-500 disabled:opacity-50 text-white text-sm rounded transition-colors"
                   >
-                    {usernameSaving ? 'Saving…' : 'Save'}
+                    {displayNameSaving ? 'Saving…' : 'Save'}
                   </button>
                 </div>
-                {usernameMsg && <p className="text-xs text-stone-400">{usernameMsg}</p>}
+                {displayNameMsg && <p className="text-xs text-stone-400">{displayNameMsg}</p>}
               </div>
 
               {/* Password panel */}
