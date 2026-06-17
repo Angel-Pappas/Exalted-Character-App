@@ -1048,7 +1048,16 @@ function InventoryPanel({ items, onChange, dragEnabled, gameData }: {
     }
     onChange(newItems)
   }
-  function toggleEquipped(id: string) { onChange(items.map(i => i.id === id ? { ...i, equipped: !i.equipped } : i)) }
+  function toggleEquipped(id: string) {
+    const target = items.find(i => i.id === id)
+    if (!target) return
+    const equipping = !target.equipped
+    onChange(items.map(i => {
+      if (i.id === id) return { ...i, equipped: equipping }
+      if (equipping && i.kind === 'armor' && target.kind === 'armor') return { ...i, equipped: false }
+      return i
+    }))
+  }
 
   function onDragStart(e: React.DragEvent, id: string) { dragging.current = id; e.dataTransfer.effectAllowed = 'move' }
   function onDragOver(e: React.DragEvent, beforeId: string) { if (!dragging.current || dragging.current === beforeId) return; e.preventDefault(); e.stopPropagation(); setDropBeforeId(beforeId) }
@@ -1377,13 +1386,14 @@ export default function SheetTab({ sheet, onChange, editMode, gameData: gd }: Pr
       const bestArmorSoak = equippedArmors.length ? Math.max(...equippedArmors.map(i => i.soak ?? 0)) : 0
       const bestArmorHard = equippedArmors.length ? Math.max(...equippedArmors.map(i => i.hardness ?? 0)) : 0
       const db = data.defenseBonus
-      const parryBase    = Math.floor((stamina + cc) / 2)
-      const evasionBase  = Math.floor((dex + ath) / 2)
+      const parryBase    = Math.ceil((stamina + cc) / 2)
+      const evasionBase  = Math.ceil((dex + ath) / 2)
       const soakBase     = 1 + (phys >= 3 ? 1 : 0)
       const hardnessBase = 2 + (data.essence ?? 1)
       const resolveBase  = (integ >= 3 ? 4 : integ >= 1 ? 3 : 2) + (db.resolve ?? 0)
-      const parry    = parryBase   + (data.fullDefense ? bestWpnDef : 0) + (db.parry   ?? 0)
-      const evasion  = evasionBase + (data.fullDefense ? bestWpnDef : 0) + (db.evasion ?? 0)
+      const wpnBonus = (data.fullDefense || data.defenseOther) ? bestWpnDef : 0
+      const parry    = parryBase   + wpnBonus + (db.parry   ?? 0)
+      const evasion  = evasionBase + wpnBonus + (db.evasion ?? 0)
       const soak     = soakBase     + bestArmorSoak                        + (db.soak     ?? 0)
       const hardness = hardnessBase + bestArmorHard                        + (db.hardness ?? 0)
       const bonusInput = (key: keyof typeof db) => (
@@ -1407,8 +1417,8 @@ export default function SheetTab({ sheet, onChange, editMode, gameData: gd }: Pr
         <div className="bg-stone-900 border border-stone-700 rounded-lg p-2 overflow-visible h-full" data-tooltip-panel>
           <SectionHeader title="Defenses" />
           <div className="space-y-1.5">
-            {calcRow('Parry',    parry,    `floor((Stamina ${stamina} + Close Combat ${cc}) / 2)${data.fullDefense ? ` + Weapon Defense ${bestWpnDef}` : ' (Full Defense off)'} + Bonus ${db.parry ?? 0}`, bonusInput('parry'))}
-            {calcRow('Evasion',  evasion,  `floor((Dexterity ${dex} + Athletics ${ath}) / 2)${data.fullDefense ? ` + Weapon Defense ${bestWpnDef}` : ' (Full Defense off)'} + Bonus ${db.evasion ?? 0}`, bonusInput('evasion'))}
+            {calcRow('Parry',    parry,    `ceil((Stamina ${stamina} + Close Combat ${cc}) / 2)${wpnBonus ? ` + Weapon Defense ${bestWpnDef}` : ' (no Full/Defend Other)'} + Bonus ${db.parry ?? 0}`, bonusInput('parry'))}
+            {calcRow('Evasion',  evasion,  `ceil((Dexterity ${dex} + Athletics ${ath}) / 2)${wpnBonus ? ` + Weapon Defense ${bestWpnDef}` : ' (no Full/Defend Other)'} + Bonus ${db.evasion ?? 0}`, bonusInput('evasion'))}
             {calcRow('Soak',     soak,     `${soakBase} base + Best Armor Soak ${bestArmorSoak} + Bonus ${db.soak ?? 0}`, bonusInput('soak'))}
             {calcRow('Hardness', hardness, `${hardnessBase} base (2 + Essence ${data.essence ?? 1}) + Best Armor Hardness ${bestArmorHard} + Bonus ${db.hardness ?? 0}`, bonusInput('hardness'))}
             {calcRow('Resolve', resolveBase, `2 base + Integrity ${integ} bonus`, bonusInput('resolve'))}
