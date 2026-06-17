@@ -5,7 +5,7 @@ import { useAuth } from '../contexts/AuthContext'
 import type { GameData, WeaponTableRow, ArmorTableRow, TagEntry, EssenceMoteRow, AnimaStateRow } from '../types/character'
 import { DEFAULT_GAME_DATA } from '../types/character'
 
-const TABS = ['Information'] as const
+const TABS = ['Tables'] as const
 type Tab = typeof TABS[number]
 
 // Tooltip shown on column header hover
@@ -46,7 +46,7 @@ const STAT_TIPS: Record<string, string> = {
 export default function OptionsPage() {
   const { user } = useAuth()
   const navigate = useNavigate()
-  const [activeTab, setActiveTab] = useState<Tab>('Information')
+  const [activeTab, setActiveTab] = useState<Tab>('Tables')
   const [data, setData] = useState<GameData>(DEFAULT_GAME_DATA)
   const [saving, setSaving] = useState(false)
   const [saveTimeout, setSaveTimeoutState] = useState<ReturnType<typeof setTimeout> | null>(null)
@@ -172,24 +172,24 @@ export default function OptionsPage() {
         ))}
       </div>
 
-      <div className="flex-1 overflow-auto p-6">
-        {!loaded ? <p className="text-stone-500 text-sm">Loading…</p> : activeTab === 'Information' ? (
-          <div className="max-w-2xl space-y-10">
+      <div className="flex-1 overflow-auto p-4">
+        {!loaded ? <p className="text-stone-500 text-sm">Loading…</p> : activeTab === 'Tables' ? (
+          <div className="max-w-2xl space-y-5">
 
             {/* ── Weapons ── */}
             <section>
-              <div className="flex items-center justify-between mb-3">
+              <div className="flex items-center justify-between mb-1.5">
                 <h2 className="text-base font-semibold text-amber-400">Weapons</h2>
                 <button onClick={addWeaponRow} className="text-xs text-stone-500 hover:text-amber-400 transition-colors">+ row</button>
               </div>
               <div className="rounded-lg border border-stone-700 overflow-visible">
-                <div className="grid grid-cols-[1fr_4rem_4rem_4rem_5.5rem_1.5rem] gap-2 px-3 py-2 bg-stone-800 border-b border-stone-700">
+                <div className="grid grid-cols-[1fr_4rem_4rem_4rem_5.5rem_1.5rem] gap-2 px-3 py-1 bg-stone-800 border-b border-stone-700">
                   {(['Category', 'Accuracy', 'Damage', 'Defense', 'Overwhelming', ''] as const).map(h => (
                     <ColHeader key={h} label={h} tip={STAT_TIPS[h]} />
                   ))}
                 </div>
                 {data.weapons.map((row, idx) => (
-                  <div key={idx} className="grid grid-cols-[1fr_4rem_4rem_4rem_5.5rem_1.5rem] gap-2 px-3 py-1.5 items-center border-b border-stone-800 last:border-0">
+                  <div key={idx} className="grid grid-cols-[1fr_4rem_4rem_4rem_5.5rem_1.5rem] gap-2 px-3 py-0.5 items-center border-b border-stone-800 last:border-0">
                     <input type="text" value={row.category} onChange={e => updateWeapon(idx, { category: e.target.value })} placeholder="Category…" className={textInput} />
                     {(['accuracy', 'damage', 'defense', 'overwhelming'] as const).map(f => (
                       <input key={f} type="number" value={row[f]} onChange={e => updateWeapon(idx, { [f]: parseInt(e.target.value) || 0 })} className={numInput} />
@@ -204,18 +204,18 @@ export default function OptionsPage() {
 
             {/* ── Armor ── */}
             <section>
-              <div className="flex items-center justify-between mb-3">
+              <div className="flex items-center justify-between mb-1.5">
                 <h2 className="text-base font-semibold text-amber-400">Armor</h2>
                 <button onClick={addArmorRow} className="text-xs text-stone-500 hover:text-amber-400 transition-colors">+ row</button>
               </div>
               <div className="rounded-lg border border-stone-700 overflow-visible">
-                <div className="grid grid-cols-[1fr_4rem_5.5rem_4rem_1.5rem] gap-2 px-3 py-2 bg-stone-800 border-b border-stone-700">
+                <div className="grid grid-cols-[1fr_4rem_5.5rem_4rem_1.5rem] gap-2 px-3 py-1 bg-stone-800 border-b border-stone-700">
                   {(['Category', 'Soak', 'Mobility Penalty', 'Hardness', ''] as const).map(h => (
                     <ColHeader key={h} label={h} tip={STAT_TIPS[h]} />
                   ))}
                 </div>
                 {data.armor.map((row, idx) => (
-                  <div key={idx} className="grid grid-cols-[1fr_4rem_5.5rem_4rem_1.5rem] gap-2 px-3 py-1.5 items-center border-b border-stone-800 last:border-0">
+                  <div key={idx} className="grid grid-cols-[1fr_4rem_5.5rem_4rem_1.5rem] gap-2 px-3 py-0.5 items-center border-b border-stone-800 last:border-0">
                     <input type="text" value={row.category} onChange={e => updateArmor(idx, { category: e.target.value })} placeholder="Category…" className={textInput} />
                     {(['soak', 'mobilityPenalty', 'hardness'] as const).map(f => (
                       <input key={f} type="number" value={row[f]} onChange={e => updateArmor(idx, { [f]: parseInt(e.target.value) || 0 })} className={numInput} />
@@ -230,18 +230,18 @@ export default function OptionsPage() {
 
             {/* ── Essence & Motes ── */}
             <section>
-              <div className="flex items-center justify-between mb-3">
+              <div className="flex items-center justify-between mb-1.5">
                 <h2 className="text-base font-semibold text-amber-400">Essence &amp; Motes</h2>
                 <button onClick={addEssenceMoteRow} className="text-xs text-stone-500 hover:text-amber-400 transition-colors">+ row</button>
               </div>
               <div className="rounded-lg border border-stone-700 overflow-hidden">
-                <div className="grid grid-cols-[1fr_4rem_1.5rem] gap-2 px-3 py-2 bg-stone-800 border-b border-stone-700">
+                <div className="grid grid-cols-[1fr_4rem_1.5rem] gap-2 px-3 py-1 bg-stone-800 border-b border-stone-700">
                   <span className="text-[10px] font-bold uppercase tracking-wider text-stone-400">Essence</span>
                   <span className="text-[10px] font-bold uppercase tracking-wider text-stone-400">Motes</span>
                   <span />
                 </div>
                 {(data.essenceMotes ?? DEFAULT_GAME_DATA.essenceMotes).map((row, idx) => (
-                  <div key={idx} className="grid grid-cols-[1fr_4rem_1.5rem] gap-2 px-3 py-1.5 items-center border-b border-stone-800 last:border-0">
+                  <div key={idx} className="grid grid-cols-[1fr_4rem_1.5rem] gap-2 px-3 py-0.5 items-center border-b border-stone-800 last:border-0">
                     <input type="number" value={row.essence} onChange={e => updateEssenceMote(idx, { essence: parseInt(e.target.value) || 0 })} className={numInput} />
                     <input type="number" value={row.motes}   onChange={e => updateEssenceMote(idx, { motes:   parseInt(e.target.value) || 0 })} className={numInput} />
                     <button onClick={() => removeEssenceMoteRow(idx)} className="text-stone-600 hover:text-red-400 transition-colors text-xs text-center">✕</button>
@@ -253,18 +253,18 @@ export default function OptionsPage() {
 
             {/* ── Anima States ── */}
             <section>
-              <div className="flex items-center justify-between mb-3">
+              <div className="flex items-center justify-between mb-1.5">
                 <h2 className="text-base font-semibold text-amber-400">Anima States</h2>
                 <button onClick={addAnimaStateRow} className="text-xs text-stone-500 hover:text-amber-400 transition-colors">+ row</button>
               </div>
               <div className="rounded-lg border border-stone-700 overflow-hidden">
-                <div className="grid grid-cols-[3rem_1fr_1.5rem] gap-2 px-3 py-2 bg-stone-800 border-b border-stone-700">
+                <div className="grid grid-cols-[3rem_1fr_1.5rem] gap-2 px-3 py-1 bg-stone-800 border-b border-stone-700">
                   <span className="text-[10px] font-bold uppercase tracking-wider text-stone-400">Level</span>
                   <span className="text-[10px] font-bold uppercase tracking-wider text-stone-400">Label</span>
                   <span />
                 </div>
                 {(data.animaStates ?? DEFAULT_GAME_DATA.animaStates).map((row, idx) => (
-                  <div key={idx} className="grid grid-cols-[3rem_1fr_1.5rem] gap-2 px-3 py-1.5 items-center border-b border-stone-800 last:border-0">
+                  <div key={idx} className="grid grid-cols-[3rem_1fr_1.5rem] gap-2 px-3 py-0.5 items-center border-b border-stone-800 last:border-0">
                     <input type="number" value={row.level} onChange={e => updateAnimaState(idx, { level: parseInt(e.target.value) || 0 })} className={numInput} />
                     <input type="text"   value={row.label} onChange={e => updateAnimaState(idx, { label: e.target.value })} placeholder="Label…" className={textInput} />
                     <button onClick={() => removeAnimaStateRow(idx)} className="text-stone-600 hover:text-red-400 transition-colors text-xs text-center">✕</button>
@@ -276,15 +276,15 @@ export default function OptionsPage() {
 
             {/* ── Equipment Tags ── */}
             <section>
-              <div className="flex items-center justify-between mb-3">
+              <div className="flex items-center justify-between mb-1.5">
                 <h2 className="text-base font-semibold text-amber-400">Equipment Tags</h2>
                 <button onClick={addTagGroup} className="text-xs text-stone-500 hover:text-amber-400 transition-colors">+ group</button>
               </div>
-              <div className="space-y-4">
+              <div className="space-y-2">
                 {data.tagGroups.map((group, gIdx) => (
                   <div key={gIdx} className="rounded-lg border border-stone-700 overflow-hidden">
                     {/* Group header */}
-                    <div className="flex items-center justify-between px-3 py-2 bg-stone-800 border-b border-stone-700 gap-2">
+                    <div className="flex items-center justify-between px-3 py-1 bg-stone-800 border-b border-stone-700 gap-2">
                       <input
                         type="text"
                         value={group.group}
@@ -300,7 +300,7 @@ export default function OptionsPage() {
                     {/* Tags */}
                     {group.tags.length === 0 && <p className="text-xs text-stone-600 px-3 py-2">No tags. Add one above.</p>}
                     {group.tags.map((tag, tIdx) => (
-                      <div key={tIdx} className="border-b border-stone-800 last:border-0 px-3 py-2 space-y-1">
+                      <div key={tIdx} className="border-b border-stone-800 last:border-0 px-3 py-1 space-y-0.5">
                         <div className="flex items-center gap-2">
                           <input
                             type="text"
