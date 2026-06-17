@@ -1447,7 +1447,7 @@ export default function SheetTab({ sheet, onChange, editMode, gameData: gd }: Pr
             <span className="text-[10px] text-stone-500">Total</span>
             <span className="text-stone-300 font-semibold text-2xl">{totalMotes}</span>
           </div>
-          <div className="flex justify-around items-start gap-2">
+          <div className="flex justify-center items-start gap-6">
             <div className="flex flex-col items-center gap-1">
               <span className="text-[10px] uppercase tracking-wider text-stone-500">Current</span>
               <div className="flex items-center gap-1">
