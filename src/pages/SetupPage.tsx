@@ -129,6 +129,9 @@ export default function SetupPage() {
   const [userChars, setUserChars] = useState<CharacterRow[]>([])
   const [expandedUsers, setExpandedUsers] = useState<Set<string>>(new Set())
   const [roleChanging, setRoleChanging] = useState<string | null>(null)
+  const [moveTarget, setMoveTarget] = useState<CharacterRow | null>(null)
+  const [moveToUserId, setMoveToUserId] = useState('')
+  const [moving, setMoving] = useState(false)
 
   async function loadUsers() {
     const [{ data: profiles }, { data: chars }] = await Promise.all([
@@ -145,6 +148,21 @@ export default function SetupPage() {
     await supabase.from('user_profiles').update({ role: newRole }).eq('user_id', userId)
     setUsers(us => us.map(u => u.user_id === userId ? { ...u, role: newRole } : u))
     setRoleChanging(null)
+  }
+
+  async function deleteAdminChar(id: string) {
+    await supabase.from('characters').delete().eq('id', id)
+    setUserChars(cs => cs.filter(c => c.id !== id))
+  }
+
+  async function moveCharacter() {
+    if (!moveTarget || !moveToUserId) return
+    setMoving(true)
+    await supabase.from('characters').update({ user_id: moveToUserId }).eq('id', moveTarget.id)
+    setUserChars(cs => cs.map(c => c.id === moveTarget.id ? { ...c, user_id: moveToUserId } : c))
+    setMoving(false)
+    setMoveTarget(null)
+    setMoveToUserId('')
   }
 
   function toggleExpand(userId: string) {
@@ -719,10 +737,22 @@ export default function SetupPage() {
                         const caste = c.data?.sheet?.caste
                         return (
                           <div key={c.id} className="px-4 py-2 pl-11 flex items-center gap-2">
-                            <span className="text-sm text-stone-300">{c.name}</span>
+                            <span className="text-sm text-stone-300 flex-1">{c.name}</span>
                             {(exaltType || caste) && (
                               <span className="text-xs text-stone-600">{[exaltType, caste].filter(Boolean).join(' · ')}</span>
                             )}
+                            <button
+                              onClick={() => { setMoveTarget(c); setMoveToUserId('') }}
+                              className="text-xs text-stone-500 hover:text-amber-400 transition-colors px-1"
+                            >
+                              Move
+                            </button>
+                            <button
+                              onClick={() => deleteAdminChar(c.id)}
+                              className="text-xs text-stone-500 hover:text-red-400 transition-colors px-1"
+                            >
+                              ✕
+                            </button>
                           </div>
                         )
                       })}
@@ -740,6 +770,44 @@ export default function SetupPage() {
         ) : null}
       </div>
       </div>
+
+      {/* Move Character Modal */}
+      {moveTarget && (
+        <div className="fixed inset-0 bg-black/60 flex items-center justify-center z-50 p-4">
+          <div className="bg-stone-900 border border-stone-700 rounded-xl w-full max-w-sm p-6 space-y-4 shadow-2xl">
+            <h3 className="text-base font-semibold text-stone-200">Move Character</h3>
+            <p className="text-sm text-stone-300">{moveTarget.name}</p>
+            <div className="space-y-1">
+              <label className="text-xs text-stone-400">Move to</label>
+              <select
+                value={moveToUserId}
+                onChange={e => setMoveToUserId(e.target.value)}
+                className="w-full bg-stone-800 border border-stone-600 text-stone-300 rounded px-3 py-1.5 text-sm focus:outline-none focus:border-amber-500"
+              >
+                <option value="">— Select user —</option>
+                {users.filter(u => u.user_id !== moveTarget.user_id).map(u => (
+                  <option key={u.user_id} value={u.user_id}>{u.username ?? u.user_id.slice(0, 8)}</option>
+                ))}
+              </select>
+            </div>
+            <div className="flex gap-2 pt-1">
+              <button
+                onClick={moveCharacter}
+                disabled={moving || !moveToUserId}
+                className="flex-1 py-2 bg-amber-600 hover:bg-amber-500 disabled:opacity-50 text-white text-sm font-medium rounded transition-colors"
+              >
+                {moving ? 'Moving…' : 'Move'}
+              </button>
+              <button
+                onClick={() => { setMoveTarget(null); setMoveToUserId('') }}
+                className="px-4 py-2 bg-stone-800 hover:bg-stone-700 border border-stone-600 text-stone-300 text-sm rounded transition-colors"
+              >
+                Cancel
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   )
 }
