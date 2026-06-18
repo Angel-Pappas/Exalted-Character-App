@@ -5,8 +5,22 @@ import { useAuth } from '../contexts/AuthContext'
 import type { GameData, WeaponTableRow, ArmorTableRow, TagEntry, EssenceMoteRow, AnimaStateRow, LibraryCharm, ExaltType } from '../types/character'
 import { DEFAULT_GAME_DATA } from '../types/character'
 
-const TABS = ['Tables', 'Charms'] as const
+const TABS = ['Tables', 'Charms', 'Users'] as const
 type Tab = typeof TABS[number]
+
+interface UserProfile {
+  user_id: string
+  username: string | null
+  display_name: string | null
+  role: 'admin' | 'player'
+}
+
+interface CharacterRow {
+  id: string
+  name: string
+  user_id: string
+  data?: { sheet?: { exaltType?: string; caste?: string } }
+}
 
 // Tooltip shown on column header hover
 function Tooltip({ text }: { text: string }) {
@@ -108,6 +122,38 @@ export default function SetupPage() {
   const [saving, setSaving] = useState(false)
   const [saveTimeout, setSaveTimeoutState] = useState<ReturnType<typeof setTimeout> | null>(null)
   const [loaded, setLoaded] = useState(false)
+
+  // Users tab
+  const [users, setUsers] = useState<UserProfile[]>([])
+  const [usersLoaded, setUsersLoaded] = useState(false)
+  const [userChars, setUserChars] = useState<CharacterRow[]>([])
+  const [expandedUsers, setExpandedUsers] = useState<Set<string>>(new Set())
+  const [roleChanging, setRoleChanging] = useState<string | null>(null)
+
+  async function loadUsers() {
+    const [{ data: profiles }, { data: chars }] = await Promise.all([
+      supabase.from('user_profiles').select('user_id, username, display_name, role'),
+      supabase.from('characters').select('id, name, user_id, data'),
+    ])
+    setUsers((profiles ?? []) as UserProfile[])
+    setUserChars((chars ?? []) as CharacterRow[])
+    setUsersLoaded(true)
+  }
+
+  async function changeRole(userId: string, newRole: 'admin' | 'player') {
+    setRoleChanging(userId)
+    await supabase.from('user_profiles').update({ role: newRole }).eq('user_id', userId)
+    setUsers(us => us.map(u => u.user_id === userId ? { ...u, role: newRole } : u))
+    setRoleChanging(null)
+  }
+
+  function toggleExpand(userId: string) {
+    setExpandedUsers(s => {
+      const next = new Set(s)
+      next.has(userId) ? next.delete(userId) : next.add(userId)
+      return next
+    })
+  }
 
   // Charm library
   const [charms, setCharms] = useState<LibraryCharm[]>([])
@@ -275,6 +321,10 @@ export default function SetupPage() {
     setExaltTypes(prev => prev.filter(e => e.id !== id))
     setExaltSaving(false)
   }
+
+  useEffect(() => {
+    if (activeTab === 'Users' && !usersLoaded) loadUsers()
+  }, [activeTab])
 
   // Load charm library (all users)
   useEffect(() => {
@@ -617,6 +667,68 @@ export default function SetupPage() {
                 </>
               )
             })()}
+          </div>
+        ) : activeTab === 'Users' ? (
+          <div className="max-w-2xl space-y-2">
+            {!usersLoaded ? (
+              <p className="text-stone-500 text-sm">Loading…</p>
+            ) : users.length === 0 ? (
+              <p className="text-stone-500 text-sm">No users found.</p>
+            ) : users.map(u => {
+              const chars = userChars.filter(c => c.user_id === u.user_id)
+              const expanded = expandedUsers.has(u.user_id)
+              return (
+                <div key={u.user_id} className="bg-stone-900 border border-stone-700 rounded-lg overflow-hidden">
+                  <div className="flex items-center justify-between px-4 py-3">
+                    <div className="flex items-center gap-3 min-w-0">
+                      <button
+                        onClick={() => toggleExpand(u.user_id)}
+                        className="text-stone-500 hover:text-stone-300 transition-colors text-xs w-4 shrink-0"
+                      >
+                        {expanded ? '▼' : '▶'}
+                      </button>
+                      <div className="min-w-0">
+                        <span className="text-sm font-medium text-stone-200">{u.username ?? '—'}</span>
+                        {u.display_name && <span className="text-xs text-stone-500 ml-2">({u.display_name})</span>}
+                      </div>
+                    </div>
+                    <div className="flex items-center gap-2 shrink-0">
+                      <span className="text-xs text-stone-500">{chars.length} char{chars.length !== 1 ? 's' : ''}</span>
+                      <select
+                        value={u.role}
+                        onChange={e => changeRole(u.user_id, e.target.value as 'admin' | 'player')}
+                        disabled={roleChanging === u.user_id}
+                        className="bg-stone-800 border border-stone-600 text-stone-300 rounded px-2 py-1 text-xs focus:outline-none focus:border-amber-500 disabled:opacity-50"
+                      >
+                        <option value="player">Player</option>
+                        <option value="admin">Admin</option>
+                      </select>
+                    </div>
+                  </div>
+                  {expanded && chars.length > 0 && (
+                    <div className="border-t border-stone-700 divide-y divide-stone-800">
+                      {chars.map(c => {
+                        const exaltType = c.data?.sheet?.exaltType
+                        const caste = c.data?.sheet?.caste
+                        return (
+                          <div key={c.id} className="px-4 py-2 pl-11 flex items-center gap-2">
+                            <span className="text-sm text-stone-300">{c.name}</span>
+                            {(exaltType || caste) && (
+                              <span className="text-xs text-stone-600">{[exaltType, caste].filter(Boolean).join(' · ')}</span>
+                            )}
+                          </div>
+                        )
+                      })}
+                    </div>
+                  )}
+                  {expanded && chars.length === 0 && (
+                    <div className="border-t border-stone-700 px-4 py-2 pl-11">
+                      <span className="text-xs text-stone-600">No characters</span>
+                    </div>
+                  )}
+                </div>
+              )
+            })}
           </div>
         ) : null}
       </div>
