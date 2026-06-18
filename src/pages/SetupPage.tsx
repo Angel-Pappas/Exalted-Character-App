@@ -712,7 +712,7 @@ export default function SetupPage() {
                               <option value="admin">Admin</option>
                             </select>
                             {locked && tip && (
-                              <div className="absolute bottom-full right-0 mb-1.5 w-44 bg-stone-800 border border-stone-600 rounded px-2 py-1.5 text-xs text-stone-400 hidden group-hover/role:block z-10 pointer-events-none">
+                              <div className="absolute top-full right-0 mt-1.5 w-44 bg-stone-800 border border-stone-600 rounded px-2 py-1.5 text-xs text-stone-400 hidden group-hover/role:block z-10 pointer-events-none">
                                 {tip}
                               </div>
                             )}
