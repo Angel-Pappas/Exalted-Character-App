@@ -699,24 +699,16 @@ export default function SetupPage() {
                         const adminCount = users.filter(x => x.role === 'admin').length
                         const isLastAdmin = u.role === 'admin' && adminCount === 1
                         const locked = isSelf || isLastAdmin
-                        const tip = isSelf ? 'Cannot change your own role' : isLastAdmin ? 'Cannot demote the last admin' : undefined
                         return (
-                          <div className="relative group/role">
-                            <select
-                              value={u.role}
-                              onChange={e => changeRole(u.user_id, e.target.value as 'admin' | 'player')}
-                              disabled={roleChanging === u.user_id || locked}
-                              className="bg-stone-800 border border-stone-600 text-stone-300 rounded px-2 py-1 text-xs focus:outline-none focus:border-amber-500 disabled:opacity-40 disabled:cursor-not-allowed"
-                            >
-                              <option value="player">Player</option>
-                              <option value="admin">Admin</option>
-                            </select>
-                            {locked && tip && (
-                              <div className="absolute top-full right-0 mt-1.5 w-44 bg-stone-800 border border-stone-600 rounded px-2 py-1.5 text-xs text-stone-400 hidden group-hover/role:block z-10 pointer-events-none">
-                                {tip}
-                              </div>
-                            )}
-                          </div>
+                          <select
+                            value={u.role}
+                            onChange={e => changeRole(u.user_id, e.target.value as 'admin' | 'player')}
+                            disabled={roleChanging === u.user_id || locked}
+                            className="bg-stone-800 border border-stone-600 text-stone-300 rounded px-2 py-1 text-xs focus:outline-none focus:border-amber-500 disabled:opacity-40 disabled:cursor-not-allowed"
+                          >
+                            <option value="player">Player</option>
+                            <option value="admin">Admin</option>
+                          </select>
                         )
                       })()}
                     </div>
