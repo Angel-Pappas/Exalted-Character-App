@@ -143,6 +143,12 @@ export default function SetupPage() {
     setUsersLoaded(true)
   }
 
+  async function deleteUser(userId: string) {
+    await supabase.rpc('delete_user', { target_user_id: userId })
+    setUsers(us => us.filter(u => u.user_id !== userId))
+    setUserChars(cs => cs.filter(c => c.user_id !== userId))
+  }
+
   async function changeRole(userId: string, newRole: 'admin' | 'player') {
     setRoleChanging(userId)
     await supabase.from('user_profiles').update({ role: newRole }).eq('user_id', userId)
@@ -711,6 +717,14 @@ export default function SetupPage() {
                     </div>
                     <div className="flex items-center gap-2 shrink-0">
                       <span className="text-xs text-stone-500">{chars.length} char{chars.length !== 1 ? 's' : ''}</span>
+                      {u.user_id !== user?.id && (
+                        <button
+                          onClick={() => { if (window.confirm(`Delete user "${u.username}"? This cannot be undone.`)) deleteUser(u.user_id) }}
+                          className="text-xs text-stone-600 hover:text-red-400 transition-colors"
+                        >
+                          Delete
+                        </button>
+                      )}
                       {(() => {
                         const isSelf = u.user_id === user?.id
                         const adminCount = users.filter(x => x.role === 'admin').length
