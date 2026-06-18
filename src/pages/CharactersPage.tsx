@@ -22,6 +22,7 @@ export default function CharactersPage() {
     supabase
       .from('characters')
       .select('*')
+      .eq('user_id', user!.id)
       .order('created_at', { ascending: false })
       .then(({ data }) => {
         setCharacters(data ?? [])
