@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react'
+import { useState } from 'react'
 import { useNavigate, useLocation } from 'react-router-dom'
 import { useTheme } from '../contexts/ThemeContext'
 import { useAuth, usernameToEmail } from '../contexts/AuthContext'
@@ -54,15 +54,11 @@ function PasswordInput({
 export default function SettingsPage() {
   const navigate = useNavigate()
   const location = useLocation()
-  const { role, user, username } = useAuth()
+  const { role, username } = useAuth()
   const { theme, setTheme } = useTheme()
   const [active, setActive] = useState<Section>(
     (location.state as { section?: Section } | null)?.section ?? 'Account'
   )
-
-  const [displayName, setDisplayName] = useState('')
-  const [displayNameSaving, setDisplayNameSaving] = useState(false)
-  const [displayNameMsg, setDisplayNameMsg] = useState<string | null>(null)
 
   const [showUsernameModal, setShowUsernameModal] = useState(false)
   const [newUsername, setNewUsername] = useState('')
@@ -75,31 +71,6 @@ export default function SettingsPage() {
   const [confirmPassword, setConfirmPassword] = useState('')
   const [passwordSaving, setPasswordSaving] = useState(false)
   const [passwordMsg, setPasswordMsg] = useState<{ text: string; error: boolean } | null>(null)
-
-  useEffect(() => {
-    if (!user) return
-    supabase
-      .from('user_profiles')
-      .select('display_name')
-      .eq('user_id', user.id)
-      .single()
-      .then(({ data }) => {
-        if (data?.display_name) setDisplayName(data.display_name)
-      })
-  }, [user])
-
-  async function saveDisplayName() {
-    if (!user || !displayName.trim()) return
-    setDisplayNameSaving(true)
-    setDisplayNameMsg(null)
-    const { error } = await supabase
-      .from('user_profiles')
-      .update({ display_name: displayName.trim() })
-      .eq('user_id', user.id)
-    setDisplayNameSaving(false)
-    setDisplayNameMsg(error ? 'Failed to save.' : 'Saved.')
-    setTimeout(() => setDisplayNameMsg(null), 2000)
-  }
 
   function closeUsernameModal() {
     setShowUsernameModal(false)
@@ -224,29 +195,6 @@ export default function SettingsPage() {
                   <span className="text-sm text-stone-400">Role</span>
                   <span className="text-sm text-stone-300 capitalize">{role ?? '—'}</span>
                 </div>
-              </div>
-
-              {/* Display Name */}
-              <div className="bg-stone-900 border border-stone-700 rounded-lg p-4 space-y-3">
-                <label className="text-sm font-medium text-stone-300">Display Name</label>
-                <div className="flex gap-2">
-                  <input
-                    type="text"
-                    value={displayName}
-                    onChange={e => setDisplayName(e.target.value)}
-                    onKeyDown={e => e.key === 'Enter' && saveDisplayName()}
-                    placeholder="Display name…"
-                    className="flex-1 bg-stone-800 border border-stone-600 text-stone-100 rounded px-3 py-1.5 text-sm focus:outline-none focus:border-amber-500 placeholder-stone-500"
-                  />
-                  <button
-                    onClick={saveDisplayName}
-                    disabled={displayNameSaving}
-                    className="px-3 py-1.5 bg-amber-600 hover:bg-amber-500 disabled:opacity-50 text-white text-sm rounded transition-colors"
-                  >
-                    {displayNameSaving ? 'Saving…' : 'Save'}
-                  </button>
-                </div>
-                {displayNameMsg && <p className="text-xs text-stone-400">{displayNameMsg}</p>}
               </div>
 
               {/* Password panel */}

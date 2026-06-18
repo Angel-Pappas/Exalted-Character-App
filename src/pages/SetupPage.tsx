@@ -689,7 +689,6 @@ export default function SetupPage() {
                       </button>
                       <div className="min-w-0">
                         <span className="text-sm font-medium text-stone-200">{u.username ?? '—'}</span>
-                        {u.display_name && <span className="text-xs text-stone-500 ml-2">({u.display_name})</span>}
                       </div>
                     </div>
                     <div className="flex items-center gap-2 shrink-0">
