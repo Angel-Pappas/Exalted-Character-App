@@ -10,24 +10,31 @@ A personal interactive character sheet web app for the tabletop RPG **Exalted** 
 - Multi-character support: any user can create and manage multiple characters
 - **Global charm library** maintained by the admin (Angel), browseable and addable to any character by any player
 - **Settings page** for per-user preferences (theme, account details)
-- **Setup page** (admin only) for configuring shared game reference tables and the charm library
+- **Admin page** (admin only) for configuring shared game reference tables, the charm library, and managing users
 
 ## How It Is Viewed
 - The app is accessed via browser at https://exalted-character-app.vercel.app
-- Login is required (email + password)
-- After login the user lands on a character list page
-- Selecting a character opens the character page with 4 tabs:
+- Login is required (username + password — no email involved)
+- After login the user lands on the **Home hub page** with cards for Characters, Settings, and Admin (admin only)
+- Selecting Characters opens the character list; selecting a character opens the character page with 4 tabs:
   1. **Character Sheet** — the main stats, attributes, abilities, defenses, etc.
   2. **Milestones** — XP tracking log
   3. **Notes** — free-form text
   4. **Characters** — NPC/character met log with notes per entry
-- **Settings** link (in all headers) opens `/options` — per-user preferences
-- **Setup** link (admin only, in all headers) opens `/setup` — game reference tables + charm library management
+- **Settings** card opens `/options` — per-user preferences
+- **Admin** card (admin only) opens `/setup` — game reference tables, charm library, user management
 
 ## User Roles
-- **Admin** (Angel): can manage the charm library, edit reference tables, access `/setup`
-- **Player**: can browse the charm library, add charms to their sheet, customize charm descriptions per character; cannot modify the library or reference tables
-- New accounts auto-get `player` role. Admin role is assigned manually in the database.
+- **Admin** (Angel): can manage the charm library, edit reference tables, manage users, access `/setup`
+- **Player**: can browse the charm library, add charms to their sheet, customize charm descriptions per character; cannot modify the library, reference tables, or user accounts
+- New accounts auto-get `player` role. Admin role is assigned by an existing admin via the Admin → Users tab.
+- **Failsafes**: admins cannot demote themselves or the last remaining admin; cannot delete their own account
+
+## Auth System
+- Username + password only — no real emails, no email confirmation
+- Supabase stores accounts internally as `username@exalted.local`
+- New accounts are created by admins or via the Create Account form on the login page
+- Admin can delete users and move characters between accounts via the Admin → Users tab
 
 ## Design Philosophy
 - Dark theme (stone/amber color palette)

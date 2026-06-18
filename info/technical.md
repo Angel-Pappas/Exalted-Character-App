@@ -23,8 +23,8 @@ Stored in `.env.local` (gitignored) and in Vercel project settings:
 
 ## Supabase
 - Project URL: `https://dtuxmjiknsefowfdawim.supabase.co`
-- Auth: email/password
-- Database tables: `characters`, `game_data`, `user_profiles`, `charm_library` — all with Row Level Security
+- Auth: username + password only. Stored internally as `username@exalted.local`. Email confirmation is **disabled**.
+- Database tables: `characters`, `game_data`, `user_profiles`, `charm_library`, `exalt_types` — all with Row Level Security
 
 ### Characters Table
 ```sql
@@ -37,7 +37,7 @@ characters (
   updated_at timestamptz
 )
 ```
-RLS: users can only read/write their own rows.
+RLS: users can only read/write their own rows. Admins can read/update/delete all rows.
 
 ### Game Data Table
 ```sql
@@ -54,13 +54,15 @@ Upserted on conflict by `user_id`. Loaded in `CharacterPage` and `SetupPage` on 
 user_profiles (
   user_id uuid primary key references auth.users(id) on delete cascade,
   role text not null default 'player' check (role in ('admin', 'player')),
-  display_name text,
+  username text,       -- auto-set from auth email (strips @exalted.local) on insert
   created_at timestamptz
 )
 ```
 - Auto-created on signup via trigger `on_auth_user_created` → inserts `player` role
-- RLS: all logged-in users can read all profiles; users can only update their own
-- Admins: determined by `role = 'admin'`; Angel's UUID is `c5d208d8-3d47-4dc3-b76b-c211d8486c3b`
+- Trigger `on_profile_created` (BEFORE INSERT, SECURITY DEFINER) sets `username` from auth email
+- `is_admin()` SECURITY DEFINER function used in RLS policies to avoid recursion
+- Admins: can read/update all profiles; players: own row only
+- Angel's UUID: `c5d208d8-3d47-4dc3-b76b-c211d8486c3b`
 
 ### Charm Library Table
 ```sql
@@ -75,12 +77,44 @@ charm_library (
   updated_at timestamptz
 )
 ```
-- RLS: everyone can read; only users with `role = 'admin'` in `user_profiles` can insert/update/delete
+RLS: everyone can read; only admins can insert/update/delete.
+
+### Exalt Types Table
+```sql
+exalt_types (
+  id uuid primary key default gen_random_uuid(),
+  name text,
+  caste_label text check (caste_label in ('Caste', 'Aspect')),
+  castes text[],
+  sort_order integer
+)
+```
+Seeded with 10 types. Admin CRUD in Admin → Tables → Exalt Types.
+
+### Key RLS / Security Functions
+```sql
+-- Avoids recursive RLS when checking admin status
+CREATE OR REPLACE FUNCTION is_admin()
+RETURNS boolean LANGUAGE sql SECURITY DEFINER STABLE AS $$
+  SELECT EXISTS (SELECT 1 FROM user_profiles WHERE user_id = auth.uid() AND role = 'admin')
+$$;
+
+-- Admin-only user deletion (called via supabase.rpc)
+CREATE OR REPLACE FUNCTION delete_user(target_user_id uuid)
+RETURNS void LANGUAGE plpgsql SECURITY DEFINER AS $$
+BEGIN
+  IF NOT is_admin() THEN RAISE EXCEPTION 'Not authorized'; END IF;
+  DELETE FROM auth.users WHERE id = target_user_id;
+END;
+$$;
+```
 
 ### `data` JSONB Structure (CharacterData type)
 ```ts
 {
   sheet: {
+    exaltType: string,              // name matching exalt_types.name
+    caste: string,                  // caste/aspect name
     attributes: Record<string, number>,
     abilities: Record<string, {
       rating: number,
@@ -99,11 +133,11 @@ charm_library (
     motes: { current: number, committed: number, total: number },
     health: { penalty: string, checked: boolean }[],
     layout: { i: string, x: number, y: number, w: number, h: number }[],
-    charms: CharacterCharm[],           // per-character charm records (NOT CharmCategory[])
+    charms: CharacterCharm[],
     effects: { id, name, effects: { id, name, text }[] }[],
     inventory: InventoryItem[],
-    foi: FoiState,                      // persisted FoI toggle state
-    foiOriginals: Record<string, Partial<InventoryItem>>  // pre-FoI stats per item id
+    foi: FoiState,
+    foiOriginals: Record<string, Partial<InventoryItem>>
   },
   milestones: {
     id: string,
@@ -122,16 +156,27 @@ charm_library (
 
 ### Key Types (character.ts)
 
+#### ExaltType
+```ts
+interface ExaltType {
+  id: string
+  name: string
+  casteLabel: 'Caste' | 'Aspect'
+  castes: string[]
+  sort_order: number
+}
+```
+
 #### CharacterCharm
 ```ts
 interface CharacterCharm {
   id: string
   libraryId: string
   name: string
-  libraryMechanicalKey: string | null   // denormalized from charm_library at add time
-  customDescription: string | null      // player override; null = use library description
-  mechanicalKeyOverride: string | null  // player override of mechanical key
-  mechanicalEnabled: boolean            // whether coded mechanical effect is active
+  libraryMechanicalKey: string | null
+  customDescription: string | null
+  mechanicalKeyOverride: string | null
+  mechanicalEnabled: boolean
 }
 // effective key = mechanicalKeyOverride ?? libraryMechanicalKey
 ```
@@ -166,7 +211,7 @@ interface InventoryItem {
   name: string
   type: string
   equipped: boolean
-  weight?: string         // gameData.weapons category label
+  weight?: string
   artifact?: boolean
   artifactColor?: 'red' | 'green' | 'blue' | 'white' | 'silver' | 'gold'
   accuracy?: number
@@ -176,7 +221,7 @@ interface InventoryItem {
   soak?: number
   mobilityPen?: number
   hardness?: number
-  tags?: string[]         // was string in older data; normTags() handles legacy
+  tags?: string[]
   notes?: string
 }
 ```
@@ -192,9 +237,26 @@ interface GameData {
 }
 ```
 
-Default values in `DEFAULT_GAME_DATA`:
-- Weapons: Light(Ac+2,Da+0,De+1,Ov+1), Medium(Ac+1,Da+1,De+1,Ov+1), Heavy(Ac+0,Da+2,De+1,Ov+1), Unarmed(Ac+2,Da+0,De+1,Ov+1)
-- Armor: Light Armor(So+1,MP0,Ha0), Heavy Armor(So+2,MP-1,Ha0)
+## AuthContext
+```ts
+// contexts/AuthContext.tsx
+export type UserRole = 'admin' | 'player'
+const DOMAIN = '@exalted.local'
+export function usernameToEmail(username: string) { return `${username.trim().toLowerCase()}${DOMAIN}` }
+export function emailToUsername(email: string) { return email.endsWith(DOMAIN) ? email.slice(0, -DOMAIN.length) : email }
+
+interface AuthContextType {
+  session: Session | null
+  user: User | null
+  username: string              // derived from email, @exalted.local stripped
+  role: UserRole | null
+  loading: boolean
+  signIn: (username: string, password: string) => Promise<{ error: string | null }>
+  signUp: (username: string, password: string) => Promise<{ error: string | null }>
+  signOut: () => Promise<void>
+}
+// signIn: if input contains '@' use as raw email (legacy), else append @exalted.local
+```
 
 ## File Structure
 ```
@@ -205,28 +267,30 @@ src/
   lib/
     supabase.ts                  # Supabase client
   contexts/
-    AuthContext.tsx               # Auth state + role (UserRole: 'admin'|'player')
+    AuthContext.tsx               # Auth state + role + username
     ThemeContext.tsx              # Light/dark theme, persisted to localStorage
   components/
     ProtectedRoute.tsx
     TabBar.tsx
   pages/
-    LoginPage.tsx
-    CharacterListPage.tsx         # Shows Settings + Setup (admin) links
-    CharacterPage.tsx             # Shows Settings + Setup (admin) links
-    SettingsPage.tsx              # /options — Account + Appearance; all users
-    SetupPage.tsx                 # /setup — Tables + Charms tabs; admin only
+    LoginPage.tsx                 # Username+password; eye-icon on all password fields
+    HomePage.tsx                  # Hub: Characters/Settings/Admin cards
+    CharactersPage.tsx            # Character list + creation modal
+    CharacterPage.tsx
+    SettingsPage.tsx              # /options — Account + Appearance
+    SetupPage.tsx                 # /setup — Tables | Charms | Users tabs
   tabs/
-    SheetTab.tsx                  # Character sheet (grid layout, all panels, defense calculations)
+    SheetTab.tsx                  # All 13 panels + defense calc + FoI + CharmPanel
     MilestonesTab.tsx
     NotesTab.tsx
     CharactersTab.tsx
   types/
     character.ts                  # All TypeScript interfaces + DEFAULT_GAME_DATA
-informational/
+info/
   scope.md
   context.md
   technical.md (this file)
+  SESSION_SUMMARY.md
 supabase/
   schema.sql                     # Full DB schema
 vercel.json                      # SPA rewrite rule
@@ -274,81 +338,31 @@ const resolve  = Math.ceil((wits   + integ)  / 2) + (db.resolve ?? 0)
 - **128-column grid**, row height = 10px, margins = [0,0], containerPadding = [0,0]
 - `freeCompactor = { ...noCompactor, allowOverlap: true }` — prevents panels colliding during drag
 - **13 independent panels:** `attributes`, `abilities`, `defenses`, `essence`, `motes`, `anima`, `health`, `merits`, `languages`, `intimacies`, `charms`, `effects`, `inventory`
+- All panels: `overflow-y-auto no-scrollbar h-full` — scrollable, no visible scrollbar
 - Layout saved in `SheetData.layout`; new panels auto-merged from DEFAULT_LAYOUT on load
 - Edit mode toggle: amber drag handle bars + amber grid lines visible; draggable/resizable
 
-## Panel Components (SheetTab.tsx)
-
-### CharmPanel
-- Flat `CharacterCharm[]` list
-- "Browse" button → `CharmBrowseModal`: fetches `charm_library` from Supabase on open, grouped by ability, searchable, "Add" per charm
-- Each row: name, description, edit/revert/toggle controls
-- `mechanicalEnabled` toggle gates coded features
-- Effective key: `mechanicalKeyOverride ?? libraryMechanicalKey`
-
-### InventoryPanel
-Flat `InventoryItem[]` rendered in 3 sections: Weapons → Armor → Other.
-
-**Single-armor rule:** equipping an armor auto-unequips all others.
-
-**FoI button:** only rendered when a charm with effective key `'foi'` exists and `mechanicalEnabled = true`.
-
-**FoI tag effects (applyFoi):**
-- Shield → damage −1 (min 0)
-- Balanced → overwhelming +1
-- Improvised → accuracy −2 (min 0)
-- Defensive → defense +1
-
-**FoI state (`foi` + `foiOriginals`) is persisted in SheetData → Supabase**, not React state.
-
-### ItemModal
-Key helpers:
-- `normTags(t)` — handles legacy `string` tags (splits by comma)
-- `selectWeightRow(category)` — looks up gameData.weapons, applies artifact bonus + Shield penalty
-- `selectArmorRow(category)` — looks up gameData.armor, applies artifact bonus
-- `toggleArtifact()` — ±1 delta to all stats, floored at 0
-
-### FoiModal
-- Weight row: non-Unarmed gameData.weapons + Artifact button
-- Tag picker: single-select, Universal + Melee groups, excludes Artifact
-- Save disabled if active but weight or tag is null
-
-## Settings & Setup Pages
+## Settings & Admin Pages
 
 ### SettingsPage (`/options`)
 All users. Left sidebar: Account | Appearance.
-- **Account**: email (read-only), role (read-only), username (editable → saves to `user_profiles.display_name`), Change Password button
+- **Account**: username (read-only with Change button), role (read-only), Change Password button
+- **Change Username modal**: new username → `supabase.auth.updateUser({ email: newname@exalted.local })`
 - **Password modal**: Current / New / Confirm fields, each with inline eye-icon toggle; re-authenticates via `signInWithPassword` before calling `updateUser`
 - **Appearance**: light/dark toggle via `ThemeContext` (persisted to `localStorage`)
 
-### SetupPage (`/setup`)
-Admin only. Tabs: Tables | Charms.
-- **Tables**: editable Weapons, Armor, Equipment Tags, Essence Motes, Anima States tables; saved to `game_data`
-- **Charms**: add/edit/delete `charm_library` rows; grouped by ability; inline `EditCharmRow` component; only visible when `role === 'admin'`
+### SetupPage (`/setup`) — "Admin" in UI
+Admin only. Left sidebar tabs: Tables | Charms | Users.
+- **Tables**: Weapons, Armor, Equipment Tags, Essence Motes, Anima States, Exalt Types — all editable, saved to `game_data` (except Exalt Types which go to `exalt_types` table)
+- **Charms**: add/edit/delete `charm_library` rows; grouped by ability
+- **Users**: all `user_profiles` + characters; role dropdown (locked for self + last admin); Delete user (locked for self); per-character Move (reassign `characters.user_id`) and Delete
 
 ### ThemeContext
 ```ts
-// contexts/ThemeContext.tsx
 type Theme = 'dark' | 'light'
 // persists to localStorage; toggles 'light-mode' class on document.documentElement
-// Light mode CSS not yet implemented — toggle exists for future theming pass
+// Light mode CSS not yet implemented
 ```
-
-## AuthContext
-```ts
-// contexts/AuthContext.tsx
-export type UserRole = 'admin' | 'player'
-
-interface AuthContextType {
-  session: Session | null
-  user: User | null
-  role: UserRole | null   // fetched from user_profiles on login
-  loading: boolean
-  signIn: (email, password) => Promise<{ error: string | null }>
-  signOut: () => Promise<void>
-}
-```
-Role is fetched from `user_profiles` on `getSession()` and on `onAuthStateChange`.
 
 ## CSS Utilities (index.css)
 - `.no-scrollbar` — hides scrollbars cross-browser

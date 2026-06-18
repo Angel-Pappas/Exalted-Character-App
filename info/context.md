@@ -18,6 +18,15 @@ This is a custom/modified version of the Exalted tabletop RPG. Not all standard 
 
 > **Important:** The book refers to "highest appropriate attribute" for some calculations. This app uses 9 custom attributes (not 3), with each stat mapped to a specific fixed attribute. Ignore any "highest attribute" wording from book quotes — the mappings are hardcoded.
 
+## Exalt Types
+Each character has an Exalt Type and a Caste (or Aspect, depending on the type). These are stored in the `exalt_types` Supabase table and managed by the admin in Admin → Tables → Exalt Types.
+
+The `caste_label` field is either `'Caste'` or `'Aspect'` — controls the label shown in the character creation modal and on the sheet.
+
+All 10 exalt types are seeded: Solar, Lunar, Terrestrial, Sidereal, Abyssal, Infernal, Alchemical, Liminal, Getimian, Dreaming Sun Chosen.
+
+Exalt type and caste are set at character creation and displayed **read-only** on the sheet (merged into the Essence panel). They are not editable after creation.
+
 ## Defense Calculations
 All five defenses are calculated automatically in SheetTab. Manual bonus fields (`defenseBonus`) are additive on top.
 
@@ -117,40 +126,58 @@ Any UI feature gated by a mechanical key checks: does the character have a charm
 
 ## Pages & Navigation
 
-### Character List Page (`/`)
-Header: Settings link (all users) + Setup link (admins only) + Sign out.
+### Home Page (`/`)
+Hub page with cards: Characters, Settings, Admin (admin only). Sign Out in header.
+
+### Characters Page (`/characters`)
+List of the current user's own characters. Each card shows name + ExaltType·Caste subtitle. "+ New Character" opens a modal — all 3 fields (name, exalt type, caste/aspect) are required before Create is enabled. Delete button appears on hover.
 
 ### Character Page (`/character/:id`)
-Header: Settings link + Setup link (admins only) + Edit Layout toggle.
+Header: Back button + Edit Layout toggle. 4 tabs: Sheet, Milestones, Notes, Characters.
 
 ### Settings Page (`/options`) — all users
 Left sidebar with sections:
-- **Account**: email (read-only), role (read-only), editable username (saves to `user_profiles.display_name`), Change Password button
+- **Account**: username (read-only, with Change button), role (read-only), Change Password button
 - **Appearance**: light/dark theme toggle (persisted to localStorage via ThemeContext)
 
 Password change uses a modal with Current Password / New Password / Confirm Password fields, each with an inline eye toggle. Re-authenticates with current password before applying the change.
 
-### Setup Page (`/setup`) — admin only
-The admin configuration area. Left tabs:
-- **Tables**: editable reference tables (Weapons, Armor, Equipment Tags, Essence Motes, Anima States)
+Change Username updates the auth email to `newusername@exalted.local` via `supabase.auth.updateUser`.
+
+### Admin Page (`/setup`) — admin only
+Left sidebar tabs:
+- **Tables**: editable reference tables (Weapons, Armor, Equipment Tags, Essence Motes, Anima States, Exalt Types)
 - **Charms**: full CRUD for the global charm library, grouped by ability
+- **Users**: all signed-up users with username, role dropdown, character count, expandable character list; per-character Move and Delete actions; per-user Delete button (hidden for self)
+
+## Auth System
+- Username + password only — no real emails exposed to users
+- Supabase stores accounts as `username@exalted.local` internally
+- `signIn`: if input contains `@` use as raw email (legacy support), otherwise append `@exalted.local`
+- `signUp`: always appends `@exalted.local`
+- Email confirmation is disabled in Supabase settings
+- Login page shows eye-icon toggle on all password fields
 
 ## User & Role System
 
 ### Roles
 Two roles: `admin` and `player`. Stored in the `user_profiles` table. New users auto-get `player` role via a Supabase trigger on signup.
 
-- **Admin**: can write to `charm_library`, can access `/setup`, sees "Setup" button in headers
-- **Player**: read-only access to charm library, sees only "Settings" in headers
+- **Admin**: can write to `charm_library`, manage all users, access `/setup`
+- **Player**: read-only access to charm library, no access to `/setup`
 
 Role is fetched from `user_profiles` on login and exposed via `AuthContext.role`.
 
-Angel's account (`c5d208d8-3d47-4dc3-b76b-c211d8486c3b`) has `role = 'admin'`.
+Angel's account username: `angel`, UUID: `c5d208d8-3d47-4dc3-b76b-c211d8486c3b`, role: `admin`.
+
+### Failsafes
+- Cannot change your own role
+- Cannot demote the last admin (would leave app with zero admins)
+- Cannot delete yourself
 
 ## The User
-- **Angel** (angel.y.pappas@gmail.com / ange.pap@hotmail.com — GitHub/Vercel use the hotmail)
-- Solo player currently, building toward multi-player with co-players joining
-- One primary character: **Kaien, Wall of the Sun**
+- **Angel** (GitHub/Vercel: ange.pap@hotmail.com)
+- Building for himself and his co-players
 - Comfortable giving layout/design direction in grid-unit terms
 - Prefers to be walked through setup steps one at a time
 
@@ -160,25 +187,28 @@ Angel's account (`c5d208d8-3d47-4dc3-b76b-c211d8486c3b`) has `role = 'admin'`.
 - Vercel auto-deploys on every push to `main`
 - **Important:** the GitHub repo must be **public** for Vercel free-tier auto-deploy to work
 - Angel reviews changes on the live Vercel URL — does not run a local dev server
+- **Never prompt for permission** except before permanently deleting DB data or changing admin access
 
 ## What's Been Built
-- Auth (email/password via Supabase)
-- Character list with create/delete; Settings + Setup links in header
+- Username+password auth (no email exposed); eye-icon toggle on all password fields
+- Hub home page with role-aware cards
+- Character list with create (all 3 fields required) / delete; per-character ExaltType·Caste display
 - Character page with 4 tabs: Sheet, Milestones, Notes, Characters
 - **Settings page** (`/options`): Account (username/password edit) + Appearance (theme toggle)
-- **Setup page** (`/setup`, admin only): Tables tab (editable Weapons/Armor/Tags/EssenceMotes/AnimaStates) + Charms tab (global charm library CRUD)
-- **Character Sheet panels (13 total):**
+- **Admin page** (`/setup`): Tables + Charms + Users tabs; full user management with role/delete/move-character
+- **Exalt Types**: global table, seeded with 10 types, admin CRUD in Admin → Tables
+- **Character Sheet panels (13 total):** all scrollable with hidden scrollbars
   - Attributes, Abilities (with Excellency + Specialty), Defenses (calculated, with Defend Other + Full Defense toggles + manual bonus fields), Motes (Current/Committed/Total with auto-total from essence), Health track, Languages, Merits, Intimacies
   - Charms — flat CharacterCharm list, browse-from-library modal, custom descriptions, mechanical gating
-  - Effects — categories + expandable entries; drag to reorder
+  - Effects — categories + expandable entries
   - Inventory — 3 fixed sections (Weapons/Armor/Other); full item modal; FoI charm toggle gated by mechanical key
-  - Anima, Essence panels
+  - Essence panel (includes read-only ExaltType + Caste display)
 - Milestones: 4-type XP log with session reward form, purchase form, editable transaction table
 - Notes: free-form textarea
 - Characters tab: NPC list with per-NPC notes
 - Auto-save to Supabase (1 second debounce)
 - **Drag-and-drop grid layout editor** (13 panels, 128-column grid, Edit Layout toggle)
-- **User role system**: admin/player, DB-enforced via RLS, UI gates Setup access
+- **User role system**: admin/player, DB-enforced via RLS + SECURITY DEFINER functions
 
 ## Next Planned Features
 - Light mode CSS variable theming (toggle exists, colors not yet wired up)
