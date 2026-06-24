@@ -62,7 +62,7 @@ function defaultSheet(): SheetData {
     defenseOther: false, fullDefense: false,
     essence: 1,
     anima: 0,
-    defenseBonus: { parry: 0, evasion: 0, soak: 0, hardness: 0, resolve: 0 },
+    defenseBonus: { parry: 0, evasion: 0, soak: 0, hardness: 0, resolve: 0, bacon: 0 },
     languages: [], merits: [], intimacies: [],
     motes: { current: 0, committed: 0, total: 0 },
     health: DEFAULT_HEALTH.map(h => ({ ...h })),
@@ -1399,6 +1399,7 @@ export default function SheetTab({ sheet, onChange, editMode, gameData: gd }: Pr
             {calcRow('Soak',     soak,     `${soakBase} base + Best Armor Soak ${bestArmorSoak} + Bonus ${db.soak ?? 0}`, bonusInput('soak'))}
             {calcRow('Hardness', hardness, `${hardnessBase} base (2 + Essence ${data.essence ?? 1}) + Best Armor Hardness ${bestArmorHard} + Bonus ${db.hardness ?? 0}`, bonusInput('hardness'))}
             {calcRow('Resolve', resolveBase, `2 base + Integrity ${integ} bonus`, bonusInput('resolve'))}
+            {calcRow('Bacon', db.bacon ?? 0, `Bonus ${db.bacon ?? 0}`, bonusInput('bacon'))}
             <div className="border-t border-stone-700 pt-1 mt-1 space-y-1">
               {([['defenseOther', 'Defend Other'], ['fullDefense', 'Full Defense']] as const).map(([key, label]) => (
                 <div key={key} className="flex items-center justify-between">
