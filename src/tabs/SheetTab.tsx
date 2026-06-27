@@ -91,6 +91,8 @@ function SectionHeader({ title }: { title: string }) {
 const inputCls = "w-full bg-stone-800 border border-stone-600 text-stone-100 rounded px-2 py-0.5 text-xs focus:outline-none focus:border-amber-500 placeholder-stone-500"
 const inputActive = "w-full bg-stone-800 border border-amber-500 text-stone-100 rounded px-2 py-0.5 text-xs focus:outline-none"
 
+const selectCls = "w-full bg-stone-800 border border-stone-700 text-stone-100 rounded px-2 py-1.5 text-xs focus:outline-none focus:border-amber-500"
+
 function CharmBrowseModal({ existing, onAdd, onClose }: {
   existing: import('../types/character').CharacterCharm[]
   onAdd: (charm: import('../types/character').LibraryCharm) => void
@@ -98,23 +100,28 @@ function CharmBrowseModal({ existing, onAdd, onClose }: {
 }) {
   const [library, setLibrary] = useState<import('../types/character').LibraryCharm[]>([])
   const [loading, setLoading] = useState(true)
-  const [search, setSearch] = useState('')
+  const [type, setType] = useState('')
+  const [ability, setAbility] = useState('')
   const existingIds = new Set(existing.map(c => c.libraryId))
 
   useEffect(() => {
     import('../lib/supabase').then(({ supabase }) =>
-      supabase.from('charm_library').select('*').order('ability').order('sort_order').order('name')
+      supabase.from('charm_library').select('*').order('type').order('ability').order('sort_order').order('name')
         .then(({ data }) => {
-          if (data) setLibrary(data.map((r: any) => ({ id: r.id, ability: r.ability, name: r.name, description: r.description, mechanicalKey: r.mechanical_key ?? null, sort_order: r.sort_order })))
+          if (data) setLibrary(data.map((r: any) => ({ id: r.id, type: r.type ?? 'Universal', ability: r.ability, name: r.name, description: r.description, mechanicalKey: r.mechanical_key ?? null, sort_order: r.sort_order })))
           setLoading(false)
         })
     )
   }, [])
 
-  const filtered = library.filter(c =>
-    !search || c.name.toLowerCase().includes(search.toLowerCase()) || c.ability.toLowerCase().includes(search.toLowerCase())
-  )
-  const abilities = [...new Set(filtered.map(c => c.ability))].sort()
+  const types = [...new Set(library.map(c => c.type || 'Universal'))].sort()
+  const abilitiesForType = [...new Set(library.filter(c => (c.type || 'Universal') === type).map(c => c.ability))].sort()
+  const charms = type && ability ? library.filter(c => (c.type || 'Universal') === type && c.ability === ability) : []
+
+  function pickType(t: string) {
+    setType(t)
+    setAbility('')
+  }
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/70" onClick={onClose}>
@@ -123,40 +130,41 @@ function CharmBrowseModal({ existing, onAdd, onClose }: {
           <span className="text-sm font-semibold text-amber-400">Add Charm</span>
           <button onClick={onClose} className="text-stone-500 hover:text-stone-300 text-xs">✕</button>
         </div>
-        <div className="px-4 py-2 border-b border-stone-800 shrink-0">
-          <input autoFocus value={search} onChange={e => setSearch(e.target.value)} placeholder="Search charms…"
-            className="w-full bg-stone-800 border border-stone-700 text-stone-100 rounded px-2 py-1 text-xs focus:outline-none focus:border-amber-500" />
+        <div className="px-4 py-2 border-b border-stone-800 shrink-0 flex gap-2">
+          <select value={type} onChange={e => pickType(e.target.value)} className={selectCls}>
+            <option value="">Type…</option>
+            {types.map(t => <option key={t} value={t}>{t}</option>)}
+          </select>
+          <select value={ability} onChange={e => setAbility(e.target.value)} disabled={!type} className={`${selectCls} disabled:opacity-40`}>
+            <option value="">Ability…</option>
+            {abilitiesForType.map(a => <option key={a || '__none__'} value={a}>{a || 'General'}</option>)}
+          </select>
         </div>
         <div className="overflow-y-auto flex-1 no-scrollbar">
           {loading && <p className="text-xs text-stone-500 p-4">Loading…</p>}
-          {!loading && filtered.length === 0 && <p className="text-xs text-stone-500 p-4">No charms found.</p>}
-          {abilities.map(ability => (
-            <div key={ability || '__none__'}>
-              <div className="px-4 py-1.5 bg-stone-800/50 border-b border-stone-700/50">
-                <span className="text-[10px] font-bold uppercase tracking-wider text-amber-400/70">{ability || 'General'}</span>
-              </div>
-              {filtered.filter(c => c.ability === ability).map(charm => {
-                const owned = existingIds.has(charm.id)
-                return (
-                  <div key={charm.id} className={`px-4 py-2 border-b border-stone-800 last:border-0 ${owned ? 'opacity-40' : 'hover:bg-stone-800/40'}`}>
-                    <div className="flex items-center justify-between gap-2">
-                      <div className="flex-1 min-w-0">
-                        <div className="flex items-center gap-2">
-                          <span className="text-xs font-semibold text-stone-100">{charm.name}</span>
-                          {charm.mechanicalKey && <span className="text-[9px] px-1 py-0.5 rounded bg-amber-900/40 border border-amber-700/50 text-amber-400">{charm.mechanicalKey}</span>}
-                        </div>
-                        <p className="text-xs text-stone-400 mt-0.5 leading-relaxed line-clamp-2">{charm.description}</p>
-                      </div>
-                      {!owned && (
-                        <button onClick={() => onAdd(charm)} className="shrink-0 text-xs bg-amber-600 hover:bg-amber-500 text-white px-2 py-1 rounded transition-colors">Add</button>
-                      )}
-                      {owned && <span className="shrink-0 text-xs text-stone-600">Added</span>}
+          {!loading && !type && <p className="text-xs text-stone-500 p-4">Choose a type to begin.</p>}
+          {!loading && type && !ability && <p className="text-xs text-stone-500 p-4">Choose an ability to see its charms.</p>}
+          {!loading && type && ability && charms.length === 0 && <p className="text-xs text-stone-500 p-4">No charms found.</p>}
+          {charms.map(charm => {
+            const owned = existingIds.has(charm.id)
+            return (
+              <div key={charm.id} className={`px-4 py-2 border-b border-stone-800 last:border-0 ${owned ? 'opacity-40' : 'hover:bg-stone-800/40'}`}>
+                <div className="flex items-center justify-between gap-2">
+                  <div className="flex-1 min-w-0">
+                    <div className="flex items-center gap-2">
+                      <span className="text-xs font-semibold text-stone-100">{charm.name}</span>
+                      {charm.mechanicalKey && <span className="text-[9px] px-1 py-0.5 rounded bg-amber-900/40 border border-amber-700/50 text-amber-400">{charm.mechanicalKey}</span>}
                     </div>
+                    <p className="text-xs text-stone-400 mt-0.5 leading-relaxed line-clamp-2">{charm.description}</p>
                   </div>
-                )
-              })}
-            </div>
-          ))}
+                  {!owned && (
+                    <button onClick={() => onAdd(charm)} className="shrink-0 text-xs bg-amber-600 hover:bg-amber-500 text-white px-2 py-1 rounded transition-colors">Add</button>
+                  )}
+                  {owned && <span className="shrink-0 text-xs text-stone-600">Added</span>}
+                </div>
+              </div>
+            )
+          })}
         </div>
       </div>
     </div>

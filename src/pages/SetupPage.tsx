@@ -3,7 +3,7 @@ import { useNavigate } from 'react-router-dom'
 import { supabase } from '../lib/supabase'
 import { useAuth } from '../contexts/AuthContext'
 import type { GameData, WeaponTableRow, ArmorTableRow, TagEntry, EssenceMoteRow, AnimaStateRow, LibraryCharm, ExaltType } from '../types/character'
-import { DEFAULT_GAME_DATA } from '../types/character'
+import { DEFAULT_GAME_DATA, CHARM_TYPE_OPTIONS } from '../types/character'
 
 const TABS = ['Tables', 'Charms', 'Users'] as const
 type Tab = typeof TABS[number]
@@ -68,6 +68,7 @@ function EditCharmRow({ charm, onSave, onCancel, saving, textInput }: {
   const set = (patch: Partial<LibraryCharm>) => setForm(f => ({ ...f, ...patch }))
   return (
     <div className="px-3 py-2 space-y-1.5 bg-stone-800/50">
+      <input value={form.type} onChange={e => set({ type: e.target.value })} placeholder="Type (Universal, Solar, Lunar, …)…" list="charm-type-options" className={textInput} />
       <input value={form.ability} onChange={e => set({ ability: e.target.value })} placeholder="Ability group…" className={textInput} />
       <input value={form.name} onChange={e => set({ name: e.target.value })} placeholder="Name…" className={textInput} />
       <textarea value={form.description} onChange={e => set({ description: e.target.value })} placeholder="Description…" rows={3} className={`${textInput} resize-none`} />
@@ -186,6 +187,7 @@ export default function SetupPage() {
   const isOwner = role === 'admin'
 
   // New charm form
+  const [newCharmType, setNewCharmType] = useState('Universal')
   const [newCharmAbility, setNewCharmAbility] = useState('')
   const [newCharmName, setNewCharmName] = useState('')
   const [newCharmDesc, setNewCharmDesc] = useState('')
@@ -355,7 +357,7 @@ export default function SetupPage() {
     supabase.from('charm_library').select('*').order('ability').order('sort_order').order('name')
       .then(({ data: rows }) => {
         if (rows) setCharms(rows.map(r => ({
-          id: r.id, ability: r.ability, name: r.name,
+          id: r.id, type: r.type ?? 'Universal', ability: r.ability, name: r.name,
           description: r.description, mechanicalKey: r.mechanical_key ?? null, sort_order: r.sort_order,
         })))
         setCharmsLoaded(true)
@@ -366,13 +368,14 @@ export default function SetupPage() {
     if (!newCharmName.trim()) return
     setCharmSaving(true)
     const { data: row } = await supabase.from('charm_library').insert({
+      type: newCharmType.trim() || 'Universal',
       ability: newCharmAbility.trim(),
       name: newCharmName.trim(),
       description: newCharmDesc.trim(),
       mechanical_key: newCharmKey.trim() || null,
       sort_order: charms.filter(c => c.ability === newCharmAbility.trim()).length,
     }).select().single()
-    if (row) setCharms(prev => [...prev, { id: row.id, ability: row.ability, name: row.name, description: row.description, mechanicalKey: row.mechanical_key ?? null, sort_order: row.sort_order }])
+    if (row) setCharms(prev => [...prev, { id: row.id, type: row.type ?? 'Universal', ability: row.ability, name: row.name, description: row.description, mechanicalKey: row.mechanical_key ?? null, sort_order: row.sort_order }])
     setNewCharmName(''); setNewCharmDesc(''); setNewCharmKey(''); setAddingCharm(false)
     setCharmSaving(false)
   }
@@ -380,7 +383,7 @@ export default function SetupPage() {
   async function saveCharm(charm: LibraryCharm) {
     setCharmSaving(true)
     await supabase.from('charm_library').update({
-      ability: charm.ability, name: charm.name, description: charm.description,
+      type: charm.type, ability: charm.ability, name: charm.name, description: charm.description,
       mechanical_key: charm.mechanicalKey ?? null,
     }).eq('id', charm.id)
     setCharms(prev => prev.map(c => c.id === charm.id ? charm : c))
@@ -400,6 +403,9 @@ export default function SetupPage() {
 
   return (
     <div className="min-h-screen bg-stone-950 text-stone-100 flex flex-col">
+      <datalist id="charm-type-options">
+        {CHARM_TYPE_OPTIONS.map(t => <option key={t} value={t} />)}
+      </datalist>
       <header className="flex items-center justify-between px-4 py-3 border-b border-stone-700 shrink-0">
         <div className="flex items-center gap-3">
           <button onClick={() => navigate(-1)} className="text-stone-400 hover:text-stone-200 text-sm">← Back</button>
@@ -648,6 +654,7 @@ export default function SetupPage() {
                   {addingCharm && isOwner && (
                     <div className="rounded-lg border border-stone-700 bg-stone-900 p-3 space-y-2">
                       <p className="text-xs font-semibold text-amber-400">New Charm</p>
+                      <input value={newCharmType} onChange={e => setNewCharmType(e.target.value)} placeholder="Type (Universal, Solar, Lunar, …)…" list="charm-type-options" className={textInput} />
                       <input value={newCharmAbility} onChange={e => setNewCharmAbility(e.target.value)} placeholder="Ability group…" className={textInput} />
                       <input value={newCharmName} onChange={e => setNewCharmName(e.target.value)} placeholder="Name…" className={textInput} />
                       <textarea value={newCharmDesc} onChange={e => setNewCharmDesc(e.target.value)} placeholder="Description…" rows={3} className={`${textInput} resize-none`} />
@@ -674,6 +681,7 @@ export default function SetupPage() {
                               <div className="flex items-center justify-between gap-2">
                                 <span className="text-xs font-semibold text-stone-100">{charm.name}</span>
                                 <div className="flex items-center gap-2 shrink-0">
+                                  <span className="text-[9px] px-1.5 py-0.5 rounded bg-stone-800 border border-stone-700 text-stone-400">{charm.type || 'Universal'}</span>
                                   {charm.mechanicalKey && <span className="text-[9px] px-1.5 py-0.5 rounded bg-amber-900/40 border border-amber-700/50 text-amber-400">{charm.mechanicalKey}</span>}
                                   {isOwner && <>
                                     <button onClick={() => setEditingCharmId(charm.id)} className="text-stone-600 hover:text-amber-400 text-xs transition-colors">edit</button>

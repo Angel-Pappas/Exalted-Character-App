@@ -103,6 +103,7 @@ create or replace trigger on_auth_user_created
 -- Charm library table (global, shared across all users)
 create table if not exists public.charm_library (
   id uuid primary key default gen_random_uuid(),
+  type text not null default 'Universal',
   ability text not null default '',
   name text not null default '',
   description text not null default '',

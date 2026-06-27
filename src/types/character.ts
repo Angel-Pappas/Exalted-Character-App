@@ -2,12 +2,19 @@
 
 export interface LibraryCharm {
   id: string
+  type: string
   ability: string
   name: string
   description: string
   mechanicalKey: string | null
   sort_order: number
 }
+
+// Known charm types from the book, used to populate type pickers. Admin can still free-type others.
+export const CHARM_TYPE_OPTIONS = [
+  'Universal', 'Solar', 'Lunar', 'Sidereal', 'Abyssal', 'Infernal', 'Dragon-Blooded',
+  'Liminal', 'Getimian', 'Alchemical', 'Martial Arts', 'Strawmaiden Janest',
+]
 
 // ── Per-character charm (references library) ─────────────────────────────────
 
