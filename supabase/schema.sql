@@ -297,3 +297,33 @@ create policy "Admins can delete exalt types"
 create trigger exalt_types_updated_at
   before update on public.exalt_types
   for each row execute function public.set_updated_at();
+
+-- Charm essence tiers ("At Essence N, ..." scaling clauses within a charm's
+-- or mode's effect text — not a purchase prerequisite, just a documented
+-- threshold for when an extra benefit applies)
+create table if not exists public.charm_essence_tiers (
+  id uuid primary key default gen_random_uuid(),
+  charm_id uuid references public.charm_library(id) on delete cascade,
+  mode_id uuid references public.charm_modes(id) on delete cascade,
+  essence_threshold integer not null,
+  effect_text text not null,
+  check ((charm_id is not null) <> (mode_id is not null))
+);
+
+alter table public.charm_essence_tiers enable row level security;
+
+create policy "Anyone can read charm essence tiers"
+  on public.charm_essence_tiers for select
+  using (true);
+
+create policy "Admins can insert charm essence tiers"
+  on public.charm_essence_tiers for insert
+  with check (exists (select 1 from public.user_profiles where user_id = auth.uid() and role = 'admin'));
+
+create policy "Admins can update charm essence tiers"
+  on public.charm_essence_tiers for update
+  using (exists (select 1 from public.user_profiles where user_id = auth.uid() and role = 'admin'));
+
+create policy "Admins can delete charm essence tiers"
+  on public.charm_essence_tiers for delete
+  using (exists (select 1 from public.user_profiles where user_id = auth.uid() and role = 'admin'));
