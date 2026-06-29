@@ -226,7 +226,7 @@ export default function CharmLibraryTab({ isOwner, textInput }: { isOwner: boole
   return (
     <div className="space-y-3">
       <div className="flex gap-2 items-center">
-        <input value={search} onChange={e => setSearch(e.target.value)} placeholder="Search name, ability, or description…" className={`${textInput} flex-1`} />
+        <input value={search} onChange={e => setSearch(e.target.value)} placeholder="Search name, ability, or description…" className={`${textInput} w-1/4`} />
         {isOwner && (
           <button onClick={() => setAddingNew(v => !v)} title={addingNew ? 'Cancel' : 'Add charm'} className={`text-stone-500 hover:text-amber-400 transition-colors shrink-0 ${addingNew ? 'text-xs' : 'text-base font-bold leading-none'}`}>
             {addingNew ? '✕' : '+'}
