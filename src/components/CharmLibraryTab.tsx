@@ -9,7 +9,13 @@ function ModalPortal({ children }: { children: React.ReactNode }) {
 }
 
 interface CharmAbilityRow { ability: string }
-interface CharmModeRow { label: string; mode_text: string | null }
+interface CharmModePrereqAbilityRow { text: string }
+interface CharmModeRow {
+  label: string
+  mode_text: string | null
+  prerequisite_essence: number | null
+  charm_mode_prerequisite_abilities: CharmModePrereqAbilityRow[]
+}
 interface CharmPrereqAbilityRow { text: string }
 interface CharmPrereqCharmRow { charm_name: string }
 interface CharmLibraryRow {
@@ -143,7 +149,7 @@ export default function CharmLibraryTab({ isOwner, textInput }: { isOwner: boole
 
   useEffect(() => {
     supabase.from('charm_library')
-      .select('*, charm_abilities(ability), charm_modes(label, mode_text), charm_prerequisite_abilities(text), charm_prerequisite_charms(charm_name)')
+      .select('*, charm_abilities(ability), charm_modes(label, mode_text, prerequisite_essence, charm_mode_prerequisite_abilities(text)), charm_prerequisite_abilities(text), charm_prerequisite_charms(charm_name)')
       .order('type').order('page').order('name')
       .then(({ data: rows }) => {
         if (rows) setCharms((rows as unknown as CharmLibraryRow[]).map(r => ({
@@ -158,7 +164,12 @@ export default function CharmLibraryTab({ isOwner, textInput }: { isOwner: boole
           prerequisiteAbilities: (r.charm_prerequisite_abilities ?? []).map(p => p.text),
           prerequisiteEssence: r.prerequisite_essence ?? null,
           prerequisiteCharms: (r.charm_prerequisite_charms ?? []).map(p => p.charm_name),
-          modes: (r.charm_modes ?? []).map(m => ({ label: m.label, text: m.mode_text })),
+          modes: (r.charm_modes ?? []).map(m => ({
+            label: m.label,
+            text: m.mode_text,
+            prerequisiteEssence: m.prerequisite_essence,
+            prerequisiteAbilities: (m.charm_mode_prerequisite_abilities ?? []).map(p => p.text),
+          })),
         })))
         setLoaded(true)
       })

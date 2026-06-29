@@ -168,7 +168,8 @@ create table if not exists public.charm_modes (
   id uuid primary key default gen_random_uuid(),
   charm_id uuid not null references public.charm_library(id) on delete cascade,
   label text not null,
-  mode_text text
+  mode_text text,
+  prerequisite_essence integer
 );
 
 alter table public.charm_modes enable row level security;
@@ -187,6 +188,31 @@ create policy "Admins can update charm modes"
 
 create policy "Admins can delete charm modes"
   on public.charm_modes for delete
+  using (exists (select 1 from public.user_profiles where user_id = auth.uid() and role = 'admin'));
+
+-- Charm mode prerequisite abilities (a mode/Upgrade/Repurchase can require multiple alternative abilities)
+create table if not exists public.charm_mode_prerequisite_abilities (
+  id uuid primary key default gen_random_uuid(),
+  mode_id uuid not null references public.charm_modes(id) on delete cascade,
+  text text not null
+);
+
+alter table public.charm_mode_prerequisite_abilities enable row level security;
+
+create policy "Anyone can read charm mode prerequisite abilities"
+  on public.charm_mode_prerequisite_abilities for select
+  using (true);
+
+create policy "Admins can insert charm mode prerequisite abilities"
+  on public.charm_mode_prerequisite_abilities for insert
+  with check (exists (select 1 from public.user_profiles where user_id = auth.uid() and role = 'admin'));
+
+create policy "Admins can update charm mode prerequisite abilities"
+  on public.charm_mode_prerequisite_abilities for update
+  using (exists (select 1 from public.user_profiles where user_id = auth.uid() and role = 'admin'));
+
+create policy "Admins can delete charm mode prerequisite abilities"
+  on public.charm_mode_prerequisite_abilities for delete
   using (exists (select 1 from public.user_profiles where user_id = auth.uid() and role = 'admin'));
 
 -- Charm prerequisite abilities (a charm can require multiple alternative abilities)

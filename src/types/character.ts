@@ -3,6 +3,8 @@
 export interface CharmMode {
   label: string
   text: string | null
+  prerequisiteAbilities: string[]
+  prerequisiteEssence: number | null
 }
 
 export interface LibraryCharm {
