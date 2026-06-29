@@ -104,7 +104,6 @@ insert into public.charm_prerequisite_charms (charm_id, charm_name) values
   ('138e0324-1ba4-4240-897b-b5bf14ab8c04', 'Undying Body'),
   ('138e0324-1ba4-4240-897b-b5bf14ab8c04', 'one other Force or Fortitude Charm');
 
--- NOTE: charm_library.prerequisite_ability is now superseded by the two tables
--- above and is no longer read by the frontend, but it has NOT been dropped yet
--- pending explicit confirmation (this is a destructive, irreversible change).
--- Once confirmed, run: alter table public.charm_library drop column prerequisite_ability;
+-- charm_library.prerequisite_ability is superseded by the two tables above.
+-- Already dropped via Supabase MCP; kept here for the record.
+alter table public.charm_library drop column if exists prerequisite_ability;
