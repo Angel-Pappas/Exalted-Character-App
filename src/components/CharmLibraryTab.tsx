@@ -385,14 +385,14 @@ export default function CharmLibraryTab({ isOwner, textInput }: { isOwner: boole
                   </tr>
                   {isExpanded && (
                     <tr className="border-b border-stone-800">
-                      <td colSpan={COL_COUNT} className="px-3 pt-2 pb-3">
-                        <p className="text-xs text-stone-400 leading-relaxed">{charm.description}</p>
+                      <td colSpan={COL_COUNT} className="px-3 pt-2 pb-3 w-px">
+                        <p className="text-xs text-stone-400 leading-relaxed whitespace-normal">{charm.description}</p>
                       </td>
                     </tr>
                   )}
                   {isImplOpen && (
                     <tr className="border-b border-stone-800">
-                      <td colSpan={COL_COUNT} className="px-3 pt-2 pb-3 space-y-1">
+                      <td colSpan={COL_COUNT} className="px-3 pt-2 pb-3 space-y-1 w-px">
                         {charm.mechanicalKey ? (
                           <>
                             <p className="text-xs text-amber-400">Key: <code>{charm.mechanicalKey}</code></p>
