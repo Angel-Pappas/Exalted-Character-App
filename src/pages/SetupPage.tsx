@@ -186,6 +186,11 @@ export default function SetupPage() {
   const [charmSaving, setCharmSaving] = useState(false)
   const isOwner = role === 'admin'
 
+  // Charm browse filters
+  const [charmTypeFilter, setCharmTypeFilter] = useState('')
+  const [charmAbilityFilter, setCharmAbilityFilter] = useState('')
+  const [charmSearch, setCharmSearch] = useState('')
+
   // New charm form
   const [newCharmType, setNewCharmType] = useState('Universal')
   const [newCharmAbility, setNewCharmAbility] = useState('')
@@ -638,11 +643,33 @@ export default function SetupPage() {
         ) : activeTab === 'Charms' ? (
           <div className="max-w-2xl space-y-4">
             {!charmsLoaded ? <p className="text-xs text-stone-500">Loading…</p> : (() => {
-              const abilities = [...new Set(charms.map(c => c.ability))].sort()
-              const ungrouped = charms.filter(c => !c.ability)
+              const types = [...new Set(charms.map(c => c.type || 'Universal'))].sort()
+              const abilitiesForType = [...new Set(
+                charms.filter(c => !charmTypeFilter || (c.type || 'Universal') === charmTypeFilter).map(c => c.ability)
+              )].sort()
+              const search = charmSearch.trim().toLowerCase()
+              const filtered = charms.filter(c =>
+                (!charmTypeFilter || (c.type || 'Universal') === charmTypeFilter) &&
+                (!charmAbilityFilter || c.ability === charmAbilityFilter) &&
+                (!search || c.name.toLowerCase().includes(search) || c.ability.toLowerCase().includes(search) || c.description.toLowerCase().includes(search))
+              )
+              const abilities = [...new Set(filtered.map(c => c.ability))].sort()
+              const ungrouped = filtered.filter(c => !c.ability)
               const groups = [...abilities.filter(a => a), ...(ungrouped.length ? [''] : [])]
               return (
                 <>
+                  <div className="flex gap-2">
+                    <select value={charmTypeFilter} onChange={e => { setCharmTypeFilter(e.target.value); setCharmAbilityFilter('') }} className={textInput}>
+                      <option value="">All types…</option>
+                      {types.map(t => <option key={t} value={t}>{t}</option>)}
+                    </select>
+                    <select value={charmAbilityFilter} onChange={e => setCharmAbilityFilter(e.target.value)} className={textInput}>
+                      <option value="">All abilities…</option>
+                      {abilitiesForType.map(a => <option key={a || '__none__'} value={a}>{a || 'General'}</option>)}
+                    </select>
+                  </div>
+                  <input value={charmSearch} onChange={e => setCharmSearch(e.target.value)} placeholder="Search name, ability, or description…" className={textInput} />
+
                   {isOwner && (
                     <div className="flex justify-end">
                       <button onClick={() => setAddingCharm(v => !v)} className="text-xs text-stone-500 hover:text-amber-400 transition-colors">
@@ -667,13 +694,13 @@ export default function SetupPage() {
                     </div>
                   )}
 
-                  {groups.length === 0 && <p className="text-xs text-stone-600">No charms yet.</p>}
+                  {groups.length === 0 && <p className="text-xs text-stone-600">No charms found.</p>}
 
                   {groups.map(ability => (
                     <section key={ability || '__none__'}>
                       <h2 className="text-xs font-bold uppercase tracking-wider text-amber-400/70 mb-1.5">{ability || 'Ungrouped'}</h2>
                       <div className="rounded-lg border border-stone-700 overflow-hidden divide-y divide-stone-800">
-                        {charms.filter(c => c.ability === ability).map(charm => (
+                        {filtered.filter(c => c.ability === ability).map(charm => (
                           editingCharmId === charm.id && isOwner ? (
                             <EditCharmRow key={charm.id} charm={charm} onSave={saveCharm} onCancel={() => setEditingCharmId(null)} saving={charmSaving} textInput={textInput} />
                           ) : (
