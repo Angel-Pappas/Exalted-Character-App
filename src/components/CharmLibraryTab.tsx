@@ -1,7 +1,12 @@
 import { Fragment, useEffect, useState } from 'react'
+import { createPortal } from 'react-dom'
 import { supabase } from '../lib/supabase'
 import type { CharmMode, LibraryCharm } from '../types/character'
 import AbilityChipInput from './AbilityChipInput'
+
+function ModalPortal({ children }: { children: React.ReactNode }) {
+  return createPortal(children, document.body)
+}
 
 interface CharmAbilityRow { ability: string }
 interface CharmModeRow { label: string; mode_text: string | null }
@@ -276,37 +281,46 @@ export default function CharmLibraryTab({ isOwner, textInput }: { isOwner: boole
       <div className="flex gap-2 items-center">
         <input value={search} onChange={e => setSearch(e.target.value)} placeholder="Search name, ability, or description…" className={`${textInput} !w-1/4`} />
         {isOwner && (
-          <button onClick={() => setAddingNew(v => !v)} title={addingNew ? 'Cancel' : 'Add charm'} className={`text-stone-500 hover:text-amber-400 transition-colors shrink-0 ${addingNew ? 'text-xs' : 'text-base font-bold leading-none'}`}>
-            {addingNew ? '✕' : '+'}
+          <button onClick={() => setAddingNew(true)} title="Add charm" className="text-stone-500 hover:text-amber-400 transition-colors shrink-0 text-base font-bold leading-none">
+            +
           </button>
         )}
       </div>
 
       {addingNew && isOwner && (
-        <div className="rounded-lg border border-stone-700 bg-stone-900 p-3 space-y-2">
-          <p className="text-xs font-semibold text-amber-400">New Charm</p>
-          <input value={newCharm.type} onChange={e => setNewCharm(f => ({ ...f, type: e.target.value }))} placeholder="Type (Universal, Solar, Lunar, …)…" list="charm-type-options" className={textInput} />
-          <AbilityChipInput abilities={newCharm.abilities} onChange={abilities => setNewCharm(f => ({ ...f, abilities }))} suggestions={allAbilities} />
-          <input value={newCharm.name} onChange={e => setNewCharm(f => ({ ...f, name: e.target.value }))} placeholder="Name…" className={textInput} />
-          <div>
-            <p className="text-[10px] text-stone-500 mb-0.5">Prerequisite abilities (e.g. "Integrity 2")</p>
-            <AbilityChipInput abilities={newCharm.prerequisiteAbilities} onChange={prerequisiteAbilities => setNewCharm(f => ({ ...f, prerequisiteAbilities }))} suggestions={allPrereqAbilities} />
+        <ModalPortal>
+          <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 p-4" onClick={() => setAddingNew(false)}>
+            <div className="bg-stone-900 border border-stone-700 rounded-xl w-[480px] max-h-[85vh] flex flex-col shadow-2xl" onClick={e => e.stopPropagation()}>
+              <div className="flex items-center justify-between px-4 py-3 border-b border-stone-700 shrink-0">
+                <span className="text-sm font-semibold text-amber-400">New Charm</span>
+                <button onClick={() => setAddingNew(false)} title="Close" className="text-stone-500 hover:text-stone-300 text-xs">✕</button>
+              </div>
+              <div className="px-4 py-3 space-y-2 overflow-y-auto">
+                <input value={newCharm.type} onChange={e => setNewCharm(f => ({ ...f, type: e.target.value }))} placeholder="Type (Universal, Solar, Lunar, …)…" list="charm-type-options" className={textInput} />
+                <AbilityChipInput abilities={newCharm.abilities} onChange={abilities => setNewCharm(f => ({ ...f, abilities }))} suggestions={allAbilities} />
+                <input value={newCharm.name} onChange={e => setNewCharm(f => ({ ...f, name: e.target.value }))} placeholder="Name…" className={textInput} />
+                <div>
+                  <p className="text-[10px] text-stone-500 mb-0.5">Prerequisite abilities (e.g. "Integrity 2")</p>
+                  <AbilityChipInput abilities={newCharm.prerequisiteAbilities} onChange={prerequisiteAbilities => setNewCharm(f => ({ ...f, prerequisiteAbilities }))} suggestions={allPrereqAbilities} />
+                </div>
+                <div>
+                  <p className="text-[10px] text-stone-500 mb-0.5">Prerequisite charms</p>
+                  <AbilityChipInput abilities={newCharm.prerequisiteCharms} onChange={prerequisiteCharms => setNewCharm(f => ({ ...f, prerequisiteCharms }))} suggestions={allCharmNames} />
+                </div>
+                <input type="number" value={newCharm.prerequisiteEssence ?? ''} onChange={e => setNewCharm(f => ({ ...f, prerequisiteEssence: e.target.value ? parseInt(e.target.value) : null }))} placeholder="Prerequisite Essence…" className={textInput} />
+                <input type="number" value={newCharm.page ?? ''} onChange={e => setNewCharm(f => ({ ...f, page: e.target.value ? parseInt(e.target.value) : null }))} placeholder="Page…" className={textInput} />
+                <textarea value={newCharm.description} onChange={e => setNewCharm(f => ({ ...f, description: e.target.value }))} placeholder="Description…" rows={3} className={`${textInput} resize-none`} />
+                <input value={newCharm.mechanicalKey ?? ''} onChange={e => setNewCharm(f => ({ ...f, mechanicalKey: e.target.value || null }))} placeholder="Mechanical key (optional, e.g. foi)…" className={textInput} />
+                <textarea value={newCharm.mechanicalDescription ?? ''} onChange={e => setNewCharm(f => ({ ...f, mechanicalDescription: e.target.value || null }))} placeholder="Mechanical implementation description (optional)…" rows={2} className={`${textInput} resize-none`} />
+              </div>
+              <div className="flex justify-end px-4 py-3 border-t border-stone-800 shrink-0">
+                <button onClick={addCharm} disabled={saving || !newCharm.name.trim()} className="text-xs bg-amber-600 hover:bg-amber-500 disabled:opacity-40 text-white px-3 py-1 rounded transition-colors">
+                  {saving ? 'Saving…' : 'Add'}
+                </button>
+              </div>
+            </div>
           </div>
-          <div>
-            <p className="text-[10px] text-stone-500 mb-0.5">Prerequisite charms</p>
-            <AbilityChipInput abilities={newCharm.prerequisiteCharms} onChange={prerequisiteCharms => setNewCharm(f => ({ ...f, prerequisiteCharms }))} suggestions={allCharmNames} />
-          </div>
-          <input type="number" value={newCharm.prerequisiteEssence ?? ''} onChange={e => setNewCharm(f => ({ ...f, prerequisiteEssence: e.target.value ? parseInt(e.target.value) : null }))} placeholder="Prerequisite Essence…" className={textInput} />
-          <input type="number" value={newCharm.page ?? ''} onChange={e => setNewCharm(f => ({ ...f, page: e.target.value ? parseInt(e.target.value) : null }))} placeholder="Page…" className={textInput} />
-          <textarea value={newCharm.description} onChange={e => setNewCharm(f => ({ ...f, description: e.target.value }))} placeholder="Description…" rows={3} className={`${textInput} resize-none`} />
-          <input value={newCharm.mechanicalKey ?? ''} onChange={e => setNewCharm(f => ({ ...f, mechanicalKey: e.target.value || null }))} placeholder="Mechanical key (optional, e.g. foi)…" className={textInput} />
-          <textarea value={newCharm.mechanicalDescription ?? ''} onChange={e => setNewCharm(f => ({ ...f, mechanicalDescription: e.target.value || null }))} placeholder="Mechanical implementation description (optional)…" rows={2} className={`${textInput} resize-none`} />
-          <div className="flex justify-end">
-            <button onClick={addCharm} disabled={saving || !newCharm.name.trim()} className="text-xs bg-amber-600 hover:bg-amber-500 disabled:opacity-40 text-white px-3 py-1 rounded transition-colors">
-              {saving ? 'Saving…' : 'Add'}
-            </button>
-          </div>
-        </div>
+        </ModalPortal>
       )}
 
       <div className="rounded-lg border border-stone-700 overflow-auto max-h-[70vh] w-fit max-w-full">
