@@ -1,5 +1,10 @@
 // ── Charm Library (global, stored in Supabase charm_library table) ──────────
 
+export interface CharmMode {
+  label: string
+  text: string | null
+}
+
 export interface LibraryCharm {
   id: string
   type: string
@@ -9,6 +14,9 @@ export interface LibraryCharm {
   description: string
   mechanicalKey: string | null
   mechanicalDescription: string | null
+  prerequisiteAbility: string | null
+  prerequisiteEssence: number | null
+  modes: CharmMode[]
 }
 
 // Known charm types from the book, used to populate type pickers. Admin can still free-type others.

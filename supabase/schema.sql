@@ -109,6 +109,8 @@ create table if not exists public.charm_library (
   description text not null default '',
   mechanical_key text,
   mechanical_description text,
+  prerequisite_ability text,
+  prerequisite_essence integer,
   created_at timestamptz default now(),
   updated_at timestamptz default now()
 );
@@ -160,6 +162,32 @@ create policy "Admins can update charm abilities"
 
 create policy "Admins can delete charm abilities"
   on public.charm_abilities for delete
+  using (exists (select 1 from public.user_profiles where user_id = auth.uid() and role = 'admin'));
+
+-- Charm modes table (per-Exalt-type variant text, Upgrades, Repurchase notes, etc.)
+create table if not exists public.charm_modes (
+  id uuid primary key default gen_random_uuid(),
+  charm_id uuid not null references public.charm_library(id) on delete cascade,
+  label text not null,
+  mode_text text
+);
+
+alter table public.charm_modes enable row level security;
+
+create policy "Anyone can read charm modes"
+  on public.charm_modes for select
+  using (true);
+
+create policy "Admins can insert charm modes"
+  on public.charm_modes for insert
+  with check (exists (select 1 from public.user_profiles where user_id = auth.uid() and role = 'admin'));
+
+create policy "Admins can update charm modes"
+  on public.charm_modes for update
+  using (exists (select 1 from public.user_profiles where user_id = auth.uid() and role = 'admin'));
+
+create policy "Admins can delete charm modes"
+  on public.charm_modes for delete
   using (exists (select 1 from public.user_profiles where user_id = auth.uid() and role = 'admin'));
 
 -- Exalt types table (global, shared across all users)
