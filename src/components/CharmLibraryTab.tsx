@@ -227,7 +227,7 @@ export default function CharmLibraryTab({ isOwner, textInput }: { isOwner: boole
   )
 
   return (
-    <div className="max-w-6xl space-y-3">
+    <div className="space-y-3">
       <div className="flex gap-2 items-center">
         <input value={search} onChange={e => setSearch(e.target.value)} placeholder="Search name, ability, or description…" className={`${textInput} flex-1`} />
         {isOwner && (
