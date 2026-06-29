@@ -30,13 +30,33 @@ function blankCharm(): LibraryCharm {
   }
 }
 
-// One icon per mode label: Upgrade gets an upward arrow, Repurchase gets a cycle
-// arrow, everything else (per-Exalt-type variant text) shares a generic diamond.
+// A distinct glyph per mode label, so a row with several different Exalt-type
+// variants (e.g. Solar, Lunar, Dragon-Blooded) reads as different icons at a
+// glance, not a row of identical marks. Falls back to a generic diamond for
+// anything unrecognized (one-off labels like a specific charm name).
+const MODE_ICONS: Record<string, string> = {
+  upgrade: '↑',
+  repurchase: '↻',
+  solar: '☀',
+  lunar: '☾',
+  sidereal: '✦',
+  abyssal: '☠',
+  infernal: '♨',
+  liminal: '⚰',
+  alchemical: '⚛',
+  getimian: '⏣',
+  'dragon-blooded': '☉',
+  janest: '✿',
+  earth: '⛰',
+  fire: '🔥',
+  water: '💧',
+  wood: '🌳',
+  air: '🌬',
+}
+
 function modeIcon(label: string): { glyph: string; title: string } {
-  const lower = label.toLowerCase()
-  if (lower === 'upgrade') return { glyph: '↑', title: 'Upgrade' }
-  if (lower === 'repurchase') return { glyph: '↻', title: 'Repurchase' }
-  return { glyph: '◆', title: label }
+  const glyph = MODE_ICONS[label.toLowerCase()] ?? '◆'
+  return { glyph, title: label }
 }
 
 function EditCharmRow({ charm, onSave, onCancel, saving, textInput, abilitySuggestions, charmNameSuggestions, prereqAbilitySuggestions }: {
