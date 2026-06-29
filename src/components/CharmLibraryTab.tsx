@@ -331,11 +331,11 @@ export default function CharmLibraryTab({ isOwner, textInput }: { isOwner: boole
                   </div>
                   <span className="text-stone-500">{charm.prerequisiteEssence ?? '—'}</span>
                   <span className="text-stone-500">{charm.page ? `p.${charm.page}` : '—'}</span>
-                  <div className="flex flex-wrap gap-1">
+                  <div className="flex flex-nowrap gap-1 overflow-x-auto no-scrollbar">
                     {uniqueModes.map(m => {
                       const icon = modeIcon(m.label)
                       return (
-                        <span key={m.label} title={icon.title} className="text-stone-400 cursor-default">{icon.glyph}</span>
+                        <span key={m.label} title={icon.title} className="text-stone-400 cursor-default shrink-0">{icon.glyph}</span>
                       )
                     })}
                   </div>
