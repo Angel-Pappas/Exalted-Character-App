@@ -63,6 +63,22 @@ function baseAbility(ability: string): string {
   return ability.replace(/\s*\([^)]*\)\s*$/, '').trim()
 }
 
+function modeRank(label: string): number {
+  const lower = label.toLowerCase()
+  if (lower === 'upgrade') return 0
+  if (lower === 'repurchase') return 1
+  if (lower === 'solar') return 2
+  return 3
+}
+
+function sortModes(modes: CharmMode[]): CharmMode[] {
+  return [...modes].sort((a, b) => {
+    const rankDiff = modeRank(a.label) - modeRank(b.label)
+    if (rankDiff !== 0) return rankDiff
+    return modeRank(a.label) === 3 ? a.label.localeCompare(b.label) : 0
+  })
+}
+
 function EditCharmRow({ charm, onSave, onCancel, saving, textInput, abilitySuggestions, charmNameSuggestions, prereqAbilitySuggestions }: {
   charm: LibraryCharm
   onSave: (c: LibraryCharm) => void
@@ -417,8 +433,17 @@ export default function CharmLibraryTab({ isOwner, textInput }: { isOwner: boole
                   </tr>
                   {isExpanded && (
                     <tr className="border-b border-stone-800">
-                      <td colSpan={COL_COUNT} className="px-3 pt-2 pb-3 w-px">
+                      <td colSpan={COL_COUNT} className="px-3 pt-2 pb-3 w-px space-y-3">
                         <p className="text-xs text-stone-400 leading-relaxed whitespace-normal">{charm.description}</p>
+                        {sortModes(uniqueModes).map(m => (
+                          <div key={m.label}>
+                            <p className="text-xs font-bold text-amber-400 flex items-center gap-1">
+                              <span>{modeIcon(m.label).glyph}</span>
+                              {m.label}
+                            </p>
+                            <p className="text-xs text-stone-400 leading-relaxed whitespace-normal">{m.text}</p>
+                          </div>
+                        ))}
                       </td>
                     </tr>
                   )}
