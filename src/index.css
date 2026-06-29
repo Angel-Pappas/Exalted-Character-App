@@ -21,6 +21,30 @@ body {
   -moz-osx-font-smoothing: grayscale;
 }
 
+/* Dark-themed scrollbars app-wide, instead of the OS-default bright ones */
+* {
+  scrollbar-color: #57534e #1c1917; /* thumb: stone-600, track: stone-900 */
+  scrollbar-width: thin;
+}
+*::-webkit-scrollbar {
+  width: 10px;
+  height: 10px;
+}
+*::-webkit-scrollbar-track {
+  background: #1c1917; /* stone-900 */
+}
+*::-webkit-scrollbar-thumb {
+  background-color: #57534e; /* stone-600 */
+  border-radius: 6px;
+  border: 2px solid #1c1917;
+}
+*::-webkit-scrollbar-thumb:hover {
+  background-color: #78716c; /* stone-500 */
+}
+*::-webkit-scrollbar-corner {
+  background: #1c1917;
+}
+
 /* Resize handle: always on top of drag handle and panel content */
 .no-scrollbar,
 .no-scrollbar * {
