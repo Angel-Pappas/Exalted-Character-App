@@ -5,6 +5,8 @@ import AbilityChipInput from './AbilityChipInput'
 
 interface CharmAbilityRow { ability: string }
 interface CharmModeRow { label: string; mode_text: string | null }
+interface CharmPrereqAbilityRow { text: string }
+interface CharmPrereqCharmRow { charm_name: string }
 interface CharmLibraryRow {
   id: string
   type: string | null
@@ -13,17 +15,18 @@ interface CharmLibraryRow {
   description: string
   mechanical_key: string | null
   mechanical_description: string | null
-  prerequisite_ability: string | null
   prerequisite_essence: number | null
   charm_abilities: CharmAbilityRow[]
   charm_modes: CharmModeRow[]
+  charm_prerequisite_abilities: CharmPrereqAbilityRow[]
+  charm_prerequisite_charms: CharmPrereqCharmRow[]
 }
 
 function blankCharm(): LibraryCharm {
   return {
     id: '', type: 'Universal', abilities: [], name: '', page: null, description: '',
-    mechanicalKey: null, mechanicalDescription: null, prerequisiteAbility: null,
-    prerequisiteEssence: null, modes: [],
+    mechanicalKey: null, mechanicalDescription: null, prerequisiteAbilities: [],
+    prerequisiteEssence: null, prerequisiteCharms: [], modes: [],
   }
 }
 
@@ -36,25 +39,32 @@ function modeIcon(label: string): { glyph: string; title: string } {
   return { glyph: '◆', title: label }
 }
 
-function EditCharmRow({ charm, onSave, onCancel, saving, textInput, suggestions }: {
+function EditCharmRow({ charm, onSave, onCancel, saving, textInput, abilitySuggestions, charmNameSuggestions, prereqAbilitySuggestions }: {
   charm: LibraryCharm
   onSave: (c: LibraryCharm) => void
   onCancel: () => void
   saving: boolean
   textInput: string
-  suggestions: string[]
+  abilitySuggestions: string[]
+  charmNameSuggestions: string[]
+  prereqAbilitySuggestions: string[]
 }) {
   const [form, setForm] = useState({ ...charm })
   const set = (patch: Partial<LibraryCharm>) => setForm(f => ({ ...f, ...patch }))
   return (
     <div className="px-3 py-2 space-y-1.5 bg-stone-800/50">
       <input value={form.type} onChange={e => set({ type: e.target.value })} placeholder="Type (Universal, Solar, Lunar, …)…" list="charm-type-options" className={textInput} />
-      <AbilityChipInput abilities={form.abilities} onChange={abilities => set({ abilities })} suggestions={suggestions} />
+      <AbilityChipInput abilities={form.abilities} onChange={abilities => set({ abilities })} suggestions={abilitySuggestions} />
       <input value={form.name} onChange={e => set({ name: e.target.value })} placeholder="Name…" className={textInput} />
-      <div className="flex gap-1.5">
-        <input value={form.prerequisiteAbility ?? ''} onChange={e => set({ prerequisiteAbility: e.target.value || null })} placeholder="Prerequisite ability…" className={`${textInput} flex-1`} />
-        <input type="number" value={form.prerequisiteEssence ?? ''} onChange={e => set({ prerequisiteEssence: e.target.value ? parseInt(e.target.value) : null })} placeholder="Prereq. Essence…" className={`${textInput} w-32`} />
+      <div>
+        <p className="text-[10px] text-stone-500 mb-0.5">Prerequisite abilities (e.g. "Integrity 2")</p>
+        <AbilityChipInput abilities={form.prerequisiteAbilities} onChange={prerequisiteAbilities => set({ prerequisiteAbilities })} suggestions={prereqAbilitySuggestions} />
       </div>
+      <div>
+        <p className="text-[10px] text-stone-500 mb-0.5">Prerequisite charms</p>
+        <AbilityChipInput abilities={form.prerequisiteCharms} onChange={prerequisiteCharms => set({ prerequisiteCharms })} suggestions={charmNameSuggestions} />
+      </div>
+      <input type="number" value={form.prerequisiteEssence ?? ''} onChange={e => set({ prerequisiteEssence: e.target.value ? parseInt(e.target.value) : null })} placeholder="Prerequisite Essence…" className={textInput} />
       <input type="number" value={form.page ?? ''} onChange={e => set({ page: e.target.value ? parseInt(e.target.value) : null })} placeholder="Page…" className={textInput} />
       <textarea value={form.description} onChange={e => set({ description: e.target.value })} placeholder="Description…" rows={3} className={`${textInput} resize-none`} />
       <input value={form.mechanicalKey ?? ''} onChange={e => set({ mechanicalKey: e.target.value || null })} placeholder="Mechanical key (optional)…" className={textInput} />
@@ -69,7 +79,7 @@ function EditCharmRow({ charm, onSave, onCancel, saving, textInput, suggestions 
   )
 }
 
-const GRID_COLS = 'grid-cols-[1fr_6rem_1fr_8rem_4rem_3rem_4.5rem_2rem_3.5rem]'
+const GRID_COLS = 'grid-cols-[1fr_6rem_1fr_7rem_7rem_3.5rem_3rem_4.5rem_2rem_3.5rem]'
 
 export default function CharmLibraryTab({ isOwner, textInput }: { isOwner: boolean; textInput: string }) {
   const [charms, setCharms] = useState<LibraryCharm[]>([])
@@ -86,7 +96,9 @@ export default function CharmLibraryTab({ isOwner, textInput }: { isOwner: boole
   const [newCharm, setNewCharm] = useState<LibraryCharm>(blankCharm())
 
   useEffect(() => {
-    supabase.from('charm_library').select('*, charm_abilities(ability), charm_modes(label, mode_text)').order('type').order('page').order('name')
+    supabase.from('charm_library')
+      .select('*, charm_abilities(ability), charm_modes(label, mode_text), charm_prerequisite_abilities(text), charm_prerequisite_charms(charm_name)')
+      .order('type').order('page').order('name')
       .then(({ data: rows }) => {
         if (rows) setCharms((rows as unknown as CharmLibraryRow[]).map(r => ({
           id: r.id,
@@ -97,8 +109,9 @@ export default function CharmLibraryTab({ isOwner, textInput }: { isOwner: boole
           description: r.description,
           mechanicalKey: r.mechanical_key ?? null,
           mechanicalDescription: r.mechanical_description ?? null,
-          prerequisiteAbility: r.prerequisite_ability ?? null,
+          prerequisiteAbilities: (r.charm_prerequisite_abilities ?? []).map(p => p.text),
           prerequisiteEssence: r.prerequisite_essence ?? null,
+          prerequisiteCharms: (r.charm_prerequisite_charms ?? []).map(p => p.charm_name),
           modes: (r.charm_modes ?? []).map(m => ({ label: m.label, text: m.mode_text })),
         })))
         setLoaded(true)
@@ -115,19 +128,25 @@ export default function CharmLibraryTab({ isOwner, textInput }: { isOwner: boole
       description: newCharm.description.trim(),
       mechanical_key: newCharm.mechanicalKey || null,
       mechanical_description: newCharm.mechanicalDescription || null,
-      prerequisite_ability: newCharm.prerequisiteAbility || null,
       prerequisite_essence: newCharm.prerequisiteEssence,
     }).select().single()
     if (row) {
       if (newCharm.abilities.length) {
         await supabase.from('charm_abilities').insert(newCharm.abilities.map(a => ({ charm_id: row.id, ability: a })))
       }
+      if (newCharm.prerequisiteAbilities.length) {
+        await supabase.from('charm_prerequisite_abilities').insert(newCharm.prerequisiteAbilities.map(text => ({ charm_id: row.id, text })))
+      }
+      if (newCharm.prerequisiteCharms.length) {
+        await supabase.from('charm_prerequisite_charms').insert(newCharm.prerequisiteCharms.map(charm_name => ({ charm_id: row.id, charm_name })))
+      }
       setCharms(prev => [...prev, {
         id: row.id, type: row.type ?? 'Universal', abilities: newCharm.abilities, name: row.name,
         page: row.page, description: row.description, mechanicalKey: row.mechanical_key ?? null,
         mechanicalDescription: row.mechanical_description ?? null,
-        prerequisiteAbility: row.prerequisite_ability ?? null,
+        prerequisiteAbilities: newCharm.prerequisiteAbilities,
         prerequisiteEssence: row.prerequisite_essence ?? null,
+        prerequisiteCharms: newCharm.prerequisiteCharms,
         modes: [] as CharmMode[],
       }])
     }
@@ -141,11 +160,19 @@ export default function CharmLibraryTab({ isOwner, textInput }: { isOwner: boole
     await supabase.from('charm_library').update({
       type: charm.type, name: charm.name, page: charm.page, description: charm.description,
       mechanical_key: charm.mechanicalKey || null, mechanical_description: charm.mechanicalDescription || null,
-      prerequisite_ability: charm.prerequisiteAbility || null, prerequisite_essence: charm.prerequisiteEssence,
+      prerequisite_essence: charm.prerequisiteEssence,
     }).eq('id', charm.id)
     await supabase.from('charm_abilities').delete().eq('charm_id', charm.id)
     if (charm.abilities.length) {
       await supabase.from('charm_abilities').insert(charm.abilities.map(a => ({ charm_id: charm.id, ability: a })))
+    }
+    await supabase.from('charm_prerequisite_abilities').delete().eq('charm_id', charm.id)
+    if (charm.prerequisiteAbilities.length) {
+      await supabase.from('charm_prerequisite_abilities').insert(charm.prerequisiteAbilities.map(text => ({ charm_id: charm.id, text })))
+    }
+    await supabase.from('charm_prerequisite_charms').delete().eq('charm_id', charm.id)
+    if (charm.prerequisiteCharms.length) {
+      await supabase.from('charm_prerequisite_charms').insert(charm.prerequisiteCharms.map(charm_name => ({ charm_id: charm.id, charm_name })))
     }
     setCharms(prev => prev.map(c => c.id === charm.id ? charm : c))
     setEditingId(null)
@@ -163,6 +190,8 @@ export default function CharmLibraryTab({ isOwner, textInput }: { isOwner: boole
 
   const types = [...new Set(charms.map(c => c.type || 'Universal'))].sort()
   const allAbilities = [...new Set(charms.flatMap(c => c.abilities))].sort()
+  const allPrereqAbilities = [...new Set(charms.flatMap(c => c.prerequisiteAbilities))].sort()
+  const allCharmNames = [...new Set(charms.map(c => c.name))].sort()
   const abilitiesForType = [...new Set(
     charms.filter(c => !typeFilter || (c.type || 'Universal') === typeFilter).flatMap(c => c.abilities)
   )].sort()
@@ -174,7 +203,7 @@ export default function CharmLibraryTab({ isOwner, textInput }: { isOwner: boole
   )
 
   return (
-    <div className="max-w-5xl space-y-3">
+    <div className="max-w-6xl space-y-3">
       <div className="flex gap-2 items-center">
         <input value={search} onChange={e => setSearch(e.target.value)} placeholder="Search name, ability, or description…" className={`${textInput} flex-1`} />
         {isOwner && (
@@ -190,10 +219,15 @@ export default function CharmLibraryTab({ isOwner, textInput }: { isOwner: boole
           <input value={newCharm.type} onChange={e => setNewCharm(f => ({ ...f, type: e.target.value }))} placeholder="Type (Universal, Solar, Lunar, …)…" list="charm-type-options" className={textInput} />
           <AbilityChipInput abilities={newCharm.abilities} onChange={abilities => setNewCharm(f => ({ ...f, abilities }))} suggestions={allAbilities} />
           <input value={newCharm.name} onChange={e => setNewCharm(f => ({ ...f, name: e.target.value }))} placeholder="Name…" className={textInput} />
-          <div className="flex gap-1.5">
-            <input value={newCharm.prerequisiteAbility ?? ''} onChange={e => setNewCharm(f => ({ ...f, prerequisiteAbility: e.target.value || null }))} placeholder="Prerequisite ability…" className={`${textInput} flex-1`} />
-            <input type="number" value={newCharm.prerequisiteEssence ?? ''} onChange={e => setNewCharm(f => ({ ...f, prerequisiteEssence: e.target.value ? parseInt(e.target.value) : null }))} placeholder="Prereq. Essence…" className={`${textInput} w-32`} />
+          <div>
+            <p className="text-[10px] text-stone-500 mb-0.5">Prerequisite abilities (e.g. "Integrity 2")</p>
+            <AbilityChipInput abilities={newCharm.prerequisiteAbilities} onChange={prerequisiteAbilities => setNewCharm(f => ({ ...f, prerequisiteAbilities }))} suggestions={allPrereqAbilities} />
           </div>
+          <div>
+            <p className="text-[10px] text-stone-500 mb-0.5">Prerequisite charms</p>
+            <AbilityChipInput abilities={newCharm.prerequisiteCharms} onChange={prerequisiteCharms => setNewCharm(f => ({ ...f, prerequisiteCharms }))} suggestions={allCharmNames} />
+          </div>
+          <input type="number" value={newCharm.prerequisiteEssence ?? ''} onChange={e => setNewCharm(f => ({ ...f, prerequisiteEssence: e.target.value ? parseInt(e.target.value) : null }))} placeholder="Prerequisite Essence…" className={textInput} />
           <input type="number" value={newCharm.page ?? ''} onChange={e => setNewCharm(f => ({ ...f, page: e.target.value ? parseInt(e.target.value) : null }))} placeholder="Page…" className={textInput} />
           <textarea value={newCharm.description} onChange={e => setNewCharm(f => ({ ...f, description: e.target.value }))} placeholder="Description…" rows={3} className={`${textInput} resize-none`} />
           <input value={newCharm.mechanicalKey ?? ''} onChange={e => setNewCharm(f => ({ ...f, mechanicalKey: e.target.value || null }))} placeholder="Mechanical key (optional, e.g. foi)…" className={textInput} />
@@ -218,6 +252,7 @@ export default function CharmLibraryTab({ isOwner, textInput }: { isOwner: boole
             {abilitiesForType.map(a => <option key={a} value={a}>{a}</option>)}
           </select>
           <span className="text-[10px] font-bold uppercase tracking-wider text-stone-400">Prereq. Ability</span>
+          <span className="text-[10px] font-bold uppercase tracking-wider text-stone-400">Prereq. Charms</span>
           <span className="text-[10px] font-bold uppercase tracking-wider text-stone-400">Prereq. Ess.</span>
           <span className="text-[10px] font-bold uppercase tracking-wider text-stone-400">Page</span>
           <span className="text-[10px] font-bold uppercase tracking-wider text-stone-400">Modes</span>
@@ -243,14 +278,16 @@ export default function CharmLibraryTab({ isOwner, textInput }: { isOwner: boole
                   onCancel={() => setEditingId(null)}
                   saving={saving}
                   textInput={textInput}
-                  suggestions={allAbilities}
+                  abilitySuggestions={allAbilities}
+                  charmNameSuggestions={allCharmNames}
+                  prereqAbilitySuggestions={allPrereqAbilities}
                 />
               )
             }
 
             return (
               <div key={charm.id}>
-                <div className={`grid ${GRID_COLS} gap-2 px-3 py-1.5 items-center text-xs`}>
+                <div className={`grid ${GRID_COLS} gap-2 px-3 py-1.5 items-start text-xs`}>
                   <button onClick={() => setExpandedId(isExpanded ? null : charm.id)} className="text-left font-semibold text-stone-100 hover:text-amber-400 transition-colors truncate">
                     {charm.name}
                   </button>
@@ -260,7 +297,18 @@ export default function CharmLibraryTab({ isOwner, textInput }: { isOwner: boole
                       <span key={a} className="text-[9px] px-1.5 py-0.5 rounded bg-stone-800 border border-stone-700 text-stone-400">{a}</span>
                     ))}
                   </div>
-                  <span className="text-stone-500 truncate" title={charm.prerequisiteAbility ?? undefined}>{charm.prerequisiteAbility || '—'}</span>
+                  <div className="flex flex-col gap-0.5">
+                    {charm.prerequisiteAbilities.length === 0 && <span className="text-stone-600">—</span>}
+                    {charm.prerequisiteAbilities.map((p, i) => (
+                      <span key={i} className="text-stone-500 leading-tight">{p}</span>
+                    ))}
+                  </div>
+                  <div className="flex flex-col gap-0.5">
+                    {charm.prerequisiteCharms.length === 0 && <span className="text-stone-600">—</span>}
+                    {charm.prerequisiteCharms.map((p, i) => (
+                      <span key={i} className="text-stone-500 leading-tight">{p}</span>
+                    ))}
+                  </div>
                   <span className="text-stone-500">{charm.prerequisiteEssence ?? '—'}</span>
                   <span className="text-stone-500">{charm.page ? `p.${charm.page}` : '—'}</span>
                   <div className="flex flex-wrap gap-1">

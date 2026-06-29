@@ -121,8 +121,8 @@ function CharmBrowseModal({ existing, onAdd, onClose }: {
             abilities: (r.charm_abilities ?? []).map((a: any) => a.ability),
             name: r.name, page: r.page, description: r.description,
             mechanicalKey: r.mechanical_key ?? null, mechanicalDescription: r.mechanical_description ?? null,
-            prerequisiteAbility: r.prerequisite_ability ?? null, prerequisiteEssence: r.prerequisite_essence ?? null,
-            modes: [],
+            prerequisiteAbilities: [], prerequisiteEssence: r.prerequisite_essence ?? null,
+            prerequisiteCharms: [], modes: [],
           })))
           setLoading(false)
         })

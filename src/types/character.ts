@@ -14,8 +14,9 @@ export interface LibraryCharm {
   description: string
   mechanicalKey: string | null
   mechanicalDescription: string | null
-  prerequisiteAbility: string | null
+  prerequisiteAbilities: string[]
   prerequisiteEssence: number | null
+  prerequisiteCharms: string[]
   modes: CharmMode[]
 }
 

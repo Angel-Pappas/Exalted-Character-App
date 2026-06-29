@@ -109,7 +109,6 @@ create table if not exists public.charm_library (
   description text not null default '',
   mechanical_key text,
   mechanical_description text,
-  prerequisite_ability text,
   prerequisite_essence integer,
   created_at timestamptz default now(),
   updated_at timestamptz default now()
@@ -188,6 +187,56 @@ create policy "Admins can update charm modes"
 
 create policy "Admins can delete charm modes"
   on public.charm_modes for delete
+  using (exists (select 1 from public.user_profiles where user_id = auth.uid() and role = 'admin'));
+
+-- Charm prerequisite abilities (a charm can require multiple alternative abilities)
+create table if not exists public.charm_prerequisite_abilities (
+  id uuid primary key default gen_random_uuid(),
+  charm_id uuid not null references public.charm_library(id) on delete cascade,
+  text text not null
+);
+
+alter table public.charm_prerequisite_abilities enable row level security;
+
+create policy "Anyone can read charm prerequisite abilities"
+  on public.charm_prerequisite_abilities for select
+  using (true);
+
+create policy "Admins can insert charm prerequisite abilities"
+  on public.charm_prerequisite_abilities for insert
+  with check (exists (select 1 from public.user_profiles where user_id = auth.uid() and role = 'admin'));
+
+create policy "Admins can update charm prerequisite abilities"
+  on public.charm_prerequisite_abilities for update
+  using (exists (select 1 from public.user_profiles where user_id = auth.uid() and role = 'admin'));
+
+create policy "Admins can delete charm prerequisite abilities"
+  on public.charm_prerequisite_abilities for delete
+  using (exists (select 1 from public.user_profiles where user_id = auth.uid() and role = 'admin'));
+
+-- Charm prerequisite charms (a charm can require other charms as prerequisites)
+create table if not exists public.charm_prerequisite_charms (
+  id uuid primary key default gen_random_uuid(),
+  charm_id uuid not null references public.charm_library(id) on delete cascade,
+  charm_name text not null
+);
+
+alter table public.charm_prerequisite_charms enable row level security;
+
+create policy "Anyone can read charm prerequisite charms"
+  on public.charm_prerequisite_charms for select
+  using (true);
+
+create policy "Admins can insert charm prerequisite charms"
+  on public.charm_prerequisite_charms for insert
+  with check (exists (select 1 from public.user_profiles where user_id = auth.uid() and role = 'admin'));
+
+create policy "Admins can update charm prerequisite charms"
+  on public.charm_prerequisite_charms for update
+  using (exists (select 1 from public.user_profiles where user_id = auth.uid() and role = 'admin'));
+
+create policy "Admins can delete charm prerequisite charms"
+  on public.charm_prerequisite_charms for delete
   using (exists (select 1 from public.user_profiles where user_id = auth.uid() and role = 'admin'));
 
 -- Exalt types table (global, shared across all users)
