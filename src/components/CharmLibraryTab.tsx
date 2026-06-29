@@ -221,7 +221,25 @@ export default function CharmLibraryTab({ isOwner, textInput }: { isOwner: boole
     (!typeFilter || (c.type || 'Universal') === typeFilter) &&
     (!abilityFilter || c.abilities.includes(abilityFilter)) &&
     (!q || c.name.toLowerCase().includes(q) || c.description.toLowerCase().includes(q) || c.abilities.some(a => a.toLowerCase().includes(q)))
-  )
+  ).sort((a, b) => {
+    const typeRank = (c: LibraryCharm) => {
+      const t = (c.type || 'Universal').toLowerCase()
+      if (t === 'universal') return 0
+      if (t === 'solar') return 1
+      if (t === 'martial arts') return 2
+      return 3
+    }
+    const rankDiff = typeRank(a) - typeRank(b)
+    if (rankDiff !== 0) return rankDiff
+    if (typeRank(a) === 3) {
+      const typeCmp = (a.type || 'Universal').localeCompare(b.type || 'Universal')
+      if (typeCmp !== 0) return typeCmp
+    }
+    const firstAbility = (c: LibraryCharm) => [...c.abilities].sort()[0] ?? ''
+    const abilityCmp = firstAbility(a).localeCompare(firstAbility(b))
+    if (abilityCmp !== 0) return abilityCmp
+    return a.name.localeCompare(b.name)
+  })
 
   return (
     <div className="space-y-3">
