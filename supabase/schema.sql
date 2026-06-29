@@ -104,11 +104,11 @@ create or replace trigger on_auth_user_created
 create table if not exists public.charm_library (
   id uuid primary key default gen_random_uuid(),
   type text not null default 'Universal',
-  ability text not null default '',
   name text not null default '',
+  page integer,
   description text not null default '',
   mechanical_key text,
-  sort_order integer not null default 0,
+  mechanical_description text,
   created_at timestamptz default now(),
   updated_at timestamptz default now()
 );
@@ -136,6 +136,31 @@ create policy "Admins can delete charms"
 create trigger charm_library_updated_at
   before update on public.charm_library
   for each row execute function public.set_updated_at();
+
+-- Charm abilities join table (a charm can apply to multiple abilities)
+create table if not exists public.charm_abilities (
+  charm_id uuid not null references public.charm_library(id) on delete cascade,
+  ability text not null,
+  primary key (charm_id, ability)
+);
+
+alter table public.charm_abilities enable row level security;
+
+create policy "Anyone can read charm abilities"
+  on public.charm_abilities for select
+  using (true);
+
+create policy "Admins can insert charm abilities"
+  on public.charm_abilities for insert
+  with check (exists (select 1 from public.user_profiles where user_id = auth.uid() and role = 'admin'));
+
+create policy "Admins can update charm abilities"
+  on public.charm_abilities for update
+  using (exists (select 1 from public.user_profiles where user_id = auth.uid() and role = 'admin'));
+
+create policy "Admins can delete charm abilities"
+  on public.charm_abilities for delete
+  using (exists (select 1 from public.user_profiles where user_id = auth.uid() and role = 'admin'));
 
 -- Exalt types table (global, shared across all users)
 create table if not exists public.exalt_types (

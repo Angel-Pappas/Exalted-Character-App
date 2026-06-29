@@ -3,11 +3,12 @@
 export interface LibraryCharm {
   id: string
   type: string
-  ability: string
+  abilities: string[]
   name: string
+  page: number | null
   description: string
   mechanicalKey: string | null
-  sort_order: number
+  mechanicalDescription: string | null
 }
 
 // Known charm types from the book, used to populate type pickers. Admin can still free-type others.

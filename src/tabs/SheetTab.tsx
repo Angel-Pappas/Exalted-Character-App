@@ -114,17 +114,22 @@ function CharmBrowseModal({ existing, onAdd, onClose }: {
 
   useEffect(() => {
     import('../lib/supabase').then(({ supabase }) =>
-      supabase.from('charm_library').select('*').order('type').order('ability').order('sort_order').order('name')
+      supabase.from('charm_library').select('*, charm_abilities(ability)').order('type').order('page').order('name')
         .then(({ data }) => {
-          if (data) setLibrary(data.map((r: any) => ({ id: r.id, type: r.type ?? 'Universal', ability: r.ability, name: r.name, description: r.description, mechanicalKey: r.mechanical_key ?? null, sort_order: r.sort_order })))
+          if (data) setLibrary(data.map((r: any) => ({
+            id: r.id, type: r.type ?? 'Universal',
+            abilities: (r.charm_abilities ?? []).map((a: any) => a.ability),
+            name: r.name, page: r.page, description: r.description,
+            mechanicalKey: r.mechanical_key ?? null, mechanicalDescription: r.mechanical_description ?? null,
+          })))
           setLoading(false)
         })
     )
   }, [])
 
   const types = [...new Set(library.map(c => c.type || 'Universal'))].sort()
-  const abilitiesForType = [...new Set(library.filter(c => (c.type || 'Universal') === type).map(c => c.ability))].sort()
-  const charms = type && ability ? library.filter(c => (c.type || 'Universal') === type && c.ability === ability) : []
+  const abilitiesForType = [...new Set(library.filter(c => (c.type || 'Universal') === type).flatMap(c => c.abilities))].sort()
+  const charms = type && ability ? library.filter(c => (c.type || 'Universal') === type && c.abilities.includes(ability)) : []
 
   function pickType(t: string) {
     setType(t)
