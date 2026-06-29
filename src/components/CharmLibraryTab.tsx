@@ -354,12 +354,12 @@ export default function CharmLibraryTab({ isOwner, textInput }: { isOwner: boole
                   ) : <span />}
                 </div>
                 {isExpanded && (
-                  <div className="px-3 pb-2 -mt-1">
+                  <div className="px-3 pt-2 pb-3 mt-1 border-t border-stone-800/70">
                     <p className="text-xs text-stone-400 leading-relaxed">{charm.description}</p>
                   </div>
                 )}
                 {isImplOpen && (
-                  <div className="px-3 pb-2 -mt-1 space-y-1">
+                  <div className="px-3 pt-2 pb-3 mt-1 border-t border-stone-800/70 space-y-1">
                     {charm.mechanicalKey ? (
                       <>
                         <p className="text-xs text-amber-400">Key: <code>{charm.mechanicalKey}</code></p>
