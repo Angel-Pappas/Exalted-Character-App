@@ -221,12 +221,18 @@ export default function CharmLibraryTab({ isOwner, textInput }: { isOwner: boole
     if (rankDiff !== 0) return rankDiff
     return typeRank(a) === 3 ? a.localeCompare(b) : 0
   })
-  const allAbilities = [...new Set(charms.flatMap(c => c.abilities))].sort()
+  const sortAbilities = (abilities: string[]) => [...abilities].sort((a, b) => {
+    const aStyle = a.includes('Style')
+    const bStyle = b.includes('Style')
+    if (aStyle !== bStyle) return aStyle ? 1 : -1
+    return a.localeCompare(b)
+  })
+  const allAbilities = sortAbilities([...new Set(charms.flatMap(c => c.abilities))])
   const allPrereqAbilities = [...new Set(charms.flatMap(c => c.prerequisiteAbilities))].sort()
   const allCharmNames = [...new Set(charms.map(c => c.name))].sort()
-  const abilitiesForType = [...new Set(
+  const abilitiesForType = sortAbilities([...new Set(
     charms.filter(c => !typeFilter || (c.type || 'Universal') === typeFilter).flatMap(c => c.abilities)
-  )].sort()
+  )])
   const q = search.trim().toLowerCase()
   const filtered = charms.filter(c =>
     (!typeFilter || (c.type || 'Universal') === typeFilter) &&
