@@ -99,7 +99,11 @@ function EditCharmRow({ charm, onSave, onCancel, saving, textInput, abilitySugge
   )
 }
 
-const GRID_COLS = 'grid-cols-[1fr_6rem_1fr_7rem_7rem_3.5rem_3rem_4.5rem_2rem_3.5rem]'
+// Fixed widths sized to fit the longest content per column (Name up to 38
+// chars, Modes up to 11 icons, etc.) so nothing wraps or hides. The table is
+// wider than most viewports as a result — that's fine, the page's own
+// overflow-auto container scrolls it horizontally as a single scrollbar.
+const GRID_COLS = 'grid-cols-[16rem_7rem_10rem_8rem_10rem_4rem_3.5rem_10rem_2.5rem_4rem]'
 
 export default function CharmLibraryTab({ isOwner, textInput }: { isOwner: boolean; textInput: string }) {
   const [charms, setCharms] = useState<LibraryCharm[]>([])
@@ -260,8 +264,8 @@ export default function CharmLibraryTab({ isOwner, textInput }: { isOwner: boole
         </div>
       )}
 
-      <div className="rounded-lg border border-stone-700 overflow-hidden">
-        <div className={`grid ${GRID_COLS} gap-2 px-3 py-1.5 bg-stone-800 border-b border-stone-700 items-center`}>
+      <div className="rounded-lg border border-stone-700">
+        <div className={`grid ${GRID_COLS} gap-2 px-3 py-1.5 bg-stone-800 border-b border-stone-700 items-center rounded-t-lg`}>
           <span className="text-[10px] font-bold uppercase tracking-wider text-stone-400">Name</span>
           <select value={typeFilter} onChange={e => { setTypeFilter(e.target.value); setAbilityFilter('') }} className="bg-stone-900 border border-stone-700 text-stone-300 rounded px-1 py-0.5 text-[10px] focus:outline-none focus:border-amber-500">
             <option value="">Type</option>
@@ -282,7 +286,7 @@ export default function CharmLibraryTab({ isOwner, textInput }: { isOwner: boole
 
         {filtered.length === 0 && <p className="text-xs text-stone-600 px-3 py-2">No charms found.</p>}
 
-        <div className="divide-y divide-stone-800 max-h-[70vh] overflow-auto">
+        <div className="divide-y divide-stone-800 max-h-[70vh] overflow-y-auto">
           {filtered.map(charm => {
             const isExpanded = expandedId === charm.id
             const isImplOpen = implId === charm.id
@@ -308,7 +312,7 @@ export default function CharmLibraryTab({ isOwner, textInput }: { isOwner: boole
             return (
               <div key={charm.id}>
                 <div className={`grid ${GRID_COLS} gap-2 px-3 py-1.5 items-start text-xs`}>
-                  <button onClick={() => setExpandedId(isExpanded ? null : charm.id)} className="text-left font-semibold text-stone-100 hover:text-amber-400 transition-colors truncate">
+                  <button onClick={() => setExpandedId(isExpanded ? null : charm.id)} className="text-left font-semibold text-stone-100 hover:text-amber-400 transition-colors whitespace-nowrap">
                     {charm.name}
                   </button>
                   <span className="text-[9px] px-1.5 py-0.5 rounded bg-stone-800 border border-stone-700 text-stone-400 w-fit">{charm.type || 'Universal'}</span>
@@ -331,7 +335,7 @@ export default function CharmLibraryTab({ isOwner, textInput }: { isOwner: boole
                   </div>
                   <span className="text-stone-500">{charm.prerequisiteEssence ?? '—'}</span>
                   <span className="text-stone-500">{charm.page ? `p.${charm.page}` : '—'}</span>
-                  <div className="flex flex-nowrap gap-1 overflow-x-auto no-scrollbar">
+                  <div className="flex flex-nowrap gap-1">
                     {uniqueModes.map(m => {
                       const icon = modeIcon(m.label)
                       return (
