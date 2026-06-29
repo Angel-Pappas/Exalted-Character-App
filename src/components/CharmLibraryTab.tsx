@@ -99,7 +99,11 @@ function EditCharmRow({ charm, onSave, onCancel, saving, textInput, abilitySugge
   )
 }
 
-const GRID_COLS = 'grid-cols-[1fr_6rem_1fr_7rem_7rem_3.5rem_3rem_4.5rem_2rem_3.5rem]'
+// Fixed (non-fluid) widths sized to fit the longest content in each column
+// across the whole library, so nothing wraps, truncates, or hides behind a
+// per-cell scrollbar. If the total is wider than the viewport, the table
+// scrolls horizontally as a whole instead.
+const GRID_COLS = 'grid-cols-[16rem_8rem_12rem_8rem_14rem_4rem_3.5rem_12rem_2.5rem_4rem]'
 
 export default function CharmLibraryTab({ isOwner, textInput }: { isOwner: boolean; textInput: string }) {
   const [charms, setCharms] = useState<LibraryCharm[]>([])
@@ -260,7 +264,7 @@ export default function CharmLibraryTab({ isOwner, textInput }: { isOwner: boole
         </div>
       )}
 
-      <div className="rounded-lg border border-stone-700 overflow-hidden">
+      <div className="rounded-lg border border-stone-700 overflow-x-auto">
         <div className={`grid ${GRID_COLS} gap-2 px-3 py-1.5 bg-stone-800 border-b border-stone-700 items-center`}>
           <span className="text-[10px] font-bold uppercase tracking-wider text-stone-400">Name</span>
           <select value={typeFilter} onChange={e => { setTypeFilter(e.target.value); setAbilityFilter('') }} className="bg-stone-900 border border-stone-700 text-stone-300 rounded px-1 py-0.5 text-[10px] focus:outline-none focus:border-amber-500">
@@ -282,7 +286,7 @@ export default function CharmLibraryTab({ isOwner, textInput }: { isOwner: boole
 
         {filtered.length === 0 && <p className="text-xs text-stone-600 px-3 py-2">No charms found.</p>}
 
-        <div className="divide-y divide-stone-800 max-h-[70vh] overflow-auto">
+        <div className="divide-y divide-stone-800 max-h-[70vh] overflow-y-auto">
           {filtered.map(charm => {
             const isExpanded = expandedId === charm.id
             const isImplOpen = implId === charm.id
@@ -308,7 +312,7 @@ export default function CharmLibraryTab({ isOwner, textInput }: { isOwner: boole
             return (
               <div key={charm.id}>
                 <div className={`grid ${GRID_COLS} gap-2 px-3 py-1.5 items-start text-xs`}>
-                  <button onClick={() => setExpandedId(isExpanded ? null : charm.id)} className="text-left font-semibold text-stone-100 hover:text-amber-400 transition-colors truncate">
+                  <button onClick={() => setExpandedId(isExpanded ? null : charm.id)} className="text-left font-semibold text-stone-100 hover:text-amber-400 transition-colors whitespace-nowrap">
                     {charm.name}
                   </button>
                   <span className="text-[9px] px-1.5 py-0.5 rounded bg-stone-800 border border-stone-700 text-stone-400 w-fit">{charm.type || 'Universal'}</span>
@@ -331,7 +335,7 @@ export default function CharmLibraryTab({ isOwner, textInput }: { isOwner: boole
                   </div>
                   <span className="text-stone-500">{charm.prerequisiteEssence ?? '—'}</span>
                   <span className="text-stone-500">{charm.page ? `p.${charm.page}` : '—'}</span>
-                  <div className="flex flex-nowrap gap-1 overflow-x-auto no-scrollbar">
+                  <div className="flex flex-nowrap gap-1">
                     {uniqueModes.map(m => {
                       const icon = modeIcon(m.label)
                       return (
