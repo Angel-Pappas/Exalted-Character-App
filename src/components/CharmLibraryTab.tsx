@@ -318,11 +318,14 @@ export default function CharmLibraryTab({ isOwner, textInput }: { isOwner: boole
 
               return (
                 <Fragment key={charm.id}>
-                  <tr className="border-b border-stone-800 align-top">
+                  <tr
+                    onClick={() => setExpandedId(isExpanded ? null : charm.id)}
+                    className="border-b border-stone-800 align-top cursor-pointer hover:bg-stone-800/50"
+                  >
                     <td className="px-3 py-1.5 whitespace-nowrap">
-                      <button onClick={() => setExpandedId(isExpanded ? null : charm.id)} className="text-left font-semibold text-stone-100 hover:text-amber-400 transition-colors">
+                      <span className="text-left font-semibold text-stone-100">
                         {charm.name}
-                      </button>
+                      </span>
                     </td>
                     <td className="px-3 py-1.5 whitespace-nowrap">
                       <span className="text-[9px] px-1.5 py-0.5 rounded bg-stone-800 border border-stone-700 text-stone-400">{charm.type || 'Universal'}</span>
@@ -364,7 +367,7 @@ export default function CharmLibraryTab({ isOwner, textInput }: { isOwner: boole
                     </td>
                     <td className="px-3 py-1.5 whitespace-nowrap">
                       <button
-                        onClick={() => setImplId(isImplOpen ? null : charm.id)}
+                        onClick={e => { e.stopPropagation(); setImplId(isImplOpen ? null : charm.id) }}
                         title={charm.mechanicalKey ? 'Has mechanical implementation' : 'No mechanical implementation'}
                         className={`w-6 h-6 flex items-center justify-center rounded border transition-colors ${charm.mechanicalKey ? 'bg-amber-900/40 border-amber-700/50 text-amber-400' : 'bg-stone-800 border-stone-700 text-stone-600'}`}
                       >
@@ -374,8 +377,8 @@ export default function CharmLibraryTab({ isOwner, textInput }: { isOwner: boole
                     <td className="px-3 py-1.5 whitespace-nowrap">
                       {isOwner && (
                         <div className="flex gap-2 justify-end">
-                          <button onClick={() => setEditingId(charm.id)} title="Edit" className="text-stone-600 hover:text-amber-400 transition-colors">✎</button>
-                          <button onClick={() => deleteCharm(charm.id)} title="Delete" className="text-stone-600 hover:text-red-400 transition-colors">✕</button>
+                          <button onClick={e => { e.stopPropagation(); setEditingId(charm.id) }} title="Edit" className="text-stone-600 hover:text-amber-400 transition-colors">✎</button>
+                          <button onClick={e => { e.stopPropagation(); deleteCharm(charm.id) }} title="Delete" className="text-stone-600 hover:text-red-400 transition-colors">✕</button>
                         </div>
                       )}
                     </td>
