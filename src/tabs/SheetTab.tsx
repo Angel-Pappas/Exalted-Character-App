@@ -238,7 +238,7 @@ function CharmPanel({ charms, onChange }: {
 
       <div className="flex items-center justify-between mb-2 shrink-0">
         <SectionHeader title="Charms" />
-        <button onClick={() => setBrowsing(true)} title="Add charm" className="text-stone-500 hover:text-amber-400 transition-colors">+</button>
+        <button onClick={() => setBrowsing(true)} title="Add charm" className="text-stone-500 hover:text-amber-400 transition-colors text-base font-bold leading-none">+</button>
       </div>
 
       <div className="space-y-px overflow-y-auto no-scrollbar flex-1">
@@ -363,9 +363,10 @@ function EffectPanel({ categories, onChange, dragEnabled, anima }: {
   }
 
   const g = "text-stone-500 hover:text-amber-400 transition-colors text-xs"
+  const gPlus = "text-stone-500 hover:text-amber-400 transition-colors text-base font-bold leading-none"
   return (
     <div className="bg-stone-900 border border-stone-700 rounded-lg p-2 overflow-hidden h-full flex flex-col no-scrollbar">
-      <div className="flex items-center justify-between mb-2 shrink-0"><SectionHeader title="Effects" /><button onClick={() => setAddingCat(v => !v)} title="Add category" className={g}>+</button></div>
+      <div className="flex items-center justify-between mb-2 shrink-0"><SectionHeader title="Effects" /><button onClick={() => setAddingCat(v => !v)} title="Add category" className={gPlus}>+</button></div>
       {addingCat && <div className="flex gap-1 mb-2 shrink-0"><input autoFocus type="text" value={newCatName} onChange={e => setNewCatName(e.target.value)} onKeyDown={e => { if (e.key === 'Enter') addCat(); if (e.key === 'Escape') setAddingCat(false) }} placeholder="Category name…" className={inputCls} /><button onClick={addCat} className="bg-amber-600 hover:bg-amber-500 text-white rounded px-2 py-0.5 text-xs">✓</button><button onClick={() => setAddingCat(false)} className="text-stone-500 hover:text-stone-300 text-xs px-1">✕</button></div>}
       <div className="space-y-2 overflow-y-auto no-scrollbar flex-1">
         {categories.length === 0 && <p className="text-xs text-stone-500">No categories yet.</p>}
@@ -383,7 +384,7 @@ function EffectPanel({ categories, onChange, dragEnabled, anima }: {
               className={`flex items-center justify-between px-1.5 py-1 ${dragEnabled ? 'cursor-grab active:cursor-grabbing' : ''}`}
             >
               {editingCatId === cat.id ? <div className="flex gap-1 flex-1"><input autoFocus type="text" value={editCatName} onChange={e => setEditCatName(e.target.value)} onKeyDown={e => { if (e.key === 'Enter') saveCat(); if (e.key === 'Escape') setEditingCatId(null) }} className={inputActive} /><button onClick={saveCat} className="bg-amber-600 hover:bg-amber-500 text-white rounded px-1.5 py-0.5 text-xs">✓</button><button onClick={() => setEditingCatId(null)} className="text-stone-500 hover:text-stone-300 text-xs">✕</button></div>
-              : <><span className="text-xs font-semibold text-amber-400/80 uppercase tracking-wider">{cat.name}</span><div className="flex gap-2"><button onClick={() => setAddingEffectCatId(cat.id === addingEffectCatId ? null : cat.id)} title="Add effect" className={g}>+</button><button onClick={() => { setEditingCatId(cat.id); setEditCatName(cat.name) }} title="Edit" className={g}>✎</button><button onClick={() => removeCat(cat.id)} title="Delete" className="text-stone-500 hover:text-red-400 transition-colors text-xs">✕</button></div></>}
+              : <><span className="text-xs font-semibold text-amber-400/80 uppercase tracking-wider">{cat.name}</span><div className="flex items-center gap-2"><button onClick={() => setAddingEffectCatId(cat.id === addingEffectCatId ? null : cat.id)} title="Add effect" className={gPlus}>+</button><button onClick={() => { setEditingCatId(cat.id); setEditCatName(cat.name) }} title="Edit" className={g}>✎</button><button onClick={() => removeCat(cat.id)} title="Delete" className="text-stone-500 hover:text-red-400 transition-colors text-xs">✕</button></div></>}
             </div>
             {addingEffectCatId === cat.id && <div className="px-1.5 pb-1.5 space-y-1 border-t border-stone-700/50 pt-1"><input autoFocus type="text" value={newEffectName} onChange={e => setNewEffectName(e.target.value)} placeholder="Effect name…" className={inputCls} /><textarea value={newEffectText} onChange={e => setNewEffectText(e.target.value)} placeholder="Description…" rows={3} className="w-full bg-stone-800 border border-stone-600 text-stone-100 rounded px-2 py-1 text-xs focus:outline-none focus:border-amber-500 placeholder-stone-500 resize-none" /><div className="flex gap-1 justify-end"><button onClick={() => addEffect(cat.id)} className="bg-amber-600 hover:bg-amber-500 text-white rounded px-2 py-0.5 text-xs">Add</button><button onClick={() => { setAddingEffectCatId(null); setNewEffectName(''); setNewEffectText('') }} className="text-stone-500 hover:text-stone-300 text-xs px-1">Cancel</button></div></div>}
             <div>
@@ -1083,7 +1084,7 @@ function InventoryPanel({ items, onChange, foi, foiOriginals, onFoiChange, dragE
       <div className="bg-stone-900 border border-stone-700 rounded-lg p-2 overflow-hidden h-full flex flex-col">
         <div className="flex items-center justify-between mb-2 shrink-0">
           <SectionHeader title="Inventory" />
-          <button onClick={() => setModal({ kind: 'weapon' })} title="Add item" className="text-stone-500 hover:text-amber-400 transition-colors">+</button>
+          <button onClick={() => setModal({ kind: 'weapon' })} title="Add item" className="text-stone-500 hover:text-amber-400 transition-colors text-base font-bold leading-none">+</button>
         </div>
         <div className="space-y-2 overflow-y-auto no-scrollbar flex-1">
           {INVENTORY_KINDS.map(({ kind, label }) => {
