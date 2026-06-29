@@ -209,7 +209,18 @@ export default function CharmLibraryTab({ isOwner, textInput }: { isOwner: boole
 
   if (!loaded) return <p className="text-xs text-stone-500">Loading…</p>
 
-  const types = [...new Set(charms.map(c => c.type || 'Universal'))].sort()
+  const typeRank = (t: string) => {
+    const lower = t.toLowerCase()
+    if (lower === 'universal') return 0
+    if (lower === 'solar') return 1
+    if (lower === 'martial arts') return 2
+    return 3
+  }
+  const types = [...new Set(charms.map(c => c.type || 'Universal'))].sort((a, b) => {
+    const rankDiff = typeRank(a) - typeRank(b)
+    if (rankDiff !== 0) return rankDiff
+    return typeRank(a) === 3 ? a.localeCompare(b) : 0
+  })
   const allAbilities = [...new Set(charms.flatMap(c => c.abilities))].sort()
   const allPrereqAbilities = [...new Set(charms.flatMap(c => c.prerequisiteAbilities))].sort()
   const allCharmNames = [...new Set(charms.map(c => c.name))].sort()
@@ -222,16 +233,9 @@ export default function CharmLibraryTab({ isOwner, textInput }: { isOwner: boole
     (!abilityFilter || c.abilities.includes(abilityFilter)) &&
     (!q || c.name.toLowerCase().includes(q) || c.description.toLowerCase().includes(q) || c.abilities.some(a => a.toLowerCase().includes(q)))
   ).sort((a, b) => {
-    const typeRank = (c: LibraryCharm) => {
-      const t = (c.type || 'Universal').toLowerCase()
-      if (t === 'universal') return 0
-      if (t === 'solar') return 1
-      if (t === 'martial arts') return 2
-      return 3
-    }
-    const rankDiff = typeRank(a) - typeRank(b)
+    const rankDiff = typeRank(a.type || 'Universal') - typeRank(b.type || 'Universal')
     if (rankDiff !== 0) return rankDiff
-    if (typeRank(a) === 3) {
+    if (typeRank(a.type || 'Universal') === 3) {
       const typeCmp = (a.type || 'Universal').localeCompare(b.type || 'Universal')
       if (typeCmp !== 0) return typeCmp
     }
