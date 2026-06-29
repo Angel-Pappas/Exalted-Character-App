@@ -435,8 +435,8 @@ export default function CharmLibraryTab({ isOwner, textInput }: { isOwner: boole
                     <tr className="border-b border-stone-800">
                       <td colSpan={COL_COUNT} className="px-3 pt-2 pb-3 w-px space-y-3">
                         <p className="text-xs text-stone-400 leading-relaxed whitespace-normal">{charm.description}</p>
-                        {sortModes(uniqueModes).map(m => (
-                          <div key={m.label}>
+                        {sortModes(charm.modes).map((m, i) => (
+                          <div key={`${m.label}-${i}`}>
                             <p className="text-xs font-bold text-amber-400 flex items-center gap-1">
                               <span>{modeIcon(m.label).glyph}</span>
                               {m.label}
