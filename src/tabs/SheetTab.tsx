@@ -1,4 +1,5 @@
 import { useState, useRef, useEffect } from 'react' // useState used by CharmPanel and other local state
+import { createPortal } from 'react-dom'
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 import { GridLayout, useContainerWidth, noCompactor } from 'react-grid-layout'
 // noCompactor has allowOverlap:false which causes panels to push each other during drag.
@@ -93,6 +94,13 @@ const inputActive = "w-full bg-stone-800 border border-amber-500 text-stone-100 
 
 const selectCls = "w-full bg-stone-800 border border-stone-700 text-stone-100 rounded px-2 py-1.5 text-xs focus:outline-none focus:border-amber-500"
 
+// react-grid-layout positions panels with a CSS transform, which creates a new containing
+// block for position:fixed descendants — without a portal, "fixed" modals inside a panel
+// center on the panel instead of the viewport. Render modals into document.body to escape that.
+function ModalPortal({ children }: { children: React.ReactNode }) {
+  return createPortal(children, document.body)
+}
+
 function CharmBrowseModal({ existing, onAdd, onClose }: {
   existing: import('../types/character').CharacterCharm[]
   onAdd: (charm: import('../types/character').LibraryCharm) => void
@@ -124,50 +132,52 @@ function CharmBrowseModal({ existing, onAdd, onClose }: {
   }
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/70" onClick={onClose}>
-      <div className="bg-stone-900 border border-stone-700 rounded-xl w-[480px] max-h-[80vh] flex flex-col shadow-2xl" onClick={e => e.stopPropagation()}>
-        <div className="flex items-center justify-between px-4 py-3 border-b border-stone-700 shrink-0">
-          <span className="text-sm font-semibold text-amber-400">Add Charm</span>
-          <button onClick={onClose} className="text-stone-500 hover:text-stone-300 text-xs">✕</button>
-        </div>
-        <div className="px-4 py-2 border-b border-stone-800 shrink-0 flex gap-2">
-          <select value={type} onChange={e => pickType(e.target.value)} className={selectCls}>
-            <option value="">Type…</option>
-            {types.map(t => <option key={t} value={t}>{t}</option>)}
-          </select>
-          <select value={ability} onChange={e => setAbility(e.target.value)} disabled={!type} className={`${selectCls} disabled:opacity-40`}>
-            <option value="">Ability…</option>
-            {abilitiesForType.map(a => <option key={a || '__none__'} value={a}>{a || 'General'}</option>)}
-          </select>
-        </div>
-        <div className="overflow-y-auto flex-1 no-scrollbar">
-          {loading && <p className="text-xs text-stone-500 p-4">Loading…</p>}
-          {!loading && !type && <p className="text-xs text-stone-500 p-4">Choose a type to begin.</p>}
-          {!loading && type && !ability && <p className="text-xs text-stone-500 p-4">Choose an ability to see its charms.</p>}
-          {!loading && type && ability && charms.length === 0 && <p className="text-xs text-stone-500 p-4">No charms found.</p>}
-          {charms.map(charm => {
-            const owned = existingIds.has(charm.id)
-            return (
-              <div key={charm.id} className={`px-4 py-2 border-b border-stone-800 last:border-0 ${owned ? 'opacity-40' : 'hover:bg-stone-800/40'}`}>
-                <div className="flex items-center justify-between gap-2">
-                  <div className="flex-1 min-w-0">
-                    <div className="flex items-center gap-2">
-                      <span className="text-xs font-semibold text-stone-100">{charm.name}</span>
-                      {charm.mechanicalKey && <span className="text-[9px] px-1 py-0.5 rounded bg-amber-900/40 border border-amber-700/50 text-amber-400">{charm.mechanicalKey}</span>}
+    <ModalPortal>
+      <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/70" onClick={onClose}>
+        <div className="bg-stone-900 border border-stone-700 rounded-xl w-[480px] max-h-[80vh] flex flex-col shadow-2xl" onClick={e => e.stopPropagation()}>
+          <div className="flex items-center justify-between px-4 py-3 border-b border-stone-700 shrink-0">
+            <span className="text-sm font-semibold text-amber-400">Add Charm</span>
+            <button onClick={onClose} className="text-stone-500 hover:text-stone-300 text-xs">✕</button>
+          </div>
+          <div className="px-4 py-2 border-b border-stone-800 shrink-0 flex gap-2">
+            <select value={type} onChange={e => pickType(e.target.value)} className={selectCls}>
+              <option value="">Type…</option>
+              {types.map(t => <option key={t} value={t}>{t}</option>)}
+            </select>
+            <select value={ability} onChange={e => setAbility(e.target.value)} disabled={!type} className={`${selectCls} disabled:opacity-40`}>
+              <option value="">Ability…</option>
+              {abilitiesForType.map(a => <option key={a || '__none__'} value={a}>{a || 'General'}</option>)}
+            </select>
+          </div>
+          <div className="overflow-y-auto flex-1 no-scrollbar">
+            {loading && <p className="text-xs text-stone-500 p-4">Loading…</p>}
+            {!loading && !type && <p className="text-xs text-stone-500 p-4">Choose a type to begin.</p>}
+            {!loading && type && !ability && <p className="text-xs text-stone-500 p-4">Choose an ability to see its charms.</p>}
+            {!loading && type && ability && charms.length === 0 && <p className="text-xs text-stone-500 p-4">No charms found.</p>}
+            {charms.map(charm => {
+              const owned = existingIds.has(charm.id)
+              return (
+                <div key={charm.id} className={`px-4 py-2 border-b border-stone-800 last:border-0 ${owned ? 'opacity-40' : 'hover:bg-stone-800/40'}`}>
+                  <div className="flex items-center justify-between gap-2">
+                    <div className="flex-1 min-w-0">
+                      <div className="flex items-center gap-2">
+                        <span className="text-xs font-semibold text-stone-100">{charm.name}</span>
+                        {charm.mechanicalKey && <span className="text-[9px] px-1 py-0.5 rounded bg-amber-900/40 border border-amber-700/50 text-amber-400">{charm.mechanicalKey}</span>}
+                      </div>
+                      <p className="text-xs text-stone-400 mt-0.5 leading-relaxed line-clamp-2">{charm.description}</p>
                     </div>
-                    <p className="text-xs text-stone-400 mt-0.5 leading-relaxed line-clamp-2">{charm.description}</p>
+                    {!owned && (
+                      <button onClick={() => onAdd(charm)} className="shrink-0 text-xs bg-amber-600 hover:bg-amber-500 text-white px-2 py-1 rounded transition-colors">Add</button>
+                    )}
+                    {owned && <span className="shrink-0 text-xs text-stone-600">Added</span>}
                   </div>
-                  {!owned && (
-                    <button onClick={() => onAdd(charm)} className="shrink-0 text-xs bg-amber-600 hover:bg-amber-500 text-white px-2 py-1 rounded transition-colors">Add</button>
-                  )}
-                  {owned && <span className="shrink-0 text-xs text-stone-600">Added</span>}
                 </div>
-              </div>
-            )
-          })}
+              )
+            })}
+          </div>
         </div>
       </div>
-    </div>
+    </ModalPortal>
   )
 }
 
@@ -598,6 +608,7 @@ function ItemModal({ item, onSave, onClose, gameData }: {
   }
 
   return (
+    <ModalPortal>
     <div className="fixed inset-0 z-[100] flex items-center justify-center bg-black/60 p-4" onClick={onClose}>
       <div className="bg-stone-900 border border-stone-600 rounded-xl w-[480px] shadow-2xl flex flex-col max-h-full" onClick={e => e.stopPropagation()}>
         {/* Header */}
@@ -761,6 +772,7 @@ function ItemModal({ item, onSave, onClose, gameData }: {
         </div>
       </div>
     </div>
+    </ModalPortal>
   )
 }
 
@@ -784,6 +796,7 @@ function FoiModal({ current, foiWeights, foiTags, onSave, onClose }: {
   const canSave = !active || (!!weight && !!tag)
 
   return (
+    <ModalPortal>
     <div className="fixed inset-0 z-[100] flex items-center justify-center bg-black/60 p-4" onClick={onClose}>
       <div className="bg-stone-900 border border-orange-700/60 rounded-xl w-[420px] shadow-2xl flex flex-col max-h-full" onClick={e => e.stopPropagation()}>
         {/* Header with toggle */}
@@ -844,6 +857,7 @@ function FoiModal({ current, foiWeights, foiTags, onSave, onClose }: {
         </div>
       </div>
     </div>
+    </ModalPortal>
   )
 }
 
