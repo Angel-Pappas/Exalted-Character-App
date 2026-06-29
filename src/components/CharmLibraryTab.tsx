@@ -228,8 +228,8 @@ export default function CharmLibraryTab({ isOwner, textInput }: { isOwner: boole
       <div className="flex gap-2 items-center">
         <input value={search} onChange={e => setSearch(e.target.value)} placeholder="Search name, ability, or description…" className={`${textInput} flex-1`} />
         {isOwner && (
-          <button onClick={() => setAddingNew(v => !v)} className="text-xs text-stone-500 hover:text-amber-400 transition-colors shrink-0">
-            {addingNew ? 'Cancel' : '+ charm'}
+          <button onClick={() => setAddingNew(v => !v)} title={addingNew ? 'Cancel' : 'Add charm'} className="text-stone-500 hover:text-amber-400 transition-colors shrink-0">
+            {addingNew ? '✕' : '+'}
           </button>
         )}
       </div>
@@ -374,8 +374,8 @@ export default function CharmLibraryTab({ isOwner, textInput }: { isOwner: boole
                     <td className="px-3 py-1.5 whitespace-nowrap">
                       {isOwner && (
                         <div className="flex gap-2 justify-end">
-                          <button onClick={() => setEditingId(charm.id)} className="text-stone-600 hover:text-amber-400 transition-colors">edit</button>
-                          <button onClick={() => deleteCharm(charm.id)} className="text-stone-600 hover:text-red-400 transition-colors">✕</button>
+                          <button onClick={() => setEditingId(charm.id)} title="Edit" className="text-stone-600 hover:text-amber-400 transition-colors">✎</button>
+                          <button onClick={() => deleteCharm(charm.id)} title="Delete" className="text-stone-600 hover:text-red-400 transition-colors">✕</button>
                         </div>
                       )}
                     </td>

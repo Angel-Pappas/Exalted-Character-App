@@ -26,7 +26,7 @@ export default function AbilityChipInput({ abilities, onChange, suggestions }: A
         {abilities.map(a => (
           <span key={a} className="inline-flex items-center gap-1 px-2 py-0.5 rounded bg-amber-900/40 border border-amber-700 text-amber-200 text-xs">
             {a}
-            <button type="button" onClick={() => removeAbility(a)} className="text-amber-400 hover:text-amber-100">✕</button>
+            <button type="button" onClick={() => removeAbility(a)} title="Remove" className="text-amber-400 hover:text-amber-100">✕</button>
           </span>
         ))}
       </div>

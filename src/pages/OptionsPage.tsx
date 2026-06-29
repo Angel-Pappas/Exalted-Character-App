@@ -186,7 +186,7 @@ export default function OptionsPage() {
             <section>
               <div className="flex items-center justify-between mb-1.5">
                 <h2 className="text-base font-semibold text-amber-400">Weapons</h2>
-                <button onClick={addWeaponRow} className="text-xs text-stone-500 hover:text-amber-400 transition-colors">+ row</button>
+                <button onClick={addWeaponRow} title="Add row" className="text-stone-500 hover:text-amber-400 transition-colors">+</button>
               </div>
               <div className="rounded-lg border border-stone-700 overflow-visible">
                 <div className="grid grid-cols-[1fr_4rem_4rem_4rem_5.5rem_1.5rem] gap-2 px-3 py-1 bg-stone-800 border-b border-stone-700">
@@ -212,7 +212,7 @@ export default function OptionsPage() {
             <section>
               <div className="flex items-center justify-between mb-1.5">
                 <h2 className="text-base font-semibold text-amber-400">Armor</h2>
-                <button onClick={addArmorRow} className="text-xs text-stone-500 hover:text-amber-400 transition-colors">+ row</button>
+                <button onClick={addArmorRow} title="Add row" className="text-stone-500 hover:text-amber-400 transition-colors">+</button>
               </div>
               <div className="rounded-lg border border-stone-700 overflow-visible">
                 <div className="grid grid-cols-[1fr_4rem_5.5rem_4rem_1.5rem] gap-2 px-3 py-1 bg-stone-800 border-b border-stone-700">
@@ -238,7 +238,7 @@ export default function OptionsPage() {
             <section>
               <div className="flex items-center justify-between mb-1.5">
                 <h2 className="text-base font-semibold text-amber-400">Essence &amp; Motes</h2>
-                <button onClick={addEssenceMoteRow} className="text-xs text-stone-500 hover:text-amber-400 transition-colors">+ row</button>
+                <button onClick={addEssenceMoteRow} title="Add row" className="text-stone-500 hover:text-amber-400 transition-colors">+</button>
               </div>
               <div className="rounded-lg border border-stone-700 overflow-hidden">
                 <div className="grid grid-cols-[1fr_4rem_1.5rem] gap-2 px-3 py-1 bg-stone-800 border-b border-stone-700">
@@ -261,7 +261,7 @@ export default function OptionsPage() {
             <section>
               <div className="flex items-center justify-between mb-1.5">
                 <h2 className="text-base font-semibold text-amber-400">Anima States</h2>
-                <button onClick={addAnimaStateRow} className="text-xs text-stone-500 hover:text-amber-400 transition-colors">+ row</button>
+                <button onClick={addAnimaStateRow} title="Add row" className="text-stone-500 hover:text-amber-400 transition-colors">+</button>
               </div>
               <div className="rounded-lg border border-stone-700 overflow-hidden">
                 <div className="grid grid-cols-[3rem_1fr_1.5rem] gap-2 px-3 py-1 bg-stone-800 border-b border-stone-700">
@@ -284,7 +284,7 @@ export default function OptionsPage() {
             <section>
               <div className="flex items-center justify-between mb-1.5">
                 <h2 className="text-base font-semibold text-amber-400">Equipment Tags</h2>
-                <button onClick={addTagGroup} className="text-xs text-stone-500 hover:text-amber-400 transition-colors">+ group</button>
+                <button onClick={addTagGroup} title="Add group" className="text-stone-500 hover:text-amber-400 transition-colors">+</button>
               </div>
               <div className="space-y-2">
                 {data.tagGroups.map((group, gIdx) => (
@@ -299,7 +299,7 @@ export default function OptionsPage() {
                         className="bg-transparent text-xs font-bold uppercase tracking-wider text-amber-400/80 focus:outline-none placeholder-stone-600 flex-1"
                       />
                       <div className="flex items-center gap-2 shrink-0">
-                        <button onClick={() => addTag(gIdx)} className="text-xs text-stone-500 hover:text-amber-400 transition-colors">+ tag</button>
+                        <button onClick={() => addTag(gIdx)} title="Add tag" className="text-stone-500 hover:text-amber-400 transition-colors">+</button>
                         <button onClick={() => removeTagGroup(gIdx)} className="text-stone-600 hover:text-red-400 transition-colors text-xs">✕</button>
                       </div>
                     </div>
