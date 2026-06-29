@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react'
+import { Fragment, useEffect, useState } from 'react'
 import { supabase } from '../lib/supabase'
 import type { CharmMode, LibraryCharm } from '../types/character'
 import AbilityChipInput from './AbilityChipInput'
@@ -99,11 +99,8 @@ function EditCharmRow({ charm, onSave, onCancel, saving, textInput, abilitySugge
   )
 }
 
-// Fixed widths sized to fit the longest content per column (Name up to 38
-// chars, Modes up to 11 icons, etc.) so nothing wraps or hides. The table is
-// wider than most viewports as a result — that's fine, the page's own
-// overflow-auto container scrolls it horizontally as a single scrollbar.
-const GRID_COLS = 'grid-cols-[16rem_7rem_10rem_8rem_10rem_4rem_3.5rem_10rem_2.5rem_4rem]'
+const COL_COUNT = 10
+const th = 'px-3 py-1.5 text-left text-[10px] font-bold uppercase tracking-wider text-stone-400 bg-stone-800 border-b border-stone-700 sticky top-0 z-10 whitespace-nowrap'
 
 export default function CharmLibraryTab({ isOwner, textInput }: { isOwner: boolean; textInput: string }) {
   const [charms, setCharms] = useState<LibraryCharm[]>([])
@@ -264,122 +261,151 @@ export default function CharmLibraryTab({ isOwner, textInput }: { isOwner: boole
         </div>
       )}
 
-      <div className="rounded-lg border border-stone-700 overflow-x-auto w-fit max-w-full">
-        <div className="w-max max-h-[70vh] overflow-y-auto">
-        <div className={`grid ${GRID_COLS} gap-2 px-3 py-1.5 bg-stone-800 border-b border-stone-700 items-center sticky top-0 z-10`}>
-          <span className="text-[10px] font-bold uppercase tracking-wider text-stone-400">Name</span>
-          <select value={typeFilter} onChange={e => { setTypeFilter(e.target.value); setAbilityFilter('') }} className="bg-stone-900 border border-stone-700 text-stone-300 rounded px-1 py-0.5 text-[10px] focus:outline-none focus:border-amber-500">
-            <option value="">Type</option>
-            {types.map(t => <option key={t} value={t}>{t}</option>)}
-          </select>
-          <select value={abilityFilter} onChange={e => setAbilityFilter(e.target.value)} className="bg-stone-900 border border-stone-700 text-stone-300 rounded px-1 py-0.5 text-[10px] focus:outline-none focus:border-amber-500">
-            <option value="">Ability</option>
-            {abilitiesForType.map(a => <option key={a} value={a}>{a}</option>)}
-          </select>
-          <span className="text-[10px] font-bold uppercase tracking-wider text-stone-400">Prereq. Ability</span>
-          <span className="text-[10px] font-bold uppercase tracking-wider text-stone-400">Prereq. Charms</span>
-          <span className="text-[10px] font-bold uppercase tracking-wider text-stone-400">Prereq. Ess.</span>
-          <span className="text-[10px] font-bold uppercase tracking-wider text-stone-400">Page</span>
-          <span className="text-[10px] font-bold uppercase tracking-wider text-stone-400">Modes</span>
-          <span className="text-[10px] font-bold uppercase tracking-wider text-stone-400">Impl</span>
-          <span />
-        </div>
+      <div className="rounded-lg border border-stone-700 overflow-auto max-h-[70vh] w-fit max-w-full">
+        <table className="text-xs border-collapse">
+          <thead>
+            <tr>
+              <th className={th}>Name</th>
+              <th className={th}>
+                <select value={typeFilter} onChange={e => { setTypeFilter(e.target.value); setAbilityFilter('') }} className="bg-stone-900 border border-stone-700 text-stone-300 rounded px-1 py-0.5 text-[10px] font-normal normal-case tracking-normal focus:outline-none focus:border-amber-500">
+                  <option value="">Type</option>
+                  {types.map(t => <option key={t} value={t}>{t}</option>)}
+                </select>
+              </th>
+              <th className={th}>
+                <select value={abilityFilter} onChange={e => setAbilityFilter(e.target.value)} className="bg-stone-900 border border-stone-700 text-stone-300 rounded px-1 py-0.5 text-[10px] font-normal normal-case tracking-normal focus:outline-none focus:border-amber-500">
+                  <option value="">Ability</option>
+                  {abilitiesForType.map(a => <option key={a} value={a}>{a}</option>)}
+                </select>
+              </th>
+              <th className={th}>Prereq. Ability</th>
+              <th className={th}>Prereq. Charms</th>
+              <th className={th}>Prereq. Ess.</th>
+              <th className={th}>Page</th>
+              <th className={th}>Modes</th>
+              <th className={th}>Impl</th>
+              <th className={th}></th>
+            </tr>
+          </thead>
+          <tbody>
+            {filtered.length === 0 && (
+              <tr><td colSpan={COL_COUNT} className="px-3 py-2 text-stone-600">No charms found.</td></tr>
+            )}
+            {filtered.map(charm => {
+              const isExpanded = expandedId === charm.id
+              const isImplOpen = implId === charm.id
+              const isEditing = editingId === charm.id && isOwner
+              const uniqueModes = [...new Map(charm.modes.map(m => [m.label, m])).values()]
 
-        {filtered.length === 0 && <p className="text-xs text-stone-600 px-3 py-2">No charms found.</p>}
+              if (isEditing) {
+                return (
+                  <tr key={charm.id}>
+                    <td colSpan={COL_COUNT} className="p-0">
+                      <EditCharmRow
+                        charm={charm}
+                        onSave={saveCharm}
+                        onCancel={() => setEditingId(null)}
+                        saving={saving}
+                        textInput={textInput}
+                        abilitySuggestions={allAbilities}
+                        charmNameSuggestions={allCharmNames}
+                        prereqAbilitySuggestions={allPrereqAbilities}
+                      />
+                    </td>
+                  </tr>
+                )
+              }
 
-        <div className="divide-y divide-stone-800">
-          {filtered.map(charm => {
-            const isExpanded = expandedId === charm.id
-            const isImplOpen = implId === charm.id
-            const isEditing = editingId === charm.id && isOwner
-            const uniqueModes = [...new Map(charm.modes.map(m => [m.label, m])).values()]
-
-            if (isEditing) {
               return (
-                <EditCharmRow
-                  key={charm.id}
-                  charm={charm}
-                  onSave={saveCharm}
-                  onCancel={() => setEditingId(null)}
-                  saving={saving}
-                  textInput={textInput}
-                  abilitySuggestions={allAbilities}
-                  charmNameSuggestions={allCharmNames}
-                  prereqAbilitySuggestions={allPrereqAbilities}
-                />
+                <Fragment key={charm.id}>
+                  <tr className="border-b border-stone-800 align-top">
+                    <td className="px-3 py-1.5 whitespace-nowrap">
+                      <button onClick={() => setExpandedId(isExpanded ? null : charm.id)} className="text-left font-semibold text-stone-100 hover:text-amber-400 transition-colors">
+                        {charm.name}
+                      </button>
+                    </td>
+                    <td className="px-3 py-1.5 whitespace-nowrap">
+                      <span className="text-[9px] px-1.5 py-0.5 rounded bg-stone-800 border border-stone-700 text-stone-400">{charm.type || 'Universal'}</span>
+                    </td>
+                    <td className="px-3 py-1.5">
+                      <div className="flex flex-wrap gap-1">
+                        {charm.abilities.map(a => (
+                          <span key={a} className="text-[9px] px-1.5 py-0.5 rounded bg-stone-800 border border-stone-700 text-stone-400 whitespace-nowrap">{a}</span>
+                        ))}
+                      </div>
+                    </td>
+                    <td className="px-3 py-1.5 whitespace-nowrap">
+                      <div className="flex flex-col gap-0.5">
+                        {charm.prerequisiteAbilities.length === 0 && <span className="text-stone-600">—</span>}
+                        {charm.prerequisiteAbilities.map((p, i) => (
+                          <span key={i} className="text-stone-500 leading-tight">{p}</span>
+                        ))}
+                      </div>
+                    </td>
+                    <td className="px-3 py-1.5 whitespace-nowrap">
+                      <div className="flex flex-col gap-0.5">
+                        {charm.prerequisiteCharms.length === 0 && <span className="text-stone-600">—</span>}
+                        {charm.prerequisiteCharms.map((p, i) => (
+                          <span key={i} className="text-stone-500 leading-tight">{p}</span>
+                        ))}
+                      </div>
+                    </td>
+                    <td className="px-3 py-1.5 text-stone-500 whitespace-nowrap">{charm.prerequisiteEssence ?? '—'}</td>
+                    <td className="px-3 py-1.5 text-stone-500 whitespace-nowrap">{charm.page ? `p.${charm.page}` : '—'}</td>
+                    <td className="px-3 py-1.5 whitespace-nowrap">
+                      <div className="flex flex-nowrap gap-1">
+                        {uniqueModes.map(m => {
+                          const icon = modeIcon(m.label)
+                          return (
+                            <span key={m.label} title={icon.title} className="text-stone-400 cursor-default shrink-0">{icon.glyph}</span>
+                          )
+                        })}
+                      </div>
+                    </td>
+                    <td className="px-3 py-1.5 whitespace-nowrap">
+                      <button
+                        onClick={() => setImplId(isImplOpen ? null : charm.id)}
+                        title={charm.mechanicalKey ? 'Has mechanical implementation' : 'No mechanical implementation'}
+                        className={`w-6 h-6 flex items-center justify-center rounded border transition-colors ${charm.mechanicalKey ? 'bg-amber-900/40 border-amber-700/50 text-amber-400' : 'bg-stone-800 border-stone-700 text-stone-600'}`}
+                      >
+                        ⚙
+                      </button>
+                    </td>
+                    <td className="px-3 py-1.5 whitespace-nowrap">
+                      {isOwner && (
+                        <div className="flex gap-2 justify-end">
+                          <button onClick={() => setEditingId(charm.id)} className="text-stone-600 hover:text-amber-400 transition-colors">edit</button>
+                          <button onClick={() => deleteCharm(charm.id)} className="text-stone-600 hover:text-red-400 transition-colors">✕</button>
+                        </div>
+                      )}
+                    </td>
+                  </tr>
+                  {isExpanded && (
+                    <tr className="border-b border-stone-800">
+                      <td colSpan={COL_COUNT} className="px-3 pt-2 pb-3">
+                        <p className="text-xs text-stone-400 leading-relaxed">{charm.description}</p>
+                      </td>
+                    </tr>
+                  )}
+                  {isImplOpen && (
+                    <tr className="border-b border-stone-800">
+                      <td colSpan={COL_COUNT} className="px-3 pt-2 pb-3 space-y-1">
+                        {charm.mechanicalKey ? (
+                          <>
+                            <p className="text-xs text-amber-400">Key: <code>{charm.mechanicalKey}</code></p>
+                            <p className="text-xs text-stone-400 leading-relaxed">
+                              {charm.mechanicalDescription || <em className="text-stone-600">No description set.</em>}
+                            </p>
+                          </>
+                        ) : <p className="text-xs text-stone-600">No mechanical implementation.</p>}
+                      </td>
+                    </tr>
+                  )}
+                </Fragment>
               )
-            }
-
-            return (
-              <div key={charm.id}>
-                <div className={`grid ${GRID_COLS} gap-2 px-3 py-1.5 items-start text-xs`}>
-                  <button onClick={() => setExpandedId(isExpanded ? null : charm.id)} className="text-left font-semibold text-stone-100 hover:text-amber-400 transition-colors whitespace-nowrap">
-                    {charm.name}
-                  </button>
-                  <span className="text-[9px] px-1.5 py-0.5 rounded bg-stone-800 border border-stone-700 text-stone-400 w-fit">{charm.type || 'Universal'}</span>
-                  <div className="flex flex-wrap gap-1">
-                    {charm.abilities.map(a => (
-                      <span key={a} className="text-[9px] px-1.5 py-0.5 rounded bg-stone-800 border border-stone-700 text-stone-400">{a}</span>
-                    ))}
-                  </div>
-                  <div className="flex flex-col gap-0.5">
-                    {charm.prerequisiteAbilities.length === 0 && <span className="text-stone-600">—</span>}
-                    {charm.prerequisiteAbilities.map((p, i) => (
-                      <span key={i} className="text-stone-500 leading-tight">{p}</span>
-                    ))}
-                  </div>
-                  <div className="flex flex-col gap-0.5">
-                    {charm.prerequisiteCharms.length === 0 && <span className="text-stone-600">—</span>}
-                    {charm.prerequisiteCharms.map((p, i) => (
-                      <span key={i} className="text-stone-500 leading-tight">{p}</span>
-                    ))}
-                  </div>
-                  <span className="text-stone-500">{charm.prerequisiteEssence ?? '—'}</span>
-                  <span className="text-stone-500">{charm.page ? `p.${charm.page}` : '—'}</span>
-                  <div className="flex flex-nowrap gap-1">
-                    {uniqueModes.map(m => {
-                      const icon = modeIcon(m.label)
-                      return (
-                        <span key={m.label} title={icon.title} className="text-stone-400 cursor-default shrink-0">{icon.glyph}</span>
-                      )
-                    })}
-                  </div>
-                  <button
-                    onClick={() => setImplId(isImplOpen ? null : charm.id)}
-                    title={charm.mechanicalKey ? 'Has mechanical implementation' : 'No mechanical implementation'}
-                    className={`w-6 h-6 flex items-center justify-center rounded border transition-colors ${charm.mechanicalKey ? 'bg-amber-900/40 border-amber-700/50 text-amber-400' : 'bg-stone-800 border-stone-700 text-stone-600'}`}
-                  >
-                    ⚙
-                  </button>
-                  {isOwner ? (
-                    <div className="flex gap-2 justify-end">
-                      <button onClick={() => setEditingId(charm.id)} className="text-stone-600 hover:text-amber-400 transition-colors">edit</button>
-                      <button onClick={() => deleteCharm(charm.id)} className="text-stone-600 hover:text-red-400 transition-colors">✕</button>
-                    </div>
-                  ) : <span />}
-                </div>
-                {isExpanded && (
-                  <div className="px-3 pt-2 pb-3 mt-1 border-t border-stone-800/70">
-                    <p className="text-xs text-stone-400 leading-relaxed">{charm.description}</p>
-                  </div>
-                )}
-                {isImplOpen && (
-                  <div className="px-3 pt-2 pb-3 mt-1 border-t border-stone-800/70 space-y-1">
-                    {charm.mechanicalKey ? (
-                      <>
-                        <p className="text-xs text-amber-400">Key: <code>{charm.mechanicalKey}</code></p>
-                        <p className="text-xs text-stone-400 leading-relaxed">
-                          {charm.mechanicalDescription || <em className="text-stone-600">No description set.</em>}
-                        </p>
-                      </>
-                    ) : <p className="text-xs text-stone-600">No mechanical implementation.</p>}
-                  </div>
-                )}
-              </div>
-            )
-          })}
-        </div>
-        </div>
+            })}
+          </tbody>
+        </table>
       </div>
     </div>
   )
