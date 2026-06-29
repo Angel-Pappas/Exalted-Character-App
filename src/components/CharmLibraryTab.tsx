@@ -264,8 +264,8 @@ export default function CharmLibraryTab({ isOwner, textInput }: { isOwner: boole
         </div>
       )}
 
-      <div className="rounded-lg border border-stone-700 overflow-x-auto">
-        <div className="w-max min-w-full">
+      <div className="rounded-lg border border-stone-700 overflow-x-auto w-fit max-w-full">
+        <div className="w-max">
         <div className={`grid ${GRID_COLS} gap-2 px-3 py-1.5 bg-stone-800 border-b border-stone-700 items-center rounded-t-lg`}>
           <span className="text-[10px] font-bold uppercase tracking-wider text-stone-400">Name</span>
           <select value={typeFilter} onChange={e => { setTypeFilter(e.target.value); setAbilityFilter('') }} className="bg-stone-900 border border-stone-700 text-stone-300 rounded px-1 py-0.5 text-[10px] focus:outline-none focus:border-amber-500">
