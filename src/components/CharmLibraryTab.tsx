@@ -59,6 +59,10 @@ function modeIcon(label: string): { glyph: string; title: string } {
   return { glyph, title: label }
 }
 
+function baseAbility(ability: string): string {
+  return ability.replace(/\s*\([^)]*\)\s*$/, '').trim()
+}
+
 function EditCharmRow({ charm, onSave, onCancel, saving, textInput, abilitySuggestions, charmNameSuggestions, prereqAbilitySuggestions }: {
   charm: LibraryCharm
   onSave: (c: LibraryCharm) => void
@@ -231,12 +235,12 @@ export default function CharmLibraryTab({ isOwner, textInput }: { isOwner: boole
   const allPrereqAbilities = [...new Set(charms.flatMap(c => c.prerequisiteAbilities))].sort()
   const allCharmNames = [...new Set(charms.map(c => c.name))].sort()
   const abilitiesForType = sortAbilities([...new Set(
-    charms.filter(c => !typeFilter || (c.type || 'Universal') === typeFilter).flatMap(c => c.abilities)
+    charms.filter(c => !typeFilter || (c.type || 'Universal') === typeFilter).flatMap(c => c.abilities.map(baseAbility))
   )])
   const q = search.trim().toLowerCase()
   const filtered = charms.filter(c =>
     (!typeFilter || (c.type || 'Universal') === typeFilter) &&
-    (!abilityFilter || c.abilities.includes(abilityFilter)) &&
+    (!abilityFilter || c.abilities.some(a => baseAbility(a) === abilityFilter)) &&
     (!q || c.name.toLowerCase().includes(q) || c.description.toLowerCase().includes(q) || c.abilities.some(a => a.toLowerCase().includes(q)))
   ).sort((a, b) => {
     const rankDiff = typeRank(a.type || 'Universal') - typeRank(b.type || 'Universal')
