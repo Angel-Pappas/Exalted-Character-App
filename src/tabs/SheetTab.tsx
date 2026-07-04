@@ -180,17 +180,12 @@ function CharmBrowseModal({ existing, exaltType, caste, onAdd, onClose }: {
   )])
 
   const q = search.trim().toLowerCase()
-  const narrowed = !!q || !!ability
+  const narrowed = !!q || !!ability || !!type
   const charms = narrowed ? inScope.filter(c =>
     (!type || (c.type || 'Universal') === type) &&
     (!ability || c.abilities.some(a => baseAbility(a) === ability)) &&
     (!q || c.name.toLowerCase().includes(q) || c.description.toLowerCase().includes(q) || c.abilities.some(a => a.toLowerCase().includes(q)))
   ) : []
-
-  function pickType(t: string) {
-    setType(t)
-    setAbility('')
-  }
 
   return (
     <ModalPortal>
@@ -202,7 +197,7 @@ function CharmBrowseModal({ existing, exaltType, caste, onAdd, onClose }: {
           </div>
           <div className="px-4 py-2 border-b border-stone-800 shrink-0 space-y-2">
             <div className="flex gap-2">
-              <select value={type} onChange={e => pickType(e.target.value)} className={selectCls}>
+              <select value={type} onChange={e => setType(e.target.value)} className={selectCls}>
                 <option value="">Type…</option>
                 {types.map(t => <option key={t} value={t}>{t}</option>)}
               </select>
