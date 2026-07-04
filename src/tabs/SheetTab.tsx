@@ -189,7 +189,7 @@ function CharmBrowseModal({ existing, exaltType, caste, onAdd, onClose }: {
   ).sort((a, b) => Number(hasExcellency(b)) - Number(hasExcellency(a))) : []
 
   return (
-    <ModalPortal>
+    <ModalPortal onClose={onClose}>
       <div className="fixed inset-0 z-50 flex items-start justify-center bg-black/70 pt-12" onClick={onClose}>
         <div className="bg-stone-900 border border-stone-700 rounded-xl w-[960px] max-w-[95vw] max-h-[80vh] flex flex-col shadow-2xl" onClick={e => e.stopPropagation()}>
           <div className="flex items-center justify-between px-4 py-3 border-b border-stone-700 shrink-0">
@@ -684,7 +684,7 @@ function ItemModal({ item, onSave, onClose, gameData }: {
   }
 
   return (
-    <ModalPortal>
+    <ModalPortal onClose={onClose}>
     <div className="fixed inset-0 z-[100] flex items-center justify-center bg-black/60 p-4" onClick={onClose}>
       <div className="bg-stone-900 border border-stone-600 rounded-xl w-[480px] shadow-2xl flex flex-col max-h-full" onClick={e => e.stopPropagation()}>
         {/* Header */}
@@ -872,7 +872,7 @@ function FoiModal({ current, foiWeights, foiTags, onSave, onClose }: {
   const canSave = !active || (!!weight && !!tag)
 
   return (
-    <ModalPortal>
+    <ModalPortal onClose={onClose}>
     <div className="fixed inset-0 z-[100] flex items-center justify-center bg-black/60 p-4" onClick={onClose}>
       <div className="bg-stone-900 border border-orange-700/60 rounded-xl w-[420px] shadow-2xl flex flex-col max-h-full" onClick={e => e.stopPropagation()}>
         {/* Header with toggle */}

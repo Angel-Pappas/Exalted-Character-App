@@ -651,7 +651,7 @@ export default function SetupPage() {
 
       {/* Move Character Modal */}
       {moveTarget && (
-        <ModalPortal>
+        <ModalPortal onClose={() => { setMoveTarget(null); setMoveToUserId('') }}>
         <div className="fixed inset-0 bg-black/60 flex items-center justify-center z-50 p-4">
           <div className="bg-stone-900 border border-stone-700 rounded-xl w-full max-w-sm p-6 space-y-4 shadow-2xl">
             <h3 className="text-base font-semibold text-stone-200">Move Character</h3>

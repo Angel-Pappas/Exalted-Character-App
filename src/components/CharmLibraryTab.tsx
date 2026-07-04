@@ -310,7 +310,7 @@ export default function CharmLibraryTab({ isOwner, textInput }: { isOwner: boole
       </div>
 
       {addingNew && isOwner && (
-        <ModalPortal>
+        <ModalPortal onClose={() => setAddingNew(false)}>
           <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 p-4" onClick={() => setAddingNew(false)}>
             <div className="bg-stone-900 border border-stone-700 rounded-xl w-[480px] max-h-[85vh] flex flex-col shadow-2xl" onClick={e => e.stopPropagation()}>
               <div className="flex items-center justify-between px-4 py-3 border-b border-stone-700 shrink-0">
