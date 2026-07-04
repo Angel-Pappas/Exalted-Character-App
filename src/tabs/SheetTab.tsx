@@ -200,15 +200,15 @@ function CharmBrowseModal({ existing, exaltType, caste, onAdd, onClose }: {
           </div>
           <div className="px-4 py-2 border-b border-stone-800 shrink-0">
             <div className="flex gap-2">
-              <select value={type} onChange={e => setType(e.target.value)} className={selectCls}>
+              <select value={type} onChange={e => setType(e.target.value)} className={`${selectCls} !w-44 shrink-0`}>
                 <option value="">Type…</option>
                 {types.map(t => <option key={t} value={t}>{t}</option>)}
               </select>
-              <select value={ability} onChange={e => setAbility(e.target.value)} className={selectCls}>
+              <select value={ability} onChange={e => setAbility(e.target.value)} className={`${selectCls} !w-44 shrink-0`}>
                 <option value="">Ability…</option>
                 {abilitiesForType.map(a => <option key={a || '__none__'} value={a}>{a || 'General'}</option>)}
               </select>
-              <input value={search} onChange={e => setSearch(e.target.value)} placeholder="Search name, ability, or description…" className={`${selectCls} flex-1`} />
+              <input value={search} onChange={e => setSearch(e.target.value)} placeholder="Search name, ability, or description…" className={`${selectCls} flex-1 min-w-0`} />
               <button
                 onClick={() => setShowAll(s => !s)}
                 title="Show charms from every Exalt type and mode"
