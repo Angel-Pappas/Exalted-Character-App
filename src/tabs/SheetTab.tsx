@@ -8,6 +8,7 @@ const freeCompactor = { ...noCompactor, allowOverlap: true }
 import 'react-grid-layout/css/styles.css'
 import type { SheetData, FoiState, AbilityData, MeritEntry, IntimacyEntry, HealthBox, PanelLayout, CharacterCharm, EffectCategory, EffectEntry, InventoryItem, InventoryItemKind, WeaponWeight, ArtifactColor, GameData } from '../types/character'
 import { DEFAULT_GAME_DATA } from '../types/character'
+import { typeRank, baseAbility, sortAbilities } from '../components/CharmLibraryTab'
 
 const ATTRIBUTE_GROUPS = [
   { label: 'Physical', attrs: ['Strength', 'Dexterity', 'Stamina'] },
@@ -129,9 +130,15 @@ function CharmBrowseModal({ existing, onAdd, onClose }: {
     )
   }, [])
 
-  const types = [...new Set(library.map(c => c.type || 'Universal'))].sort()
-  const abilitiesForType = [...new Set(library.filter(c => (c.type || 'Universal') === type).flatMap(c => c.abilities))].sort()
-  const charms = type && ability ? library.filter(c => (c.type || 'Universal') === type && c.abilities.includes(ability)) : []
+  const types = [...new Set(library.map(c => c.type || 'Universal'))].sort((a, b) => {
+    const rankDiff = typeRank(a) - typeRank(b)
+    if (rankDiff !== 0) return rankDiff
+    return typeRank(a) === 3 ? a.localeCompare(b) : 0
+  })
+  const abilitiesForType = sortAbilities([...new Set(
+    library.filter(c => (c.type || 'Universal') === type).flatMap(c => c.abilities.map(baseAbility))
+  )])
+  const charms = type && ability ? library.filter(c => (c.type || 'Universal') === type && c.abilities.some(a => baseAbility(a) === ability)) : []
 
   function pickType(t: string) {
     setType(t)

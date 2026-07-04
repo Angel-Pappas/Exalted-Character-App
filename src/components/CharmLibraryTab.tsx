@@ -70,8 +70,25 @@ function modeIcon(label: string): { glyph: string; title: string } {
   return { glyph, title: label }
 }
 
-function baseAbility(ability: string): string {
+export function baseAbility(ability: string): string {
   return ability.replace(/\s*\([^)]*\)\s*$/, '').trim()
+}
+
+export function typeRank(t: string): number {
+  const lower = t.toLowerCase()
+  if (lower === 'universal') return 0
+  if (lower === 'solar') return 1
+  if (lower === 'martial arts') return 2
+  return 3
+}
+
+export function sortAbilities(abilities: string[]): string[] {
+  return [...abilities].sort((a, b) => {
+    const aStyle = a.includes('Style')
+    const bStyle = b.includes('Style')
+    if (aStyle !== bStyle) return aStyle ? 1 : -1
+    return a.localeCompare(b)
+  })
 }
 
 function modeRank(label: string): number {
@@ -245,23 +262,10 @@ export default function CharmLibraryTab({ isOwner, textInput }: { isOwner: boole
 
   if (!loaded) return <p className="text-xs text-stone-500">Loading…</p>
 
-  const typeRank = (t: string) => {
-    const lower = t.toLowerCase()
-    if (lower === 'universal') return 0
-    if (lower === 'solar') return 1
-    if (lower === 'martial arts') return 2
-    return 3
-  }
   const types = [...new Set(charms.map(c => c.type || 'Universal'))].sort((a, b) => {
     const rankDiff = typeRank(a) - typeRank(b)
     if (rankDiff !== 0) return rankDiff
     return typeRank(a) === 3 ? a.localeCompare(b) : 0
-  })
-  const sortAbilities = (abilities: string[]) => [...abilities].sort((a, b) => {
-    const aStyle = a.includes('Style')
-    const bStyle = b.includes('Style')
-    if (aStyle !== bStyle) return aStyle ? 1 : -1
-    return a.localeCompare(b)
   })
   const allAbilities = sortAbilities([...new Set(charms.flatMap(c => c.abilities))])
   const allPrereqAbilities = [...new Set(charms.flatMap(c => c.prerequisiteAbilities))].sort()
