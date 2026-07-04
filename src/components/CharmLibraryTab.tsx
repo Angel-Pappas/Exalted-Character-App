@@ -82,11 +82,19 @@ export function typeRank(t: string): number {
   return 3
 }
 
+// Excellency is the universal "buy for any ability" charm, so it always leads
+// ability lists; Style (Martial Arts) abilities trail; everything else is in
+// the alphabetical middle.
+export function abilityRank(ability: string): number {
+  if (baseAbility(ability).toLowerCase() === 'excellency') return 0
+  if (ability.includes('Style')) return 2
+  return 1
+}
+
 export function sortAbilities(abilities: string[]): string[] {
   return [...abilities].sort((a, b) => {
-    const aStyle = a.includes('Style')
-    const bStyle = b.includes('Style')
-    if (aStyle !== bStyle) return aStyle ? 1 : -1
+    const rankDiff = abilityRank(a) - abilityRank(b)
+    if (rankDiff !== 0) return rankDiff
     return a.localeCompare(b)
   })
 }
@@ -285,8 +293,11 @@ export default function CharmLibraryTab({ isOwner, textInput }: { isOwner: boole
       const typeCmp = (a.type || 'Universal').localeCompare(b.type || 'Universal')
       if (typeCmp !== 0) return typeCmp
     }
-    const firstAbility = (c: LibraryCharm) => [...c.abilities].sort()[0] ?? ''
-    const abilityCmp = firstAbility(a).localeCompare(firstAbility(b))
+    const firstAbility = (c: LibraryCharm) => sortAbilities(c.abilities)[0] ?? ''
+    const fa = firstAbility(a), fb = firstAbility(b)
+    const abilityRankDiff = abilityRank(fa) - abilityRank(fb)
+    if (abilityRankDiff !== 0) return abilityRankDiff
+    const abilityCmp = fa.localeCompare(fb)
     if (abilityCmp !== 0) return abilityCmp
     return a.name.localeCompare(b.name)
   })

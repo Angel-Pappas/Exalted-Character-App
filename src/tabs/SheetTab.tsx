@@ -8,7 +8,7 @@ const freeCompactor = { ...noCompactor, allowOverlap: true }
 import 'react-grid-layout/css/styles.css'
 import type { SheetData, FoiState, AbilityData, MeritEntry, IntimacyEntry, HealthBox, PanelLayout, CharacterCharm, EffectCategory, EffectEntry, InventoryItem, InventoryItemKind, WeaponWeight, ArtifactColor, GameData } from '../types/character'
 import { DEFAULT_GAME_DATA } from '../types/character'
-import { typeRank, baseAbility, sortAbilities, modeIcon } from '../components/CharmLibraryTab'
+import { typeRank, baseAbility, sortAbilities, abilityRank, modeIcon } from '../components/CharmLibraryTab'
 
 const ATTRIBUTE_GROUPS = [
   { label: 'Physical', attrs: ['Strength', 'Dexterity', 'Stamina'] },
@@ -181,11 +181,14 @@ function CharmBrowseModal({ existing, exaltType, caste, onAdd, onClose }: {
 
   const q = search.trim().toLowerCase()
   const narrowed = !!q || !!ability || !!type
+  // Excellency-ability charms lead the results; the rest keep the query's
+  // type/page/name order (Array.sort is stable).
+  const hasExcellency = (c: import('../types/character').LibraryCharm) => c.abilities.some(a => abilityRank(a) === 0)
   const charms = narrowed ? inScope.filter(c =>
     (!type || (c.type || 'Universal') === type) &&
     (!ability || c.abilities.some(a => baseAbility(a) === ability)) &&
     (!q || c.name.toLowerCase().includes(q) || c.description.toLowerCase().includes(q) || c.abilities.some(a => a.toLowerCase().includes(q)))
-  ) : []
+  ).sort((a, b) => Number(hasExcellency(b)) - Number(hasExcellency(a))) : []
 
   return (
     <ModalPortal>
