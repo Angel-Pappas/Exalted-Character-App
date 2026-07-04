@@ -7,6 +7,12 @@ export interface CharmMode {
   prerequisiteEssence: number | null
 }
 
+// A charm that requires a choice at purchase time (e.g. "choose an Ability",
+// or Enhanced Senses' "choose a sense") gets one of these tags. Untagged (null)
+// charms need no choice. 'custom' draws from choiceOptions; 'ability'/'attribute'
+// draw from the character's own sheet; 'freetext' is a player-written pick.
+export type CharmChoiceType = 'ability' | 'attribute' | 'custom' | 'freetext'
+
 export interface LibraryCharm {
   id: string
   type: string
@@ -20,6 +26,8 @@ export interface LibraryCharm {
   prerequisiteEssence: number | null
   prerequisiteCharms: string[]
   modes: CharmMode[]
+  choiceType: CharmChoiceType | null
+  choiceOptions: string[]   // only meaningful when choiceType === 'custom'
 }
 
 // Known charm types from the book, used to populate type pickers. Admin can still free-type others.
@@ -39,6 +47,7 @@ export interface CharacterCharm {
   mechanicalKeyOverride: string | null  // null = use libraryMechanicalKey
   mechanicalEnabled: boolean
   count?: number           // number of times purchased (1 + repurchases); absent = 1
+  picks?: string[]         // one entry per purchase; only used when the library charm has a choiceType
 }
 
 export interface EffectEntry {

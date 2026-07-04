@@ -1,6 +1,6 @@
 import { Fragment, useEffect, useState } from 'react'
 import { supabase } from '../lib/supabase'
-import type { CharmMode, LibraryCharm } from '../types/character'
+import type { CharmChoiceType, CharmMode, LibraryCharm } from '../types/character'
 import AbilityChipInput from './AbilityChipInput'
 import ModalPortal from './ModalPortal'
 
@@ -14,6 +14,7 @@ interface CharmModeRow {
 }
 interface CharmPrereqAbilityRow { text: string }
 interface CharmPrereqCharmRow { charm_name: string }
+interface CharmChoiceOptionRow { option: string; sort_order: number }
 interface CharmLibraryRow {
   id: string
   type: string | null
@@ -23,10 +24,19 @@ interface CharmLibraryRow {
   mechanical_key: string | null
   mechanical_description: string | null
   prerequisite_essence: number | null
+  choice_type: CharmChoiceType | null
   charm_abilities: CharmAbilityRow[]
   charm_modes: CharmModeRow[]
   charm_prerequisite_abilities: CharmPrereqAbilityRow[]
   charm_prerequisite_charms: CharmPrereqCharmRow[]
+  charm_choice_options: CharmChoiceOptionRow[]
+}
+
+const CHOICE_TYPE_LABELS: Record<CharmChoiceType, string> = {
+  ability: 'Ability',
+  attribute: 'Attribute',
+  custom: 'Custom List',
+  freetext: 'Free Text',
 }
 
 function blankCharm(): LibraryCharm {
@@ -34,6 +44,7 @@ function blankCharm(): LibraryCharm {
     id: '', type: 'Universal', abilities: [], name: '', page: null, description: '',
     mechanicalKey: null, mechanicalDescription: null, prerequisiteAbilities: [],
     prerequisiteEssence: null, prerequisiteCharms: [], modes: [],
+    choiceType: null, choiceOptions: [],
   }
 }
 
@@ -141,6 +152,23 @@ function EditCharmRow({ charm, onSave, onCancel, saving, textInput, abilitySugge
       <textarea value={form.description} onChange={e => set({ description: e.target.value })} placeholder="Description…" rows={3} className={`${textInput} resize-none`} />
       <input value={form.mechanicalKey ?? ''} onChange={e => set({ mechanicalKey: e.target.value || null })} placeholder="Mechanical key (optional)…" className={textInput} />
       <textarea value={form.mechanicalDescription ?? ''} onChange={e => set({ mechanicalDescription: e.target.value || null })} placeholder="Mechanical implementation description (optional)…" rows={2} className={`${textInput} resize-none`} />
+      <div>
+        <p className="text-[10px] text-stone-500 mb-0.5">Purchase choice (optional — a pick required each time the charm is bought)</p>
+        <select
+          value={form.choiceType ?? ''}
+          onChange={e => set({ choiceType: (e.target.value || null) as CharmChoiceType | null, choiceOptions: e.target.value === 'custom' ? form.choiceOptions : [] })}
+          className={textInput}
+        >
+          <option value="">None</option>
+          {(Object.keys(CHOICE_TYPE_LABELS) as CharmChoiceType[]).map(t => <option key={t} value={t}>{CHOICE_TYPE_LABELS[t]}</option>)}
+        </select>
+        {form.choiceType === 'custom' && (
+          <div className="mt-1">
+            <p className="text-[10px] text-stone-500 mb-0.5">Choice options (e.g. Sight, Hearing, Touch, Smell, Taste)</p>
+            <AbilityChipInput abilities={form.choiceOptions} onChange={choiceOptions => set({ choiceOptions })} suggestions={[]} />
+          </div>
+        )}
+      </div>
       <div className="flex justify-end gap-2">
         <button onClick={onCancel} className="text-xs text-stone-500 hover:text-stone-300 transition-colors">Cancel</button>
         <button onClick={() => onSave(form)} disabled={saving || !form.name.trim()} className="text-xs bg-amber-600 hover:bg-amber-500 disabled:opacity-40 text-white px-3 py-1 rounded transition-colors">
@@ -170,7 +198,7 @@ export default function CharmLibraryTab({ isOwner, textInput }: { isOwner: boole
 
   useEffect(() => {
     supabase.from('charm_library')
-      .select('*, charm_abilities(ability), charm_modes(label, mode_text, prerequisite_essence, charm_mode_prerequisite_abilities(text)), charm_prerequisite_abilities(text), charm_prerequisite_charms(charm_name)')
+      .select('*, charm_abilities(ability), charm_modes(label, mode_text, prerequisite_essence, charm_mode_prerequisite_abilities(text)), charm_prerequisite_abilities(text), charm_prerequisite_charms(charm_name), charm_choice_options(option, sort_order)')
       .order('type').order('page').order('name')
       .then(({ data: rows }) => {
         if (rows) setCharms((rows as unknown as CharmLibraryRow[]).map(r => ({
@@ -191,6 +219,8 @@ export default function CharmLibraryTab({ isOwner, textInput }: { isOwner: boole
             prerequisiteEssence: m.prerequisite_essence,
             prerequisiteAbilities: (m.charm_mode_prerequisite_abilities ?? []).map(p => p.text),
           })),
+          choiceType: r.choice_type ?? null,
+          choiceOptions: (r.charm_choice_options ?? []).sort((a, b) => a.sort_order - b.sort_order).map(o => o.option),
         })))
         setLoaded(true)
       })
@@ -207,6 +237,7 @@ export default function CharmLibraryTab({ isOwner, textInput }: { isOwner: boole
       mechanical_key: newCharm.mechanicalKey || null,
       mechanical_description: newCharm.mechanicalDescription || null,
       prerequisite_essence: newCharm.prerequisiteEssence,
+      choice_type: newCharm.choiceType,
     }).select().single()
     if (row) {
       if (newCharm.abilities.length) {
@@ -218,6 +249,9 @@ export default function CharmLibraryTab({ isOwner, textInput }: { isOwner: boole
       if (newCharm.prerequisiteCharms.length) {
         await supabase.from('charm_prerequisite_charms').insert(newCharm.prerequisiteCharms.map(charm_name => ({ charm_id: row.id, charm_name })))
       }
+      if (newCharm.choiceType === 'custom' && newCharm.choiceOptions.length) {
+        await supabase.from('charm_choice_options').insert(newCharm.choiceOptions.map((option, i) => ({ charm_id: row.id, option, sort_order: i })))
+      }
       setCharms(prev => [...prev, {
         id: row.id, type: row.type ?? 'Universal', abilities: newCharm.abilities, name: row.name,
         page: row.page, description: row.description, mechanicalKey: row.mechanical_key ?? null,
@@ -226,6 +260,8 @@ export default function CharmLibraryTab({ isOwner, textInput }: { isOwner: boole
         prerequisiteEssence: row.prerequisite_essence ?? null,
         prerequisiteCharms: newCharm.prerequisiteCharms,
         modes: [] as CharmMode[],
+        choiceType: row.choice_type ?? null,
+        choiceOptions: newCharm.choiceType === 'custom' ? newCharm.choiceOptions : [],
       }])
     }
     setNewCharm(blankCharm())
@@ -239,6 +275,7 @@ export default function CharmLibraryTab({ isOwner, textInput }: { isOwner: boole
       type: charm.type, name: charm.name, page: charm.page, description: charm.description,
       mechanical_key: charm.mechanicalKey || null, mechanical_description: charm.mechanicalDescription || null,
       prerequisite_essence: charm.prerequisiteEssence,
+      choice_type: charm.choiceType,
     }).eq('id', charm.id)
     await supabase.from('charm_abilities').delete().eq('charm_id', charm.id)
     if (charm.abilities.length) {
@@ -251,6 +288,10 @@ export default function CharmLibraryTab({ isOwner, textInput }: { isOwner: boole
     await supabase.from('charm_prerequisite_charms').delete().eq('charm_id', charm.id)
     if (charm.prerequisiteCharms.length) {
       await supabase.from('charm_prerequisite_charms').insert(charm.prerequisiteCharms.map(charm_name => ({ charm_id: charm.id, charm_name })))
+    }
+    await supabase.from('charm_choice_options').delete().eq('charm_id', charm.id)
+    if (charm.choiceType === 'custom' && charm.choiceOptions.length) {
+      await supabase.from('charm_choice_options').insert(charm.choiceOptions.map((option, i) => ({ charm_id: charm.id, option, sort_order: i })))
     }
     setCharms(prev => prev.map(c => c.id === charm.id ? charm : c))
     setEditingId(null)
@@ -334,6 +375,23 @@ export default function CharmLibraryTab({ isOwner, textInput }: { isOwner: boole
                 <textarea value={newCharm.description} onChange={e => setNewCharm(f => ({ ...f, description: e.target.value }))} placeholder="Description…" rows={3} className={`${textInput} resize-none`} />
                 <input value={newCharm.mechanicalKey ?? ''} onChange={e => setNewCharm(f => ({ ...f, mechanicalKey: e.target.value || null }))} placeholder="Mechanical key (optional, e.g. foi)…" className={textInput} />
                 <textarea value={newCharm.mechanicalDescription ?? ''} onChange={e => setNewCharm(f => ({ ...f, mechanicalDescription: e.target.value || null }))} placeholder="Mechanical implementation description (optional)…" rows={2} className={`${textInput} resize-none`} />
+                <div>
+                  <p className="text-[10px] text-stone-500 mb-0.5">Purchase choice (optional — a pick required each time the charm is bought)</p>
+                  <select
+                    value={newCharm.choiceType ?? ''}
+                    onChange={e => setNewCharm(f => ({ ...f, choiceType: (e.target.value || null) as CharmChoiceType | null, choiceOptions: e.target.value === 'custom' ? f.choiceOptions : [] }))}
+                    className={textInput}
+                  >
+                    <option value="">None</option>
+                    {(Object.keys(CHOICE_TYPE_LABELS) as CharmChoiceType[]).map(t => <option key={t} value={t}>{CHOICE_TYPE_LABELS[t]}</option>)}
+                  </select>
+                  {newCharm.choiceType === 'custom' && (
+                    <div className="mt-1">
+                      <p className="text-[10px] text-stone-500 mb-0.5">Choice options (e.g. Sight, Hearing, Touch, Smell, Taste)</p>
+                      <AbilityChipInput abilities={newCharm.choiceOptions} onChange={choiceOptions => setNewCharm(f => ({ ...f, choiceOptions }))} suggestions={[]} />
+                    </div>
+                  )}
+                </div>
               </div>
               <div className="flex justify-end px-4 py-3 border-t border-stone-800 shrink-0">
                 <button onClick={addCharm} disabled={saving || !newCharm.name.trim()} className="text-xs bg-amber-600 hover:bg-amber-500 disabled:opacity-40 text-white px-3 py-1 rounded transition-colors">
@@ -471,6 +529,14 @@ export default function CharmLibraryTab({ isOwner, textInput }: { isOwner: boole
                     <tr className="border-b border-stone-800">
                       <td colSpan={COL_COUNT} className="px-3 pt-2 pb-3 w-px space-y-3">
                         <p className="text-xs text-stone-400 leading-relaxed whitespace-normal">{charm.description}</p>
+                        {charm.choiceType && (
+                          <p className="text-xs text-stone-500">
+                            Purchase choice: <span className="text-amber-400">{CHOICE_TYPE_LABELS[charm.choiceType]}</span>
+                            {charm.choiceType === 'custom' && charm.choiceOptions.length > 0 && (
+                              <span> — {charm.choiceOptions.join(', ')}</span>
+                            )}
+                          </p>
+                        )}
                         {sortModes(charm.modes).map((m, i) => (
                           <div key={`${m.label}-${i}`}>
                             <p className="text-xs font-bold text-amber-400 flex items-center gap-1">

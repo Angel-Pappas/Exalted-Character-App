@@ -128,11 +128,101 @@ function isModeInScope(label: string, exaltType: string, caste: string, showAll:
   return false
 }
 
-function CharmBrowseModal({ existing, exaltType, caste, onAdd, onRemove, onClose }: {
+const CHOICE_PROMPT: Record<import('../types/character').CharmChoiceType, string> = {
+  ability: 'Choose an Ability',
+  attribute: 'Choose an Attribute',
+  custom: 'Choose an option',
+  freetext: 'Enter a choice',
+}
+
+// Opens for every purchase (first buy included) of a charm with a choiceType.
+// Already-picked options for this specific charm instance are shown disabled
+// so the same option can't be picked twice; free text instead shows past
+// entries as reference alongside a box for the new one.
+function ChoicePickerModal({ charm, existingPicks, abilities, attributes, onConfirm, onClose }: {
+  charm: import('../types/character').LibraryCharm
+  existingPicks: string[]
+  abilities: Record<string, AbilityData>
+  attributes: Record<string, number>
+  onConfirm: (pick: string) => void
+  onClose: () => void
+}) {
+  const [freeText, setFreeText] = useState('')
+
+  const options: { value: string; label: string; chosen: boolean }[] =
+    charm.choiceType === 'custom' ? charm.choiceOptions.map(o => ({ value: o, label: o, chosen: existingPicks.includes(o) })) :
+    charm.choiceType === 'ability' ? Object.keys(abilities).sort().map(a => ({ value: a, label: `${a} (${abilities[a].rating})`, chosen: existingPicks.includes(a) })) :
+    charm.choiceType === 'attribute' ? Object.keys(attributes).sort().map(a => ({ value: a, label: `${a} (${attributes[a]})`, chosen: existingPicks.includes(a) })) :
+    []
+
+  return (
+    <ModalPortal onClose={onClose}>
+      <div className="fixed inset-0 z-[110] flex items-center justify-center bg-black/70 p-4" onClick={onClose}>
+        <div className="bg-stone-900 border border-stone-700 rounded-xl w-[420px] max-h-[80vh] flex flex-col shadow-2xl" onClick={e => e.stopPropagation()}>
+          <div className="flex items-center justify-between px-4 py-3 border-b border-stone-700 shrink-0">
+            <span className="text-sm font-semibold text-amber-400">{charm.name} — {charm.choiceType ? CHOICE_PROMPT[charm.choiceType] : ''}</span>
+            <button onClick={onClose} className="text-stone-500 hover:text-stone-300 text-xs">✕</button>
+          </div>
+          <div className="overflow-y-auto flex-1 p-4 space-y-1.5">
+            {charm.choiceType === 'freetext' ? (
+              <>
+                {existingPicks.length > 0 && (
+                  <div className="mb-2">
+                    <p className="text-[10px] text-stone-500 mb-1">Previous picks</p>
+                    <ul className="space-y-0.5">
+                      {existingPicks.map((p, i) => <li key={i} className="text-xs text-stone-400">{p}</li>)}
+                    </ul>
+                  </div>
+                )}
+                <input
+                  value={freeText}
+                  onChange={e => setFreeText(e.target.value)}
+                  onKeyDown={e => { if (e.key === 'Enter' && freeText.trim()) onConfirm(freeText.trim()) }}
+                  placeholder="Enter your choice…"
+                  autoFocus
+                  className={selectCls}
+                />
+              </>
+            ) : (
+              <>
+                {options.length === 0 && <p className="text-xs text-stone-500">No options available.</p>}
+                {options.map(o => (
+                  <button
+                    key={o.value}
+                    disabled={o.chosen}
+                    onClick={() => onConfirm(o.value)}
+                    className={`w-full text-left text-xs px-3 py-1.5 rounded border transition-colors ${o.chosen ? 'bg-stone-800/50 border-stone-800 text-stone-600 cursor-not-allowed' : 'bg-stone-800 border-stone-700 text-stone-200 hover:border-amber-500'}`}
+                  >
+                    {o.label}{o.chosen ? ' (chosen)' : ''}
+                  </button>
+                ))}
+              </>
+            )}
+          </div>
+          {charm.choiceType === 'freetext' && (
+            <div className="flex justify-end px-4 py-3 border-t border-stone-800 shrink-0">
+              <button
+                onClick={() => freeText.trim() && onConfirm(freeText.trim())}
+                disabled={!freeText.trim()}
+                className="text-xs bg-amber-600 hover:bg-amber-500 disabled:opacity-40 text-white px-3 py-1 rounded transition-colors"
+              >
+                Confirm
+              </button>
+            </div>
+          )}
+        </div>
+      </div>
+    </ModalPortal>
+  )
+}
+
+function CharmBrowseModal({ existing, exaltType, caste, abilities, attributes, onAdd, onRemove, onClose }: {
   existing: import('../types/character').CharacterCharm[]
   exaltType: string
   caste: string
-  onAdd: (charm: import('../types/character').LibraryCharm) => void
+  abilities: Record<string, AbilityData>
+  attributes: Record<string, number>
+  onAdd: (charm: import('../types/character').LibraryCharm, pick: string | null) => void
   onRemove: (libraryId: string) => void
   onClose: () => void
 }) {
@@ -143,12 +233,31 @@ function CharmBrowseModal({ existing, exaltType, caste, onAdd, onRemove, onClose
   const [search, setSearch] = useState('')
   const [showAll, setShowAll] = useState(false)
   const [expandedIds, setExpandedIds] = useState<Set<string>>(new Set())
+  const [pickingCharm, setPickingCharm] = useState<import('../types/character').LibraryCharm | null>(null)
   const existingByLib = new Map(existing.map(c => [c.libraryId, c]))
+
+  // Choice-type charms depend on remaining eligible options, not the Repurchase
+  // mode label, to decide whether another purchase is possible — Excellency-
+  // style charms need this even without a Repurchase mode.
+  function remainingOptions(charm: import('../types/character').LibraryCharm, picks: string[]): number | null {
+    if (charm.choiceType === 'custom') return charm.choiceOptions.filter(o => !picks.includes(o)).length
+    if (charm.choiceType === 'ability') return Object.keys(abilities).filter(a => !picks.includes(a)).length
+    if (charm.choiceType === 'attribute') return Object.keys(attributes).filter(a => !picks.includes(a)).length
+    return null // freetext (unlimited) or no choiceType
+  }
+
+  function startPurchase(charm: import('../types/character').LibraryCharm) {
+    if (charm.choiceType) {
+      setPickingCharm(charm)
+    } else {
+      onAdd(charm, null)
+    }
+  }
 
   useEffect(() => {
     import('../lib/supabase').then(({ supabase }) =>
       supabase.from('charm_library')
-        .select('*, charm_abilities(ability), charm_modes(label, mode_text, prerequisite_essence, charm_mode_prerequisite_abilities(text))')
+        .select('*, charm_abilities(ability), charm_modes(label, mode_text, prerequisite_essence, charm_mode_prerequisite_abilities(text)), charm_choice_options(option, sort_order)')
         .order('type').order('page').order('name')
         .then(({ data }) => {
           if (data) setLibrary(data.map((r: any) => ({
@@ -162,6 +271,8 @@ function CharmBrowseModal({ existing, exaltType, caste, onAdd, onRemove, onClose
               label: m.label, text: m.mode_text, prerequisiteEssence: m.prerequisite_essence,
               prerequisiteAbilities: (m.charm_mode_prerequisite_abilities ?? []).map((p: any) => p.text),
             })),
+            choiceType: r.choice_type ?? null,
+            choiceOptions: (r.charm_choice_options ?? []).sort((a: any, b: any) => a.sort_order - b.sort_order).map((o: any) => o.option),
           })))
           setLoading(false)
         })
@@ -238,7 +349,11 @@ function CharmBrowseModal({ existing, exaltType, caste, onAdd, onRemove, onClose
               const ownedCharm = existingByLib.get(charm.id)
               const owned = !!ownedCharm
               const count = ownedCharm?.count ?? (owned ? 1 : 0)
-              const canRepurchase = charm.modes.some(m => m.label.toLowerCase() === 'repurchase')
+              const picks = ownedCharm?.picks ?? []
+              const remaining = charm.choiceType ? remainingOptions(charm, picks) : null
+              const canBuyAgain = charm.choiceType
+                ? (remaining === null || remaining > 0)
+                : charm.modes.some(m => m.label.toLowerCase() === 'repurchase')
               const visibleModes = [...new Map(
                 charm.modes.filter(m => isModeInScope(m.label, exaltType, caste, showAll)).map(m => [m.label, m])
               ).values()]
@@ -257,11 +372,11 @@ function CharmBrowseModal({ existing, exaltType, caste, onAdd, onRemove, onClose
                       </div>
                     </div>
                     <div className="shrink-0 flex items-center gap-1.5">
-                      {!owned && (
-                        <button onClick={() => onAdd(charm)} title="Add" className="bg-amber-600 hover:bg-amber-500 text-white w-6 h-6 rounded transition-colors">+</button>
+                      {!owned && canBuyAgain && (
+                        <button onClick={() => startPurchase(charm)} title="Add" className="bg-amber-600 hover:bg-amber-500 text-white w-6 h-6 rounded transition-colors">+</button>
                       )}
-                      {owned && canRepurchase && (
-                        <button onClick={() => onAdd(charm)} title="Repurchase (buy again)" className="bg-amber-600 hover:bg-amber-500 text-white w-6 h-6 rounded transition-colors">↻</button>
+                      {owned && canBuyAgain && (
+                        <button onClick={() => startPurchase(charm)} title="Repurchase (buy again)" className="bg-amber-600 hover:bg-amber-500 text-white w-6 h-6 rounded transition-colors">↻</button>
                       )}
                       {owned && (
                         <button onClick={() => onRemove(charm.id)} title="Remove (undo a purchase)" className="w-6 h-6 rounded border border-stone-600 text-stone-400 hover:border-stone-400 hover:text-stone-200 transition-colors">✕</button>
@@ -288,15 +403,27 @@ function CharmBrowseModal({ existing, exaltType, caste, onAdd, onRemove, onClose
           </div>
         </div>
       </div>
+      {pickingCharm && (
+        <ChoicePickerModal
+          charm={pickingCharm}
+          existingPicks={existingByLib.get(pickingCharm.id)?.picks ?? []}
+          abilities={abilities}
+          attributes={attributes}
+          onConfirm={pick => { onAdd(pickingCharm, pick); setPickingCharm(null) }}
+          onClose={() => setPickingCharm(null)}
+        />
+      )}
     </ModalPortal>
   )
 }
 
-function CharmPanel({ charms, onChange, exaltType, caste }: {
+function CharmPanel({ charms, onChange, exaltType, caste, abilities, attributes }: {
   charms: import('../types/character').CharacterCharm[]
   onChange: (c: import('../types/character').CharacterCharm[]) => void
   exaltType: string
   caste: string
+  abilities: Record<string, AbilityData>
+  attributes: Record<string, number>
 }) {
   const [browsing, setBrowsing] = useState(false)
   const [expandedIds, setExpandedIds] = useState<Set<string>>(new Set())
@@ -304,11 +431,16 @@ function CharmPanel({ charms, onChange, exaltType, caste }: {
   const [editDesc, setEditDesc] = useState('')
 
   // First purchase adds a new entry; buying an already-owned charm again
-  // (Repurchase) just bumps its count.
-  function addCharm(lib: import('../types/character').LibraryCharm) {
+  // (Repurchase) just bumps its count. `pick` is the choice made this purchase
+  // (null for charms with no choiceType).
+  function addCharm(lib: import('../types/character').LibraryCharm, pick: string | null) {
     const existing = charms.find(c => c.libraryId === lib.id)
     if (existing) {
-      onChange(charms.map(c => c.libraryId === lib.id ? { ...c, count: (c.count ?? 1) + 1 } : c))
+      onChange(charms.map(c => c.libraryId === lib.id ? {
+        ...c,
+        count: (c.count ?? 1) + 1,
+        picks: pick !== null ? [...(c.picks ?? []), pick] : c.picks,
+      } : c))
       return
     }
     onChange([...charms, {
@@ -320,6 +452,7 @@ function CharmPanel({ charms, onChange, exaltType, caste }: {
       mechanicalKeyOverride: null,
       mechanicalEnabled: true,
       count: 1,
+      picks: pick !== null ? [pick] : undefined,
     }])
   }
 
@@ -328,13 +461,18 @@ function CharmPanel({ charms, onChange, exaltType, caste }: {
     setExpandedIds(s => { const n = new Set(s); n.delete(id); return n })
   }
 
-  // Used by the browse modal's Remove: undo one purchase; the entry is dropped
-  // once the last one is removed.
+  // Used by the browse modal's Remove: undo the most recent purchase (popping
+  // its pick, if any) one at a time; the entry is dropped once the last one is
+  // removed. Removing all purchases means pressing Remove that many times.
   function removeByLibraryId(libraryId: string) {
     const existing = charms.find(c => c.libraryId === libraryId)
     if (!existing) return
     if ((existing.count ?? 1) > 1) {
-      onChange(charms.map(c => c.libraryId === libraryId ? { ...c, count: (c.count ?? 1) - 1 } : c))
+      onChange(charms.map(c => c.libraryId === libraryId ? {
+        ...c,
+        count: (c.count ?? 1) - 1,
+        picks: c.picks && c.picks.length > 0 ? c.picks.slice(0, -1) : c.picks,
+      } : c))
     } else {
       removeCharm(existing.id)
     }
@@ -360,7 +498,18 @@ function CharmPanel({ charms, onChange, exaltType, caste }: {
 
   return (
     <div className="bg-stone-900 border border-stone-700 rounded-lg p-2 overflow-hidden h-full flex flex-col">
-      {browsing && <CharmBrowseModal existing={charms} exaltType={exaltType} caste={caste} onAdd={charm => { addCharm(charm); }} onRemove={removeByLibraryId} onClose={() => setBrowsing(false)} />}
+      {browsing && (
+        <CharmBrowseModal
+          existing={charms}
+          exaltType={exaltType}
+          caste={caste}
+          abilities={abilities}
+          attributes={attributes}
+          onAdd={addCharm}
+          onRemove={removeByLibraryId}
+          onClose={() => setBrowsing(false)}
+        />
+      )}
 
       <div className="flex items-center justify-between mb-2 shrink-0">
         <SectionHeader title="Charms" />
@@ -401,6 +550,11 @@ function CharmPanel({ charms, onChange, exaltType, caste }: {
                   </>
                 ) : (
                   <>
+                    {charm.picks && charm.picks.length > 0 && (
+                      <p className="text-xs text-stone-500">
+                        Choices: <span className="text-amber-300">{charm.picks.join(', ')}</span>
+                      </p>
+                    )}
                     <p className="text-xs text-stone-400 leading-relaxed whitespace-pre-wrap">
                       {charm.customDescription ?? <em className="text-stone-600">No description loaded — library text shown in browse.</em>}
                     </p>
@@ -1844,6 +1998,8 @@ export default function SheetTab({ sheet, onChange, editMode, gameData: gd }: Pr
         onChange={c => update({ charms: c })}
         exaltType={data.exaltType}
         caste={data.caste}
+        abilities={data.abilities}
+        attributes={data.attributes}
       />
     ),
 
