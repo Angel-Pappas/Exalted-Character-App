@@ -192,13 +192,13 @@ function CharmBrowseModal({ existing, exaltType, caste, onAdd, onClose }: {
 
   return (
     <ModalPortal>
-      <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/70" onClick={onClose}>
-        <div className="bg-stone-900 border border-stone-700 rounded-xl w-[480px] max-h-[80vh] flex flex-col shadow-2xl" onClick={e => e.stopPropagation()}>
+      <div className="fixed inset-0 z-50 flex items-start justify-center bg-black/70 pt-12" onClick={onClose}>
+        <div className="bg-stone-900 border border-stone-700 rounded-xl w-[960px] max-w-[95vw] max-h-[80vh] flex flex-col shadow-2xl" onClick={e => e.stopPropagation()}>
           <div className="flex items-center justify-between px-4 py-3 border-b border-stone-700 shrink-0">
             <span className="text-sm font-semibold text-amber-400">Add Charm</span>
             <button onClick={onClose} className="text-stone-500 hover:text-stone-300 text-xs">✕</button>
           </div>
-          <div className="px-4 py-2 border-b border-stone-800 shrink-0 space-y-2">
+          <div className="px-4 py-2 border-b border-stone-800 shrink-0">
             <div className="flex gap-2">
               <select value={type} onChange={e => setType(e.target.value)} className={selectCls}>
                 <option value="">Type…</option>
@@ -208,8 +208,6 @@ function CharmBrowseModal({ existing, exaltType, caste, onAdd, onClose }: {
                 <option value="">Ability…</option>
                 {abilitiesForType.map(a => <option key={a || '__none__'} value={a}>{a || 'General'}</option>)}
               </select>
-            </div>
-            <div className="flex gap-2">
               <input value={search} onChange={e => setSearch(e.target.value)} placeholder="Search name, ability, or description…" className={`${selectCls} flex-1`} />
               <button
                 onClick={() => setShowAll(s => !s)}
