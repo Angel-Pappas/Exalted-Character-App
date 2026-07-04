@@ -1,5 +1,4 @@
 import { useState, useRef, useEffect } from 'react' // useState used by CharmPanel and other local state
-import { createPortal } from 'react-dom'
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 import { GridLayout, useContainerWidth, noCompactor } from 'react-grid-layout'
 // noCompactor has allowOverlap:false which causes panels to push each other during drag.
@@ -9,6 +8,7 @@ import 'react-grid-layout/css/styles.css'
 import type { SheetData, FoiState, AbilityData, MeritEntry, IntimacyEntry, HealthBox, PanelLayout, CharacterCharm, EffectCategory, EffectEntry, InventoryItem, InventoryItemKind, WeaponWeight, ArtifactColor, GameData } from '../types/character'
 import { DEFAULT_GAME_DATA } from '../types/character'
 import { typeRank, baseAbility, sortAbilities, abilityRank, modeIcon } from '../components/CharmLibraryTab'
+import ModalPortal from '../components/ModalPortal'
 
 const ATTRIBUTE_GROUPS = [
   { label: 'Physical', attrs: ['Strength', 'Dexterity', 'Stamina'] },
@@ -95,12 +95,10 @@ const inputActive = "w-full bg-stone-800 border border-amber-500 text-stone-100 
 
 const selectCls = "w-full bg-stone-800 border border-stone-700 text-stone-100 rounded px-2 py-1.5 text-xs focus:outline-none focus:border-amber-500"
 
-// react-grid-layout positions panels with a CSS transform, which creates a new containing
-// block for position:fixed descendants — without a portal, "fixed" modals inside a panel
-// center on the panel instead of the viewport. Render modals into document.body to escape that.
-function ModalPortal({ children }: { children: React.ReactNode }) {
-  return createPortal(children, document.body)
-}
+// ModalPortal (shared) renders into document.body — needed here because react-grid-layout
+// positions panels with a CSS transform, which creates a new containing block for
+// position:fixed descendants; without the portal a "fixed" modal inside a panel would
+// center on the panel instead of the viewport. It also locks background scroll.
 
 // Character sheets store the exalt_types.name value ("Solar Exalted"), while
 // charm_library.type and mode labels use the bare name ("Solar"). Normalize so

@@ -3,6 +3,7 @@ import { useNavigate } from 'react-router-dom'
 import { supabase } from '../lib/supabase'
 import { useAuth } from '../contexts/AuthContext'
 import type { Character, ExaltType } from '../types/character'
+import ModalPortal from '../components/ModalPortal'
 
 export default function CharactersPage() {
   const { user } = useAuth()
@@ -128,6 +129,7 @@ export default function CharactersPage() {
 
       {/* Creation Modal */}
       {modalOpen && (
+        <ModalPortal>
         <div className="fixed inset-0 bg-black/60 flex items-center justify-center z-50 p-4">
           <div className="bg-stone-900 border border-stone-700 rounded-xl w-full max-w-sm p-6 space-y-4 shadow-2xl">
             <h3 className="text-base font-semibold text-stone-200">New Character</h3>
@@ -199,6 +201,7 @@ export default function CharactersPage() {
             </div>
           </div>
         </div>
+        </ModalPortal>
       )}
     </div>
   )

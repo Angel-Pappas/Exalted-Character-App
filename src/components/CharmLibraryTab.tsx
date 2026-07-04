@@ -1,12 +1,8 @@
 import { Fragment, useEffect, useState } from 'react'
-import { createPortal } from 'react-dom'
 import { supabase } from '../lib/supabase'
 import type { CharmMode, LibraryCharm } from '../types/character'
 import AbilityChipInput from './AbilityChipInput'
-
-function ModalPortal({ children }: { children: React.ReactNode }) {
-  return createPortal(children, document.body)
-}
+import ModalPortal from './ModalPortal'
 
 interface CharmAbilityRow { ability: string }
 interface CharmModePrereqAbilityRow { text: string }
