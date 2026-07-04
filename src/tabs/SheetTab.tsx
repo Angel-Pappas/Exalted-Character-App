@@ -141,6 +141,7 @@ function CharmBrowseModal({ existing, exaltType, caste, onAdd, onClose }: {
   const [ability, setAbility] = useState('')
   const [search, setSearch] = useState('')
   const [showAll, setShowAll] = useState(false)
+  const [expandedAll, setExpandedAll] = useState(false)
   const existingIds = new Set(existing.map(c => c.libraryId))
 
   useEffect(() => {
@@ -214,6 +215,13 @@ function CharmBrowseModal({ existing, exaltType, caste, onAdd, onClose }: {
               >
                 Show All
               </button>
+              <button
+                onClick={() => setExpandedAll(s => !s)}
+                title="Expand every charm to read its full text"
+                className={`shrink-0 text-xs px-2 py-1 rounded border transition-colors whitespace-nowrap ${expandedAll ? 'bg-amber-600 border-amber-500 text-white' : 'bg-stone-800 border-stone-700 text-stone-400 hover:border-amber-500'}`}
+              >
+                {expandedAll ? 'Collapse All' : 'Expand All'}
+              </button>
             </div>
           </div>
           <div className="overflow-y-auto flex-1 no-scrollbar">
@@ -237,13 +245,26 @@ function CharmBrowseModal({ existing, exaltType, caste, onAdd, onClose }: {
                           return <span key={m.label} title={icon.title} className="text-stone-400 cursor-default shrink-0">{icon.glyph}</span>
                         })}
                       </div>
-                      <p className="text-xs text-stone-400 mt-0.5 leading-relaxed line-clamp-2">{charm.description}</p>
                     </div>
                     {!owned && (
                       <button onClick={() => onAdd(charm)} title="Add" className="shrink-0 bg-amber-600 hover:bg-amber-500 text-white w-6 h-6 rounded transition-colors">+</button>
                     )}
                     {owned && <span className="shrink-0 text-xs text-stone-600">Added</span>}
                   </div>
+                  {expandedAll && (
+                    <div className="mt-1.5 space-y-1.5">
+                      <p className="text-xs text-stone-400 leading-relaxed whitespace-normal">{charm.description}</p>
+                      {visibleModes.map(m => (
+                        <div key={m.label}>
+                          <p className="text-xs font-bold text-amber-400 flex items-center gap-1">
+                            <span>{modeIcon(m.label).glyph}</span>
+                            {m.label}
+                          </p>
+                          {m.text && <p className="text-xs text-stone-400 leading-relaxed whitespace-normal">{m.text}</p>}
+                        </div>
+                      ))}
+                    </div>
+                  )}
                 </div>
               )
             })}
