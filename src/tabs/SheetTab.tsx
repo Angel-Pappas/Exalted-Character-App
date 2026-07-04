@@ -176,11 +176,11 @@ function CharmBrowseModal({ existing, exaltType, caste, onAdd, onClose }: {
     return typeRank(a) === 3 ? a.localeCompare(b) : 0
   })
   const abilitiesForType = sortAbilities([...new Set(
-    inScope.filter(c => (c.type || 'Universal') === type).flatMap(c => c.abilities.map(baseAbility))
+    inScope.filter(c => !type || (c.type || 'Universal') === type).flatMap(c => c.abilities.map(baseAbility))
   )])
 
   const q = search.trim().toLowerCase()
-  const narrowed = !!q || (type && ability)
+  const narrowed = !!q || !!ability
   const charms = narrowed ? inScope.filter(c =>
     (!type || (c.type || 'Universal') === type) &&
     (!ability || c.abilities.some(a => baseAbility(a) === ability)) &&
@@ -206,7 +206,7 @@ function CharmBrowseModal({ existing, exaltType, caste, onAdd, onClose }: {
                 <option value="">Type…</option>
                 {types.map(t => <option key={t} value={t}>{t}</option>)}
               </select>
-              <select value={ability} onChange={e => setAbility(e.target.value)} disabled={!type} className={`${selectCls} disabled:opacity-40`}>
+              <select value={ability} onChange={e => setAbility(e.target.value)} className={selectCls}>
                 <option value="">Ability…</option>
                 {abilitiesForType.map(a => <option key={a || '__none__'} value={a}>{a || 'General'}</option>)}
               </select>
