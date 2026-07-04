@@ -8,7 +8,7 @@ const freeCompactor = { ...noCompactor, allowOverlap: true }
 import 'react-grid-layout/css/styles.css'
 import type { SheetData, FoiState, AbilityData, MeritEntry, IntimacyEntry, HealthBox, PanelLayout, CharacterCharm, EffectCategory, EffectEntry, InventoryItem, InventoryItemKind, WeaponWeight, ArtifactColor, GameData } from '../types/character'
 import { DEFAULT_GAME_DATA } from '../types/character'
-import { typeRank, baseAbility, sortAbilities } from '../components/CharmLibraryTab'
+import { typeRank, baseAbility, sortAbilities, modeIcon } from '../components/CharmLibraryTab'
 
 const ATTRIBUTE_GROUPS = [
   { label: 'Physical', attrs: ['Strength', 'Dexterity', 'Stamina'] },
@@ -102,8 +102,38 @@ function ModalPortal({ children }: { children: React.ReactNode }) {
   return createPortal(children, document.body)
 }
 
-function CharmBrowseModal({ existing, onAdd, onClose }: {
+// Character sheets store the exalt_types.name value ("Solar Exalted"), while
+// charm_library.type and mode labels use the bare name ("Solar"). Normalize so
+// comparisons line up.
+function exaltTypeBase(exaltType: string): string {
+  return exaltType.replace(/\s*Exalted\s*$/i, '').trim().toLowerCase()
+}
+
+// Universal/Martial Arts are always in scope; a character's own Exalt type is too.
+// Everything else (other Exalt types) stays hidden until Show All is on.
+function isTypeInScope(t: string, exaltType: string, showAll: boolean): boolean {
+  if (showAll) return true
+  const lower = (t || 'Universal').toLowerCase()
+  if (lower === 'universal' || lower === 'martial arts') return true
+  return !!exaltType && lower === exaltTypeBase(exaltType)
+}
+
+// Upgrade/Repurchase modes apply regardless of Exalt type. Other mode labels are
+// Exalt-type- or Caste/Aspect-specific variants, so only show the character's own
+// unless Show All is on.
+function isModeInScope(label: string, exaltType: string, caste: string, showAll: boolean): boolean {
+  if (showAll) return true
+  const lower = label.toLowerCase()
+  if (lower === 'upgrade' || lower === 'repurchase') return true
+  if (exaltType && lower === exaltTypeBase(exaltType)) return true
+  if (caste && lower === caste.toLowerCase()) return true
+  return false
+}
+
+function CharmBrowseModal({ existing, exaltType, caste, onAdd, onClose }: {
   existing: import('../types/character').CharacterCharm[]
+  exaltType: string
+  caste: string
   onAdd: (charm: import('../types/character').LibraryCharm) => void
   onClose: () => void
 }) {
@@ -111,11 +141,15 @@ function CharmBrowseModal({ existing, onAdd, onClose }: {
   const [loading, setLoading] = useState(true)
   const [type, setType] = useState('')
   const [ability, setAbility] = useState('')
+  const [search, setSearch] = useState('')
+  const [showAll, setShowAll] = useState(false)
   const existingIds = new Set(existing.map(c => c.libraryId))
 
   useEffect(() => {
     import('../lib/supabase').then(({ supabase }) =>
-      supabase.from('charm_library').select('*, charm_abilities(ability)').order('type').order('page').order('name')
+      supabase.from('charm_library')
+        .select('*, charm_abilities(ability), charm_modes(label, mode_text, prerequisite_essence, charm_mode_prerequisite_abilities(text))')
+        .order('type').order('page').order('name')
         .then(({ data }) => {
           if (data) setLibrary(data.map((r: any) => ({
             id: r.id, type: r.type ?? 'Universal',
@@ -123,22 +157,35 @@ function CharmBrowseModal({ existing, onAdd, onClose }: {
             name: r.name, page: r.page, description: r.description,
             mechanicalKey: r.mechanical_key ?? null, mechanicalDescription: r.mechanical_description ?? null,
             prerequisiteAbilities: [], prerequisiteEssence: r.prerequisite_essence ?? null,
-            prerequisiteCharms: [], modes: [],
+            prerequisiteCharms: [],
+            modes: (r.charm_modes ?? []).map((m: any) => ({
+              label: m.label, text: m.mode_text, prerequisiteEssence: m.prerequisite_essence,
+              prerequisiteAbilities: (m.charm_mode_prerequisite_abilities ?? []).map((p: any) => p.text),
+            })),
           })))
           setLoading(false)
         })
     )
   }, [])
 
-  const types = [...new Set(library.map(c => c.type || 'Universal'))].sort((a, b) => {
+  const inScope = library.filter(c => isTypeInScope(c.type || 'Universal', exaltType, showAll))
+
+  const types = [...new Set(inScope.map(c => c.type || 'Universal'))].sort((a, b) => {
     const rankDiff = typeRank(a) - typeRank(b)
     if (rankDiff !== 0) return rankDiff
     return typeRank(a) === 3 ? a.localeCompare(b) : 0
   })
   const abilitiesForType = sortAbilities([...new Set(
-    library.filter(c => (c.type || 'Universal') === type).flatMap(c => c.abilities.map(baseAbility))
+    inScope.filter(c => (c.type || 'Universal') === type).flatMap(c => c.abilities.map(baseAbility))
   )])
-  const charms = type && ability ? library.filter(c => (c.type || 'Universal') === type && c.abilities.some(a => baseAbility(a) === ability)) : []
+
+  const q = search.trim().toLowerCase()
+  const narrowed = !!q || (type && ability)
+  const charms = narrowed ? inScope.filter(c =>
+    (!type || (c.type || 'Universal') === type) &&
+    (!ability || c.abilities.some(a => baseAbility(a) === ability)) &&
+    (!q || c.name.toLowerCase().includes(q) || c.description.toLowerCase().includes(q) || c.abilities.some(a => a.toLowerCase().includes(q)))
+  ) : []
 
   function pickType(t: string) {
     setType(t)
@@ -153,30 +200,48 @@ function CharmBrowseModal({ existing, onAdd, onClose }: {
             <span className="text-sm font-semibold text-amber-400">Add Charm</span>
             <button onClick={onClose} className="text-stone-500 hover:text-stone-300 text-xs">✕</button>
           </div>
-          <div className="px-4 py-2 border-b border-stone-800 shrink-0 flex gap-2">
-            <select value={type} onChange={e => pickType(e.target.value)} className={selectCls}>
-              <option value="">Type…</option>
-              {types.map(t => <option key={t} value={t}>{t}</option>)}
-            </select>
-            <select value={ability} onChange={e => setAbility(e.target.value)} disabled={!type} className={`${selectCls} disabled:opacity-40`}>
-              <option value="">Ability…</option>
-              {abilitiesForType.map(a => <option key={a || '__none__'} value={a}>{a || 'General'}</option>)}
-            </select>
+          <div className="px-4 py-2 border-b border-stone-800 shrink-0 space-y-2">
+            <div className="flex gap-2">
+              <select value={type} onChange={e => pickType(e.target.value)} className={selectCls}>
+                <option value="">Type…</option>
+                {types.map(t => <option key={t} value={t}>{t}</option>)}
+              </select>
+              <select value={ability} onChange={e => setAbility(e.target.value)} disabled={!type} className={`${selectCls} disabled:opacity-40`}>
+                <option value="">Ability…</option>
+                {abilitiesForType.map(a => <option key={a || '__none__'} value={a}>{a || 'General'}</option>)}
+              </select>
+            </div>
+            <div className="flex gap-2">
+              <input value={search} onChange={e => setSearch(e.target.value)} placeholder="Search name, ability, or description…" className={`${selectCls} flex-1`} />
+              <button
+                onClick={() => setShowAll(s => !s)}
+                title="Show charms from every Exalt type and mode"
+                className={`shrink-0 text-xs px-2 py-1 rounded border transition-colors ${showAll ? 'bg-amber-600 border-amber-500 text-white' : 'bg-stone-800 border-stone-700 text-stone-400 hover:border-amber-500'}`}
+              >
+                Show All
+              </button>
+            </div>
           </div>
           <div className="overflow-y-auto flex-1 no-scrollbar">
             {loading && <p className="text-xs text-stone-500 p-4">Loading…</p>}
-            {!loading && !type && <p className="text-xs text-stone-500 p-4">Choose a type to begin.</p>}
-            {!loading && type && !ability && <p className="text-xs text-stone-500 p-4">Choose an ability to see its charms.</p>}
-            {!loading && type && ability && charms.length === 0 && <p className="text-xs text-stone-500 p-4">No charms found.</p>}
+            {!loading && !narrowed && <p className="text-xs text-stone-500 p-4">Choose a type/ability, or search, to see charms.</p>}
+            {!loading && narrowed && charms.length === 0 && <p className="text-xs text-stone-500 p-4">No charms found.</p>}
             {charms.map(charm => {
               const owned = existingIds.has(charm.id)
+              const visibleModes = [...new Map(
+                charm.modes.filter(m => isModeInScope(m.label, exaltType, caste, showAll)).map(m => [m.label, m])
+              ).values()]
               return (
                 <div key={charm.id} className={`px-4 py-2 border-b border-stone-800 last:border-0 ${owned ? 'opacity-40' : 'hover:bg-stone-800/40'}`}>
                   <div className="flex items-center justify-between gap-2">
                     <div className="flex-1 min-w-0">
-                      <div className="flex items-center gap-2">
+                      <div className="flex items-center gap-2 flex-wrap">
                         <span className="text-xs font-semibold text-stone-100">{charm.name}</span>
                         {charm.mechanicalKey && <span className="text-[9px] px-1 py-0.5 rounded bg-amber-900/40 border border-amber-700/50 text-amber-400">{charm.mechanicalKey}</span>}
+                        {visibleModes.map(m => {
+                          const icon = modeIcon(m.label)
+                          return <span key={m.label} title={icon.title} className="text-stone-400 cursor-default shrink-0">{icon.glyph}</span>
+                        })}
                       </div>
                       <p className="text-xs text-stone-400 mt-0.5 leading-relaxed line-clamp-2">{charm.description}</p>
                     </div>
@@ -195,9 +260,11 @@ function CharmBrowseModal({ existing, onAdd, onClose }: {
   )
 }
 
-function CharmPanel({ charms, onChange }: {
+function CharmPanel({ charms, onChange, exaltType, caste }: {
   charms: import('../types/character').CharacterCharm[]
   onChange: (c: import('../types/character').CharacterCharm[]) => void
+  exaltType: string
+  caste: string
 }) {
   const [browsing, setBrowsing] = useState(false)
   const [expandedIds, setExpandedIds] = useState<Set<string>>(new Set())
@@ -241,7 +308,7 @@ function CharmPanel({ charms, onChange }: {
 
   return (
     <div className="bg-stone-900 border border-stone-700 rounded-lg p-2 overflow-hidden h-full flex flex-col">
-      {browsing && <CharmBrowseModal existing={charms} onAdd={charm => { addCharm(charm); }} onClose={() => setBrowsing(false)} />}
+      {browsing && <CharmBrowseModal existing={charms} exaltType={exaltType} caste={caste} onAdd={charm => { addCharm(charm); }} onClose={() => setBrowsing(false)} />}
 
       <div className="flex items-center justify-between mb-2 shrink-0">
         <SectionHeader title="Charms" />
@@ -1720,6 +1787,8 @@ export default function SheetTab({ sheet, onChange, editMode, gameData: gd }: Pr
       <CharmPanel
         charms={data.charms}
         onChange={c => update({ charms: c })}
+        exaltType={data.exaltType}
+        caste={data.caste}
       />
     ),
 

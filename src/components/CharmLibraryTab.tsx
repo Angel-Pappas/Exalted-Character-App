@@ -65,7 +65,7 @@ const MODE_ICONS: Record<string, string> = {
   air: '🌬',
 }
 
-function modeIcon(label: string): { glyph: string; title: string } {
+export function modeIcon(label: string): { glyph: string; title: string } {
   const glyph = MODE_ICONS[label.toLowerCase()] ?? '◆'
   return { glyph, title: label }
 }
