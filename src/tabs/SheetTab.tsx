@@ -25,11 +25,11 @@ const DEFENSES = ['Parry', 'Evasion', 'Soak', 'Hardness', 'Resolve']
 
 const DEFAULT_HEALTH: HealthBox[] = [
   { penalty: '-0', checked: false },
+  { penalty: '-0', checked: false },
   { penalty: '-1', checked: false },
   { penalty: '-1', checked: false },
   { penalty: '-2', checked: false },
   { penalty: '-2', checked: false },
-  { penalty: '-4', checked: false },
   { penalty: 'Incap', checked: false },
 ]
 
