@@ -372,7 +372,7 @@ function CharmBrowseModal({ existing, exaltType, caste, abilities, attributes, o
                       </div>
                     </div>
                     <div className="shrink-0 flex items-center gap-1.5">
-                      {!owned && canBuyAgain && (
+                      {!owned && (
                         <button onClick={() => startPurchase(charm)} title="Add" className="bg-amber-600 hover:bg-amber-500 text-white w-6 h-6 rounded transition-colors">+</button>
                       )}
                       {owned && canBuyAgain && (
