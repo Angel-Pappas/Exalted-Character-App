@@ -141,7 +141,7 @@ function CharmBrowseModal({ existing, exaltType, caste, onAdd, onClose }: {
   const [ability, setAbility] = useState('')
   const [search, setSearch] = useState('')
   const [showAll, setShowAll] = useState(false)
-  const [expandedAll, setExpandedAll] = useState(false)
+  const [expandedIds, setExpandedIds] = useState<Set<string>>(new Set())
   const existingIds = new Set(existing.map(c => c.libraryId))
 
   useEffect(() => {
@@ -189,6 +189,11 @@ function CharmBrowseModal({ existing, exaltType, caste, onAdd, onClose }: {
     (!q || c.name.toLowerCase().includes(q) || c.description.toLowerCase().includes(q) || c.abilities.some(a => a.toLowerCase().includes(q)))
   ).sort((a, b) => Number(hasExcellency(b)) - Number(hasExcellency(a))) : []
 
+  const allExpanded = charms.length > 0 && charms.every(c => expandedIds.has(c.id))
+  function toggleExpanded(id: string) {
+    setExpandedIds(s => { const n = new Set(s); n.has(id) ? n.delete(id) : n.add(id); return n })
+  }
+
   return (
     <ModalPortal onClose={onClose}>
       <div className="fixed inset-0 z-50 flex items-start justify-center bg-black/70 pt-12" onClick={onClose}>
@@ -216,11 +221,11 @@ function CharmBrowseModal({ existing, exaltType, caste, onAdd, onClose }: {
                 Show All
               </button>
               <button
-                onClick={() => setExpandedAll(s => !s)}
+                onClick={() => setExpandedIds(allExpanded ? new Set() : new Set(charms.map(c => c.id)))}
                 title="Expand every charm to read its full text"
-                className={`shrink-0 text-xs px-2 py-1 rounded border transition-colors whitespace-nowrap ${expandedAll ? 'bg-amber-600 border-amber-500 text-white' : 'bg-stone-800 border-stone-700 text-stone-400 hover:border-amber-500'}`}
+                className={`shrink-0 text-xs px-2 py-1 rounded border transition-colors whitespace-nowrap ${allExpanded ? 'bg-amber-600 border-amber-500 text-white' : 'bg-stone-800 border-stone-700 text-stone-400 hover:border-amber-500'}`}
               >
-                {expandedAll ? 'Collapse All' : 'Expand All'}
+                {allExpanded ? 'Collapse All' : 'Expand All'}
               </button>
             </div>
           </div>
@@ -236,7 +241,7 @@ function CharmBrowseModal({ existing, exaltType, caste, onAdd, onClose }: {
               return (
                 <div key={charm.id} className={`px-4 py-2 border-b border-stone-800 last:border-0 ${owned ? 'opacity-40' : 'hover:bg-stone-800/40'}`}>
                   <div className="flex items-center justify-between gap-2">
-                    <div className="flex-1 min-w-0">
+                    <div className="flex-1 min-w-0 cursor-pointer" onClick={() => toggleExpanded(charm.id)} title="Click to expand/collapse">
                       <div className="flex items-center gap-2 flex-wrap">
                         <span className="text-xs font-semibold text-stone-100">{charm.name}</span>
                         {charm.mechanicalKey && <span className="text-[9px] px-1 py-0.5 rounded bg-amber-900/40 border border-amber-700/50 text-amber-400">{charm.mechanicalKey}</span>}
@@ -251,7 +256,7 @@ function CharmBrowseModal({ existing, exaltType, caste, onAdd, onClose }: {
                     )}
                     {owned && <span className="shrink-0 text-xs text-stone-600">Added</span>}
                   </div>
-                  {expandedAll && (
+                  {expandedIds.has(charm.id) && (
                     <div className="mt-1.5 space-y-1.5">
                       <p className="text-xs text-stone-400 leading-relaxed whitespace-normal">{charm.description}</p>
                       {visibleModes.map(m => (
