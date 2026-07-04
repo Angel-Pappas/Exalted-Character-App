@@ -11,11 +11,20 @@ import { createPortal } from 'react-dom'
 // only when the last modal closes, and Escape only dismisses the top-most one.
 let lockCount = 0
 let savedOverflow = ''
+let savedPaddingRight = ''
 
 function lockScroll() {
   if (lockCount === 0) {
+    // Reserve the space the scrollbar occupied so hiding it doesn't let the
+    // page reflow wider (which shifts the background content).
+    const scrollbarWidth = window.innerWidth - document.documentElement.clientWidth
     savedOverflow = document.body.style.overflow
+    savedPaddingRight = document.body.style.paddingRight
     document.body.style.overflow = 'hidden'
+    if (scrollbarWidth > 0) {
+      const currentPad = parseFloat(getComputedStyle(document.body).paddingRight) || 0
+      document.body.style.paddingRight = `${currentPad + scrollbarWidth}px`
+    }
   }
   lockCount++
 }
@@ -24,6 +33,7 @@ function unlockScroll() {
   lockCount = Math.max(0, lockCount - 1)
   if (lockCount === 0) {
     document.body.style.overflow = savedOverflow
+    document.body.style.paddingRight = savedPaddingRight
   }
 }
 
