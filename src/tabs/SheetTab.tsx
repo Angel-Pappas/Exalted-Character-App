@@ -1234,7 +1234,7 @@ export default function SheetTab({ sheet, onChange, editMode, gameData: gd }: Pr
     merits: sheet.merits ?? [],
     intimacies: sheet.intimacies ?? [],
     motes: { ...def.motes, ...sheet.motes },
-    health: sheet.health ?? DEFAULT_HEALTH.map(h => ({ ...h })),
+    health: DEFAULT_HEALTH.map((h, idx) => ({ ...h, checked: sheet.health?.[idx]?.checked ?? false })),
     layout: (() => {
       const base = sheet.layout?.length ? sheet.layout.map(l => ({ ...l })) : DEFAULT_LAYOUT.map(l => ({ ...l }))
       const existingIds = new Set(base.map(l => l.i))
