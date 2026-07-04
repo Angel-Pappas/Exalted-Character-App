@@ -263,9 +263,8 @@ function CharmBrowseModal({ existing, exaltType, caste, onAdd, onRemove, onClose
                       {owned && canRepurchase && (
                         <button onClick={() => onAdd(charm)} title="Repurchase (buy again)" className="bg-amber-600 hover:bg-amber-500 text-white w-6 h-6 rounded transition-colors">↻</button>
                       )}
-                      {owned && !canRepurchase && <span className="text-xs text-stone-500">Added</span>}
                       {owned && (
-                        <button onClick={() => onRemove(charm.id)} title="Remove (undo a purchase)" className="w-6 h-6 rounded border border-stone-600 text-stone-400 hover:border-red-500 hover:text-red-400 transition-colors">✕</button>
+                        <button onClick={() => onRemove(charm.id)} title="Remove (undo a purchase)" className="w-6 h-6 rounded border border-stone-600 text-stone-400 hover:border-stone-400 hover:text-stone-200 transition-colors">✕</button>
                       )}
                     </div>
                   </div>
