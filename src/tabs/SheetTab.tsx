@@ -128,11 +128,12 @@ function isModeInScope(label: string, exaltType: string, caste: string, showAll:
   return false
 }
 
-function CharmBrowseModal({ existing, exaltType, caste, onAdd, onClose }: {
+function CharmBrowseModal({ existing, exaltType, caste, onAdd, onRemove, onClose }: {
   existing: import('../types/character').CharacterCharm[]
   exaltType: string
   caste: string
   onAdd: (charm: import('../types/character').LibraryCharm) => void
+  onRemove: (libraryId: string) => void
   onClose: () => void
 }) {
   const [library, setLibrary] = useState<import('../types/character').LibraryCharm[]>([])
@@ -142,7 +143,7 @@ function CharmBrowseModal({ existing, exaltType, caste, onAdd, onClose }: {
   const [search, setSearch] = useState('')
   const [showAll, setShowAll] = useState(false)
   const [expandedIds, setExpandedIds] = useState<Set<string>>(new Set())
-  const existingIds = new Set(existing.map(c => c.libraryId))
+  const existingByLib = new Map(existing.map(c => [c.libraryId, c]))
 
   useEffect(() => {
     import('../lib/supabase').then(({ supabase }) =>
@@ -234,16 +235,20 @@ function CharmBrowseModal({ existing, exaltType, caste, onAdd, onClose }: {
             {!loading && !narrowed && <p className="text-xs text-stone-500 p-4">Choose a type/ability, or search, to see charms.</p>}
             {!loading && narrowed && charms.length === 0 && <p className="text-xs text-stone-500 p-4">No charms found.</p>}
             {charms.map(charm => {
-              const owned = existingIds.has(charm.id)
+              const ownedCharm = existingByLib.get(charm.id)
+              const owned = !!ownedCharm
+              const count = ownedCharm?.count ?? (owned ? 1 : 0)
+              const canRepurchase = charm.modes.some(m => m.label.toLowerCase() === 'repurchase')
               const visibleModes = [...new Map(
                 charm.modes.filter(m => isModeInScope(m.label, exaltType, caste, showAll)).map(m => [m.label, m])
               ).values()]
               return (
-                <div key={charm.id} className={`px-4 py-2 border-b border-stone-800 last:border-0 ${owned ? 'opacity-40' : 'hover:bg-stone-800/40'}`}>
+                <div key={charm.id} className="px-4 py-2 border-b border-stone-800 last:border-0 hover:bg-stone-800/40">
                   <div className="flex items-center justify-between gap-2">
                     <div className="flex-1 min-w-0 cursor-pointer" onClick={() => toggleExpanded(charm.id)} title="Click to expand/collapse">
                       <div className="flex items-center gap-2 flex-wrap">
-                        <span className="text-xs font-semibold text-stone-100">{charm.name}</span>
+                        <span className={`text-xs font-semibold ${owned ? 'text-amber-300' : 'text-stone-100'}`}>{charm.name}</span>
+                        {count > 1 && <span title={`Purchased ${count}×`} className="text-[9px] px-1 py-0.5 rounded bg-stone-800 border border-stone-600 text-stone-300">×{count}</span>}
                         {charm.mechanicalKey && <span className="text-[9px] px-1 py-0.5 rounded bg-amber-900/40 border border-amber-700/50 text-amber-400">{charm.mechanicalKey}</span>}
                         {visibleModes.map(m => {
                           const icon = modeIcon(m.label)
@@ -251,10 +256,18 @@ function CharmBrowseModal({ existing, exaltType, caste, onAdd, onClose }: {
                         })}
                       </div>
                     </div>
-                    {!owned && (
-                      <button onClick={() => onAdd(charm)} title="Add" className="shrink-0 bg-amber-600 hover:bg-amber-500 text-white w-6 h-6 rounded transition-colors">+</button>
-                    )}
-                    {owned && <span className="shrink-0 text-xs text-stone-600">Added</span>}
+                    <div className="shrink-0 flex items-center gap-1.5">
+                      {!owned && (
+                        <button onClick={() => onAdd(charm)} title="Add" className="bg-amber-600 hover:bg-amber-500 text-white w-6 h-6 rounded transition-colors">+</button>
+                      )}
+                      {owned && canRepurchase && (
+                        <button onClick={() => onAdd(charm)} title="Repurchase (buy again)" className="bg-amber-600 hover:bg-amber-500 text-white w-6 h-6 rounded transition-colors">↻</button>
+                      )}
+                      {owned && !canRepurchase && <span className="text-xs text-stone-500">Added</span>}
+                      {owned && (
+                        <button onClick={() => onRemove(charm.id)} title="Remove (undo a purchase)" className="w-6 h-6 rounded border border-stone-600 text-stone-400 hover:border-red-500 hover:text-red-400 transition-colors">✕</button>
+                      )}
+                    </div>
                   </div>
                   {expandedIds.has(charm.id) && (
                     <div className="mt-1.5 space-y-1.5">
@@ -291,7 +304,14 @@ function CharmPanel({ charms, onChange, exaltType, caste }: {
   const [editingId, setEditingId] = useState<string | null>(null)
   const [editDesc, setEditDesc] = useState('')
 
+  // First purchase adds a new entry; buying an already-owned charm again
+  // (Repurchase) just bumps its count.
   function addCharm(lib: import('../types/character').LibraryCharm) {
+    const existing = charms.find(c => c.libraryId === lib.id)
+    if (existing) {
+      onChange(charms.map(c => c.libraryId === lib.id ? { ...c, count: (c.count ?? 1) + 1 } : c))
+      return
+    }
     onChange([...charms, {
       id: crypto.randomUUID(),
       libraryId: lib.id,
@@ -300,12 +320,25 @@ function CharmPanel({ charms, onChange, exaltType, caste }: {
       customDescription: null,
       mechanicalKeyOverride: null,
       mechanicalEnabled: true,
+      count: 1,
     }])
   }
 
   function removeCharm(id: string) {
     onChange(charms.filter(c => c.id !== id))
     setExpandedIds(s => { const n = new Set(s); n.delete(id); return n })
+  }
+
+  // Used by the browse modal's Remove: undo one purchase; the entry is dropped
+  // once the last one is removed.
+  function removeByLibraryId(libraryId: string) {
+    const existing = charms.find(c => c.libraryId === libraryId)
+    if (!existing) return
+    if ((existing.count ?? 1) > 1) {
+      onChange(charms.map(c => c.libraryId === libraryId ? { ...c, count: (c.count ?? 1) - 1 } : c))
+    } else {
+      removeCharm(existing.id)
+    }
   }
 
   function startEdit(charm: import('../types/character').CharacterCharm, libraryDesc: string) {
@@ -328,7 +361,7 @@ function CharmPanel({ charms, onChange, exaltType, caste }: {
 
   return (
     <div className="bg-stone-900 border border-stone-700 rounded-lg p-2 overflow-hidden h-full flex flex-col">
-      {browsing && <CharmBrowseModal existing={charms} exaltType={exaltType} caste={caste} onAdd={charm => { addCharm(charm); }} onClose={() => setBrowsing(false)} />}
+      {browsing && <CharmBrowseModal existing={charms} exaltType={exaltType} caste={caste} onAdd={charm => { addCharm(charm); }} onRemove={removeByLibraryId} onClose={() => setBrowsing(false)} />}
 
       <div className="flex items-center justify-between mb-2 shrink-0">
         <SectionHeader title="Charms" />
@@ -345,6 +378,9 @@ function CharmPanel({ charms, onChange, exaltType, caste }: {
                 className="text-left text-stone-200 hover:text-amber-300 transition-colors flex-1 min-w-0 truncate">
                 {charm.name}
               </button>
+              {(charm.count ?? 1) > 1 && (
+                <span title={`Purchased ${charm.count}×`} className="text-[9px] px-1 py-0.5 rounded bg-stone-800 border border-stone-600 text-stone-300 shrink-0">×{charm.count}</span>
+              )}
               {charm.customDescription !== null && (
                 <span title="Customized" className="w-1.5 h-1.5 rounded-full bg-amber-500 shrink-0" />
               )}

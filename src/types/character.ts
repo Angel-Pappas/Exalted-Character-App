@@ -38,6 +38,7 @@ export interface CharacterCharm {
   customDescription: string | null
   mechanicalKeyOverride: string | null  // null = use libraryMechanicalKey
   mechanicalEnabled: boolean
+  count?: number           // number of times purchased (1 + repurchases); absent = 1
 }
 
 export interface EffectEntry {
