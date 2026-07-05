@@ -38,7 +38,7 @@ interface CharmLibraryRow {
 // charm as possibly needing a purchase choice, and records what to do about
 // it. Remove needs_review/review_action from the DB and this UI once the
 // whole library has been triaged.
-type ReviewAction = 'freetext' | 'set_list' | 'ask_admin' | null
+type ReviewAction = 'freetext' | 'set_list' | 'ask_admin' | 'no_action' | null
 type AdminCharm = LibraryCharm & { needsReview: boolean; reviewAction: ReviewAction }
 
 const CHOICE_TYPE_LABELS: Record<CharmChoiceType, string> = {
@@ -188,7 +188,7 @@ function EditCharmRow({ charm, onSave, onCancel, saving, textInput, abilitySugge
   )
 }
 
-const COL_COUNT = 13
+const COL_COUNT = 14
 const th = 'px-3 py-1.5 text-left text-[10px] font-bold uppercase tracking-wider text-stone-400 bg-stone-800 border-b border-stone-700 sticky top-0 z-10 whitespace-nowrap'
 
 export default function CharmLibraryTab({ isOwner, textInput }: { isOwner: boolean; textInput: string }) {
@@ -456,6 +456,7 @@ export default function CharmLibraryTab({ isOwner, textInput }: { isOwner: boole
               <th className={th}>Free Text</th>
               <th className={th}>Set List</th>
               <th className={th}>Ask Admin</th>
+              <th className={th}>No Action</th>
               <th className={th}></th>
             </tr>
           </thead>
@@ -576,6 +577,17 @@ export default function CharmLibraryTab({ isOwner, textInput }: { isOwner: boole
                           title="Park for manual case-by-case review"
                         >
                           ?
+                        </button>
+                      )}
+                    </td>
+                    <td className="px-3 py-1.5 whitespace-nowrap">
+                      {isOwner && charm.needsReview && (
+                        <button
+                          onClick={e => { e.stopPropagation(); setReviewAction(charm.id, 'no_action') }}
+                          className={`w-6 h-6 rounded border transition-colors ${charm.reviewAction === 'no_action' ? 'bg-amber-600 border-amber-500 text-white' : 'bg-stone-800 border-stone-700 text-stone-500 hover:border-amber-500'}`}
+                          title="No choice needed — false positive from the scan"
+                        >
+                          ✕
                         </button>
                       )}
                     </td>
