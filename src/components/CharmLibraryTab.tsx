@@ -25,12 +25,21 @@ interface CharmLibraryRow {
   mechanical_description: string | null
   prerequisite_essence: number | null
   choice_type: CharmChoiceType | null
+  needs_review: boolean
+  review_action: ReviewAction
   charm_abilities: CharmAbilityRow[]
   charm_modes: CharmModeRow[]
   charm_prerequisite_abilities: CharmPrereqAbilityRow[]
   charm_prerequisite_charms: CharmPrereqCharmRow[]
   charm_choice_options: CharmChoiceOptionRow[]
 }
+
+// Temporary review workflow (not part of the app's real data model): flags a
+// charm as possibly needing a purchase choice, and records what to do about
+// it. Remove needs_review/review_action from the DB and this UI once the
+// whole library has been triaged.
+type ReviewAction = 'freetext' | 'set_list' | 'ask_admin' | null
+type AdminCharm = LibraryCharm & { needsReview: boolean; reviewAction: ReviewAction }
 
 const CHOICE_TYPE_LABELS: Record<CharmChoiceType, string> = {
   ability: 'Ability',
@@ -179,17 +188,18 @@ function EditCharmRow({ charm, onSave, onCancel, saving, textInput, abilitySugge
   )
 }
 
-const COL_COUNT = 10
+const COL_COUNT = 13
 const th = 'px-3 py-1.5 text-left text-[10px] font-bold uppercase tracking-wider text-stone-400 bg-stone-800 border-b border-stone-700 sticky top-0 z-10 whitespace-nowrap'
 
 export default function CharmLibraryTab({ isOwner, textInput }: { isOwner: boolean; textInput: string }) {
-  const [charms, setCharms] = useState<LibraryCharm[]>([])
+  const [charms, setCharms] = useState<AdminCharm[]>([])
   const [loaded, setLoaded] = useState(false)
   const [saving, setSaving] = useState(false)
 
   const [typeFilter, setTypeFilter] = useState('')
   const [abilityFilter, setAbilityFilter] = useState('')
   const [search, setSearch] = useState('')
+  const [flaggedOnly, setFlaggedOnly] = useState(false)
   const [expandedId, setExpandedId] = useState<string | null>(null)
   const [implId, setImplId] = useState<string | null>(null)
   const [editingId, setEditingId] = useState<string | null>(null)
@@ -221,10 +231,18 @@ export default function CharmLibraryTab({ isOwner, textInput }: { isOwner: boole
           })),
           choiceType: r.choice_type ?? null,
           choiceOptions: (r.charm_choice_options ?? []).sort((a, b) => a.sort_order - b.sort_order).map(o => o.option),
+          needsReview: r.needs_review,
+          reviewAction: r.review_action,
         })))
         setLoaded(true)
       })
   }, [])
+
+  async function setReviewAction(id: string, action: ReviewAction) {
+    const next = charms.find(c => c.id === id)?.reviewAction === action ? null : action
+    await supabase.from('charm_library').update({ review_action: next }).eq('id', id)
+    setCharms(prev => prev.map(c => c.id === id ? { ...c, reviewAction: next } : c))
+  }
 
   async function addCharm() {
     if (!newCharm.name.trim()) return
@@ -262,6 +280,8 @@ export default function CharmLibraryTab({ isOwner, textInput }: { isOwner: boole
         modes: [] as CharmMode[],
         choiceType: row.choice_type ?? null,
         choiceOptions: newCharm.choiceType === 'custom' ? newCharm.choiceOptions : [],
+        needsReview: false,
+        reviewAction: null,
       }])
     }
     setNewCharm(blankCharm())
@@ -293,7 +313,7 @@ export default function CharmLibraryTab({ isOwner, textInput }: { isOwner: boole
     if (charm.choiceType === 'custom' && charm.choiceOptions.length) {
       await supabase.from('charm_choice_options').insert(charm.choiceOptions.map((option, i) => ({ charm_id: charm.id, option, sort_order: i })))
     }
-    setCharms(prev => prev.map(c => c.id === charm.id ? charm : c))
+    setCharms(prev => prev.map(c => c.id === charm.id ? { ...charm, needsReview: c.needsReview, reviewAction: c.reviewAction } : c))
     setEditingId(null)
     setSaving(false)
   }
@@ -322,6 +342,7 @@ export default function CharmLibraryTab({ isOwner, textInput }: { isOwner: boole
   const filtered = charms.filter(c =>
     (!typeFilter || (c.type || 'Universal') === typeFilter) &&
     (!abilityFilter || c.abilities.some(a => baseAbility(a) === abilityFilter)) &&
+    (!flaggedOnly || c.needsReview) &&
     (!q || c.name.toLowerCase().includes(q) || c.description.toLowerCase().includes(q) || c.abilities.some(a => a.toLowerCase().includes(q)))
   ).sort((a, b) => {
     const rankDiff = typeRank(a.type || 'Universal') - typeRank(b.type || 'Universal')
@@ -347,6 +368,12 @@ export default function CharmLibraryTab({ isOwner, textInput }: { isOwner: boole
           <button onClick={() => setAddingNew(true)} title="Add charm" className="text-stone-500 hover:text-amber-400 transition-colors shrink-0 text-base font-bold leading-none">
             +
           </button>
+        )}
+        {isOwner && (
+          <label className="flex items-center gap-1.5 text-[10px] text-stone-400 cursor-pointer select-none">
+            <input type="checkbox" checked={flaggedOnly} onChange={e => setFlaggedOnly(e.target.checked)} className="accent-amber-500" />
+            Flagged for review only ({charms.filter(c => c.needsReview).length})
+          </label>
         )}
       </div>
 
@@ -426,6 +453,9 @@ export default function CharmLibraryTab({ isOwner, textInput }: { isOwner: boole
               <th className={th}>Page</th>
               <th className={th}>Modes</th>
               <th className={th}>Impl</th>
+              <th className={th}>Free Text</th>
+              <th className={th}>Set List</th>
+              <th className={th}>Ask Admin</th>
               <th className={th}></th>
             </tr>
           </thead>
@@ -515,6 +545,39 @@ export default function CharmLibraryTab({ isOwner, textInput }: { isOwner: boole
                       >
                         ⚙
                       </button>
+                    </td>
+                    <td className="px-3 py-1.5 whitespace-nowrap">
+                      {isOwner && charm.needsReview && (
+                        <button
+                          onClick={e => { e.stopPropagation(); setReviewAction(charm.id, 'freetext') }}
+                          className={`w-6 h-6 rounded border transition-colors ${charm.reviewAction === 'freetext' ? 'bg-amber-600 border-amber-500 text-white' : 'bg-stone-800 border-stone-700 text-stone-500 hover:border-amber-500'}`}
+                          title="Mark as a free-text choice"
+                        >
+                          T
+                        </button>
+                      )}
+                    </td>
+                    <td className="px-3 py-1.5 whitespace-nowrap">
+                      {isOwner && charm.needsReview && (
+                        <button
+                          onClick={e => { e.stopPropagation(); setReviewAction(charm.id, 'set_list') }}
+                          className={`w-6 h-6 rounded border transition-colors ${charm.reviewAction === 'set_list' ? 'bg-amber-600 border-amber-500 text-white' : 'bg-stone-800 border-stone-700 text-stone-500 hover:border-amber-500'}`}
+                          title="Mark as needing a generated choice list"
+                        >
+                          ☰
+                        </button>
+                      )}
+                    </td>
+                    <td className="px-3 py-1.5 whitespace-nowrap">
+                      {isOwner && charm.needsReview && (
+                        <button
+                          onClick={e => { e.stopPropagation(); setReviewAction(charm.id, 'ask_admin') }}
+                          className={`w-6 h-6 rounded border transition-colors ${charm.reviewAction === 'ask_admin' ? 'bg-amber-600 border-amber-500 text-white' : 'bg-stone-800 border-stone-700 text-stone-500 hover:border-amber-500'}`}
+                          title="Park for manual case-by-case review"
+                        >
+                          ?
+                        </button>
+                      )}
                     </td>
                     <td className="px-3 py-1.5 whitespace-nowrap">
                       {isOwner && (
