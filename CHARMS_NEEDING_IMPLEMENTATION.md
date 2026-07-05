@@ -12,3 +12,13 @@ We'll work through these one at a time later.
   levels, etc.), or letting the player revise an existing companion's
   benefit selection when Essence increases (currently only supports binding
   a *new* companion via repurchase).
+
+- **Sharpshooter's Clever Tricks** — purchase flow is implemented (pick 2 of
+  its 4 modes on first purchase, then repurchase once for 1 more of the
+  remaining 2, hard-capped at 2 total purchases — always leaves exactly 1 of
+  4 unchosen). Not implemented: applying any of the 4 modes' actual mechanical
+  effects (Ranged Combat penalty reduction, gambit cost/dice changes, Build
+  Power via non-attack shots, ensnare/pull without weapon tags, etc.), and the
+  Repurchase mode's "Ranged Combat 4" prerequisite isn't enforced anywhere —
+  no charm's purchase prerequisites are gate-checked by the app currently,
+  this isn't specific to this charm.

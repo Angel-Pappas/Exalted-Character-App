@@ -28,6 +28,7 @@ interface CharmLibraryRow {
   choice_type: CharmChoiceType | null
   target_choice_type: MultiselectTargetType | null
   multiselect_cap_basis: MultiselectCapBasis | null
+  pick_counts: number[] | null
   needs_review: boolean
   review_action: ReviewAction
   charm_abilities: CharmAbilityRow[]
@@ -71,6 +72,18 @@ function usesOptionList(choiceType: CharmChoiceType | null): boolean {
   return choiceType === 'custom' || choiceType === 'multiselect'
 }
 
+// A pick schedule only makes sense for the list-based choice types (you pick
+// N of a fixed list); ability/attribute/custom all qualify, freetext doesn't
+// (nothing to count out of), multiselect has its own per-target cap system.
+function supportsPickSchedule(choiceType: CharmChoiceType | null): boolean {
+  return choiceType === 'ability' || choiceType === 'attribute' || choiceType === 'custom'
+}
+
+function parsePickCounts(text: string): number[] | null {
+  const nums = text.split(',').map(s => parseInt(s.trim(), 10)).filter(n => Number.isFinite(n) && n > 0)
+  return nums.length ? nums : null
+}
+
 function blankCharm(): LibraryCharm {
   return {
     id: '', type: 'Universal', abilities: [], name: '', page: null, description: '',
@@ -78,6 +91,7 @@ function blankCharm(): LibraryCharm {
     prerequisiteEssence: null, prerequisiteCharms: [], modes: [],
     choiceType: null, choiceOptions: [],
     targetChoiceType: null, targetOptions: [], multiselectCapBasis: null,
+    pickCounts: null,
   }
 }
 
@@ -195,6 +209,29 @@ function MultiselectTargetConfig({ charm, onChange, textInput }: {
   )
 }
 
+// Shared by EditCharmRow and the New Charm form: how many options to pick on
+// each successive purchase, e.g. "2, 1" for Sharpshooter's Clever Tricks
+// (pick 2 on the first purchase, 1 more on a single repurchase, then no more
+// purchases regardless of unchosen options remaining). Blank = pick 1 per
+// purchase, uncapped by a schedule (the default for every other charm).
+function PickScheduleConfig({ pickCounts, onChange, textInput }: {
+  pickCounts: number[] | null
+  onChange: (pickCounts: number[] | null) => void
+  textInput: string
+}) {
+  return (
+    <div>
+      <p className="text-[10px] text-stone-500 mb-0.5">Pick schedule (optional — options to pick per successive purchase, e.g. "2, 1"; blank = always 1)</p>
+      <input
+        defaultValue={pickCounts?.join(', ') ?? ''}
+        onBlur={e => onChange(parsePickCounts(e.target.value))}
+        placeholder="e.g. 2, 1"
+        className={textInput}
+      />
+    </div>
+  )
+}
+
 function EditCharmRow({ charm, onSave, onCancel, saving, textInput, abilitySuggestions, charmNameSuggestions, prereqAbilitySuggestions }: {
   charm: LibraryCharm
   onSave: (c: LibraryCharm) => void
@@ -244,6 +281,11 @@ function EditCharmRow({ charm, onSave, onCancel, saving, textInput, abilitySugge
         {form.choiceType === 'multiselect' && (
           <div className="mt-1.5">
             <MultiselectTargetConfig charm={form} onChange={patch => set(patch)} textInput={textInput} />
+          </div>
+        )}
+        {supportsPickSchedule(form.choiceType) && (
+          <div className="mt-1.5">
+            <PickScheduleConfig pickCounts={form.pickCounts} onChange={pickCounts => set({ pickCounts })} textInput={textInput} />
           </div>
         )}
       </div>
@@ -303,6 +345,7 @@ export default function CharmLibraryTab({ isOwner, textInput }: { isOwner: boole
           targetChoiceType: r.target_choice_type ?? null,
           targetOptions: (r.charm_target_options ?? []).sort((a, b) => a.sort_order - b.sort_order).map(o => o.option),
           multiselectCapBasis: r.multiselect_cap_basis ?? null,
+          pickCounts: r.pick_counts ?? null,
           needsReview: r.needs_review,
           reviewAction: r.review_action,
         })))
@@ -330,6 +373,7 @@ export default function CharmLibraryTab({ isOwner, textInput }: { isOwner: boole
       choice_type: newCharm.choiceType,
       target_choice_type: newCharm.choiceType === 'multiselect' ? newCharm.targetChoiceType : null,
       multiselect_cap_basis: newCharm.choiceType === 'multiselect' ? newCharm.multiselectCapBasis : null,
+      pick_counts: supportsPickSchedule(newCharm.choiceType) ? newCharm.pickCounts : null,
     }).select().single()
     if (row) {
       if (newCharm.abilities.length) {
@@ -360,6 +404,7 @@ export default function CharmLibraryTab({ isOwner, textInput }: { isOwner: boole
         targetChoiceType: row.target_choice_type ?? null,
         targetOptions: newCharm.choiceType === 'multiselect' && newCharm.targetChoiceType === 'custom' ? newCharm.targetOptions : [],
         multiselectCapBasis: row.multiselect_cap_basis ?? null,
+        pickCounts: row.pick_counts ?? null,
         needsReview: false,
         reviewAction: null,
       }])
@@ -378,6 +423,7 @@ export default function CharmLibraryTab({ isOwner, textInput }: { isOwner: boole
       choice_type: charm.choiceType,
       target_choice_type: charm.choiceType === 'multiselect' ? charm.targetChoiceType : null,
       multiselect_cap_basis: charm.choiceType === 'multiselect' ? charm.multiselectCapBasis : null,
+      pick_counts: supportsPickSchedule(charm.choiceType) ? charm.pickCounts : null,
     }).eq('id', charm.id)
     await supabase.from('charm_abilities').delete().eq('charm_id', charm.id)
     if (charm.abilities.length) {
@@ -507,6 +553,11 @@ export default function CharmLibraryTab({ isOwner, textInput }: { isOwner: boole
                   {newCharm.choiceType === 'multiselect' && (
                     <div className="mt-1.5">
                       <MultiselectTargetConfig charm={newCharm} onChange={patch => setNewCharm(f => ({ ...f, ...patch }))} textInput={textInput} />
+                    </div>
+                  )}
+                  {supportsPickSchedule(newCharm.choiceType) && (
+                    <div className="mt-1.5">
+                      <PickScheduleConfig pickCounts={newCharm.pickCounts} onChange={pickCounts => setNewCharm(f => ({ ...f, pickCounts }))} textInput={textInput} />
                     </div>
                   )}
                 </div>

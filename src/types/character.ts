@@ -44,6 +44,13 @@ export interface LibraryCharm {
   targetChoiceType: MultiselectTargetType | null   // only meaningful when choiceType === 'multiselect'; null = freetext
   targetOptions: string[]                          // only meaningful when targetChoiceType === 'custom'
   multiselectCapBasis: MultiselectCapBasis | null  // only meaningful when choiceType === 'multiselect'; null = essence
+  // How many options to pick per successive purchase, for list-based choice types
+  // (ability/attribute/custom) — e.g. Sharpshooter's Clever Tricks picks 2 on the
+  // first purchase then 1 more on a single repurchase: [2, 1]. Once the
+  // character has bought it pickCounts.length times, no further purchase is
+  // possible even if unchosen options remain. null/undefined = always pick 1
+  // per purchase, uncapped by a schedule (the common case).
+  pickCounts: number[] | null
 }
 
 // Known charm types from the book, used to populate type pickers. Admin can still free-type others.

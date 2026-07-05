@@ -129,9 +129,12 @@ function isModeInScope(label: string, exaltType: string, caste: string, showAll:
 }
 
 // A single pick is a plain string (ability/attribute/custom/freetext); a
-// multiselect pick binds a free-text target (e.g. a companion) to a set of
-// options chosen from the charm's list, capped by the character's Essence.
-type ChoicePick = string | { target: string; selected: string[] }
+// string[] is multiple simultaneous picks made in one purchase, for a
+// pickCounts-scheduled charm (e.g. Sharpshooter's Clever Tricks picks 2 at
+// once on its first purchase); a multiselect pick binds a target (e.g. a
+// companion) to a set of options chosen from the charm's list, capped by
+// Essence or the target's own rating.
+type ChoicePick = string | string[] | { target: string; selected: string[] }
 
 const TARGET_LABEL: Record<import('../types/character').MultiselectTargetType, string> = {
   ability: 'Target Ability',
@@ -156,10 +159,11 @@ const CHOICE_PROMPT: Record<import('../types/character').CharmChoiceType, string
 // default, or drawn from abilities/attributes/a custom list if the charm's
 // targetChoiceType says so — then let the player pick benefits up to a cap
 // based on either the character's Essence or the target's own rating.
-function ChoicePickerModal({ charm, existingPicks, existingTargets, abilities, attributes, essence, onConfirm, onClose }: {
+function ChoicePickerModal({ charm, existingPicks, existingTargets, purchaseIndex, abilities, attributes, essence, onConfirm, onClose }: {
   charm: import('../types/character').LibraryCharm
   existingPicks: string[]
   existingTargets: string[]
+  purchaseIndex: number
   abilities: Record<string, AbilityData>
   attributes: Record<string, number>
   essence: number
@@ -175,6 +179,16 @@ function ChoicePickerModal({ charm, existingPicks, existingTargets, abilities, a
     charm.choiceType === 'ability' ? Object.keys(abilities).sort().map(a => ({ value: a, label: `${a} (${abilities[a].rating})`, chosen: existingPicks.includes(a) })) :
     charm.choiceType === 'attribute' ? Object.keys(attributes).sort().map(a => ({ value: a, label: `${a} (${attributes[a]})`, chosen: existingPicks.includes(a) })) :
     []
+
+  // How many of the list above must be picked in this single purchase, per
+  // the charm's pick schedule (e.g. [2, 1] for Sharpshooter's Clever Tricks).
+  // Unscheduled charms always need exactly 1 (the plain click-to-confirm path).
+  const neededPicks = charm.pickCounts?.[purchaseIndex] ?? 1
+  const isScheduledMultiPick = neededPicks > 1 && charm.choiceType !== 'freetext' && charm.choiceType !== 'multiselect'
+
+  function toggleScheduledPick(value: string) {
+    setSelected(s => s.includes(value) ? s.filter(v => v !== value) : (s.length < neededPicks ? [...s, value] : s))
+  }
 
   const targetType = charm.targetChoiceType ?? 'freetext'
   const targetOptions: { value: string; label: string; chosen: boolean }[] =
@@ -264,6 +278,21 @@ function ChoicePickerModal({ charm, existingPicks, existingTargets, abilities, a
                   })}
                 </div>
               </>
+            ) : isScheduledMultiPick ? (
+              <>
+                {options.length === 0 && <p className="text-xs text-stone-500">No options available.</p>}
+                <p className="text-[10px] text-stone-500 mb-1">Choose {neededPicks}</p>
+                {options.map(o => {
+                  const isSelected = selected.includes(o.value)
+                  const disabled = o.chosen || (!isSelected && selected.length >= neededPicks)
+                  return (
+                    <label key={o.value} className={`flex items-center gap-2 px-3 py-1.5 rounded border mb-1 text-xs transition-colors ${disabled ? 'opacity-40 cursor-not-allowed border-stone-800 bg-stone-800/50' : 'cursor-pointer border-stone-700 bg-stone-800 hover:border-amber-500'}`}>
+                      <input type="checkbox" checked={isSelected} disabled={disabled} onChange={() => toggleScheduledPick(o.value)} className="accent-amber-500" />
+                      <span className="text-stone-200">{o.label}{o.chosen ? ' (chosen)' : ''}</span>
+                    </label>
+                  )
+                })}
+              </>
             ) : (
               <>
                 {options.length === 0 && <p className="text-xs text-stone-500">No options available.</p>}
@@ -302,6 +331,17 @@ function ChoicePickerModal({ charm, existingPicks, existingTargets, abilities, a
               </button>
             </div>
           )}
+          {isScheduledMultiPick && (
+            <div className="flex justify-end px-4 py-3 border-t border-stone-800 shrink-0">
+              <button
+                onClick={() => selected.length === neededPicks && onConfirm(selected)}
+                disabled={selected.length !== neededPicks}
+                className="text-xs bg-amber-600 hover:bg-amber-500 disabled:opacity-40 text-white px-3 py-1 rounded transition-colors"
+              >
+                Confirm
+              </button>
+            </div>
+          )}
         </div>
       </div>
     </ModalPortal>
@@ -316,7 +356,7 @@ function CharmBrowseModal({ existing, exaltType, caste, abilities, attributes, e
   attributes: Record<string, number>
   essence: number
   onAdd: (charm: import('../types/character').LibraryCharm, pick: ChoicePick | null) => void
-  onRemove: (libraryId: string) => void
+  onRemove: (charm: import('../types/character').LibraryCharm) => void
   onClose: () => void
 }) {
   const [library, setLibrary] = useState<import('../types/character').LibraryCharm[]>([])
@@ -369,6 +409,7 @@ function CharmBrowseModal({ existing, exaltType, caste, abilities, attributes, e
             targetChoiceType: r.target_choice_type ?? null,
             targetOptions: (r.charm_target_options ?? []).sort((a: any, b: any) => a.sort_order - b.sort_order).map((o: any) => o.option),
             multiselectCapBasis: r.multiselect_cap_basis ?? null,
+            pickCounts: r.pick_counts ?? null,
           })))
           setLoading(false)
         })
@@ -447,7 +488,11 @@ function CharmBrowseModal({ existing, exaltType, caste, abilities, attributes, e
               const count = ownedCharm?.count ?? (owned ? 1 : 0)
               const picks = ownedCharm?.picks ?? []
               const remaining = charm.choiceType ? remainingOptions(charm, picks) : null
-              const canBuyAgain = charm.choiceType
+              // A pick schedule is a hard cap on purchase count — once exhausted, no
+              // more purchases are possible even if choices remain unchosen (e.g.
+              // Sharpshooter's Clever Tricks always leaves one of its 4 unpicked).
+              const scheduleExhausted = !!charm.pickCounts && count >= charm.pickCounts.length
+              const canBuyAgain = scheduleExhausted ? false : charm.choiceType
                 ? (remaining === null || remaining > 0)
                 : charm.modes.some(m => m.label.toLowerCase() === 'repurchase')
               const visibleModes = [...new Map(
@@ -475,7 +520,7 @@ function CharmBrowseModal({ existing, exaltType, caste, abilities, attributes, e
                         <button onClick={() => startPurchase(charm)} title="Repurchase (buy again)" className="bg-amber-600 hover:bg-amber-500 text-white w-6 h-6 rounded transition-colors">↻</button>
                       )}
                       {owned && (
-                        <button onClick={() => onRemove(charm.id)} title="Remove (undo a purchase)" className="w-6 h-6 rounded border border-stone-600 text-stone-400 hover:border-stone-400 hover:text-stone-200 transition-colors">✕</button>
+                        <button onClick={() => onRemove(charm)} title="Remove (undo a purchase)" className="w-6 h-6 rounded border border-stone-600 text-stone-400 hover:border-stone-400 hover:text-stone-200 transition-colors">✕</button>
                       )}
                     </div>
                   </div>
@@ -504,6 +549,7 @@ function CharmBrowseModal({ existing, exaltType, caste, abilities, attributes, e
           charm={pickingCharm}
           existingPicks={existingByLib.get(pickingCharm.id)?.picks ?? []}
           existingTargets={existingByLib.get(pickingCharm.id)?.groupedPicks?.map(g => g.target) ?? []}
+          purchaseIndex={existingByLib.get(pickingCharm.id)?.count ?? 0}
           abilities={abilities}
           attributes={attributes}
           essence={essence}
@@ -531,17 +577,20 @@ function CharmPanel({ charms, onChange, exaltType, caste, abilities, attributes,
 
   // First purchase adds a new entry; buying an already-owned charm again
   // (Repurchase) just bumps its count. `pick` is the choice made this purchase
-  // (null for charms with no choiceType); a multiselect pick (target + selected
-  // benefits) goes to groupedPicks instead of the flat picks list.
+  // (null for charms with no choiceType): a plain string is one pick, a
+  // string[] is several picks made at once (a pickCounts-scheduled purchase),
+  // and a multiselect pick (target + selected benefits) goes to groupedPicks
+  // instead of the flat picks list.
   function addCharm(lib: import('../types/character').LibraryCharm, pick: ChoicePick | null) {
-    const grouped = pick !== null && typeof pick === 'object' ? pick : null
-    const flat = pick !== null && typeof pick === 'string' ? pick : null
+    const isArray = Array.isArray(pick)
+    const grouped = pick !== null && !isArray && typeof pick === 'object' ? pick : null
+    const flatValues = isArray ? pick : (pick !== null && typeof pick === 'string' ? [pick] : null)
     const existing = charms.find(c => c.libraryId === lib.id)
     if (existing) {
       onChange(charms.map(c => c.libraryId === lib.id ? {
         ...c,
         count: (c.count ?? 1) + 1,
-        picks: flat !== null ? [...(c.picks ?? []), flat] : c.picks,
+        picks: flatValues !== null ? [...(c.picks ?? []), ...flatValues] : c.picks,
         groupedPicks: grouped !== null ? [...(c.groupedPicks ?? []), grouped] : c.groupedPicks,
       } : c))
       return
@@ -555,7 +604,7 @@ function CharmPanel({ charms, onChange, exaltType, caste, abilities, attributes,
       mechanicalKeyOverride: null,
       mechanicalEnabled: true,
       count: 1,
-      picks: flat !== null ? [flat] : undefined,
+      picks: flatValues !== null ? flatValues : undefined,
       groupedPicks: grouped !== null ? [grouped] : undefined,
     }])
   }
@@ -568,15 +617,19 @@ function CharmPanel({ charms, onChange, exaltType, caste, abilities, attributes,
   // Used by the browse modal's Remove: undo the most recent purchase (popping
   // its pick/grouped pick, if any) one at a time; the entry is dropped once the
   // last one is removed. Removing all purchases means pressing Remove that
-  // many times.
-  function removeByLibraryId(libraryId: string) {
-    const existing = charms.find(c => c.libraryId === libraryId)
+  // many times. For a pickCounts-scheduled charm, the most recent purchase may
+  // have added more than one pick at once (e.g. the first purchase of
+  // Sharpshooter's Clever Tricks adds 2), so undo pops that many.
+  function removeByLibraryId(lib: import('../types/character').LibraryCharm) {
+    const existing = charms.find(c => c.libraryId === lib.id)
     if (!existing) return
     if ((existing.count ?? 1) > 1) {
-      onChange(charms.map(c => c.libraryId === libraryId ? {
+      const lastPurchaseIndex = (existing.count ?? 1) - 1
+      const picksInLastPurchase = lib.pickCounts?.[lastPurchaseIndex] ?? 1
+      onChange(charms.map(c => c.libraryId === lib.id ? {
         ...c,
         count: (c.count ?? 1) - 1,
-        picks: c.picks && c.picks.length > 0 ? c.picks.slice(0, -1) : c.picks,
+        picks: c.picks && c.picks.length > 0 ? c.picks.slice(0, Math.max(0, c.picks.length - picksInLastPurchase)) : c.picks,
         groupedPicks: c.groupedPicks && c.groupedPicks.length > 0 ? c.groupedPicks.slice(0, -1) : c.groupedPicks,
       } : c))
     } else {
