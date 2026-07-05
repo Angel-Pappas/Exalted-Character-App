@@ -133,6 +133,13 @@ function isModeInScope(label: string, exaltType: string, caste: string, showAll:
 // options chosen from the charm's list, capped by the character's Essence.
 type ChoicePick = string | { target: string; selected: string[] }
 
+const TARGET_LABEL: Record<import('../types/character').MultiselectTargetType, string> = {
+  ability: 'Target Ability',
+  attribute: 'Target Attribute',
+  custom: 'Target',
+  freetext: 'Target (e.g. companion name)',
+}
+
 const CHOICE_PROMPT: Record<import('../types/character').CharmChoiceType, string> = {
   ability: 'Choose an Ability',
   attribute: 'Choose an Attribute',
@@ -145,11 +152,14 @@ const CHOICE_PROMPT: Record<import('../types/character').CharmChoiceType, string
 // Already-picked options for this specific charm instance are shown disabled
 // so the same option can't be picked twice; free text instead shows past
 // entries as reference alongside a box for the new one. Multiselect charms
-// (e.g. Beast-Uplifting Harmony) bind a new target each purchase and let the
-// player pick up to their current Essence of the charm's fixed benefit list.
-function ChoicePickerModal({ charm, existingPicks, abilities, attributes, essence, onConfirm, onClose }: {
+// (e.g. Beast-Uplifting Harmony) bind a target each purchase — free text by
+// default, or drawn from abilities/attributes/a custom list if the charm's
+// targetChoiceType says so — then let the player pick benefits up to a cap
+// based on either the character's Essence or the target's own rating.
+function ChoicePickerModal({ charm, existingPicks, existingTargets, abilities, attributes, essence, onConfirm, onClose }: {
   charm: import('../types/character').LibraryCharm
   existingPicks: string[]
+  existingTargets: string[]
   abilities: Record<string, AbilityData>
   attributes: Record<string, number>
   essence: number
@@ -166,7 +176,23 @@ function ChoicePickerModal({ charm, existingPicks, abilities, attributes, essenc
     charm.choiceType === 'attribute' ? Object.keys(attributes).sort().map(a => ({ value: a, label: `${a} (${attributes[a]})`, chosen: existingPicks.includes(a) })) :
     []
 
-  const multiselectCap = Math.min(essence, charm.choiceOptions.length)
+  const targetType = charm.targetChoiceType ?? 'freetext'
+  const targetOptions: { value: string; label: string; chosen: boolean }[] =
+    targetType === 'custom' ? charm.targetOptions.map(o => ({ value: o, label: o, chosen: existingTargets.includes(o) })) :
+    targetType === 'ability' ? Object.keys(abilities).sort().map(a => ({ value: a, label: `${a} (${abilities[a].rating})`, chosen: existingTargets.includes(a) })) :
+    targetType === 'attribute' ? Object.keys(attributes).sort().map(a => ({ value: a, label: `${a} (${attributes[a]})`, chosen: existingTargets.includes(a) })) :
+    []
+
+  // Cap defaults to Essence; 'target_rating' instead uses the chosen target's
+  // own Ability/Attribute rating (falls back to Essence until a target with a
+  // known rating has been picked).
+  const targetRating =
+    targetType === 'ability' ? abilities[target]?.rating :
+    targetType === 'attribute' ? attributes[target] :
+    undefined
+  const capBasis = charm.multiselectCapBasis ?? 'essence'
+  const essenceCap = capBasis === 'target_rating' && targetRating !== undefined ? targetRating : essence
+  const multiselectCap = Math.min(essenceCap, charm.choiceOptions.length)
 
   function toggleSelected(option: string) {
     setSelected(s => s.includes(option) ? s.filter(o => o !== option) : (s.length < multiselectCap ? [...s, option] : s))
@@ -203,11 +229,29 @@ function ChoicePickerModal({ charm, existingPicks, abilities, attributes, essenc
             ) : charm.choiceType === 'multiselect' ? (
               <>
                 <div>
-                  <p className="text-[10px] text-stone-500 mb-1">Target (e.g. companion name)</p>
-                  <input value={target} onChange={e => setTarget(e.target.value)} placeholder="Enter a name…" autoFocus className={selectCls} />
+                  <p className="text-[10px] text-stone-500 mb-1">{TARGET_LABEL[targetType]}</p>
+                  {targetType === 'freetext' ? (
+                    <input value={target} onChange={e => setTarget(e.target.value)} placeholder="Enter a name…" autoFocus className={selectCls} />
+                  ) : (
+                    <>
+                      {targetOptions.length === 0 && <p className="text-xs text-stone-500">No options available.</p>}
+                      {targetOptions.map(o => (
+                        <button
+                          key={o.value}
+                          disabled={o.chosen}
+                          onClick={() => setTarget(o.value)}
+                          className={`w-full text-left text-xs px-3 py-1.5 rounded border mb-1 transition-colors ${o.chosen ? 'bg-stone-800/50 border-stone-800 text-stone-600 cursor-not-allowed' : target === o.value ? 'bg-amber-900/40 border-amber-500 text-amber-200' : 'bg-stone-800 border-stone-700 text-stone-200 hover:border-amber-500'}`}
+                        >
+                          {o.label}{o.chosen ? ' (chosen)' : ''}
+                        </button>
+                      ))}
+                    </>
+                  )}
                 </div>
                 <div className="pt-1">
-                  <p className="text-[10px] text-stone-500 mb-1">Benefits — choose up to {multiselectCap} (Essence {essence})</p>
+                  <p className="text-[10px] text-stone-500 mb-1">
+                    Benefits — choose up to {multiselectCap} ({capBasis === 'target_rating' ? `${target || 'target'}'s rating ${targetRating ?? '?'}` : `Essence ${essence}`})
+                  </p>
                   {charm.choiceOptions.map(o => {
                     const isSelected = selected.includes(o)
                     const disabled = !isSelected && selected.length >= multiselectCap
@@ -306,7 +350,7 @@ function CharmBrowseModal({ existing, exaltType, caste, abilities, attributes, e
   useEffect(() => {
     import('../lib/supabase').then(({ supabase }) =>
       supabase.from('charm_library')
-        .select('*, charm_abilities(ability), charm_modes(label, mode_text, prerequisite_essence, charm_mode_prerequisite_abilities(text)), charm_choice_options(option, sort_order)')
+        .select('*, charm_abilities(ability), charm_modes(label, mode_text, prerequisite_essence, charm_mode_prerequisite_abilities(text)), charm_choice_options(option, sort_order), charm_target_options(option, sort_order)')
         .order('type').order('page').order('name')
         .then(({ data }) => {
           if (data) setLibrary(data.map((r: any) => ({
@@ -322,6 +366,9 @@ function CharmBrowseModal({ existing, exaltType, caste, abilities, attributes, e
             })),
             choiceType: r.choice_type ?? null,
             choiceOptions: (r.charm_choice_options ?? []).sort((a: any, b: any) => a.sort_order - b.sort_order).map((o: any) => o.option),
+            targetChoiceType: r.target_choice_type ?? null,
+            targetOptions: (r.charm_target_options ?? []).sort((a: any, b: any) => a.sort_order - b.sort_order).map((o: any) => o.option),
+            multiselectCapBasis: r.multiselect_cap_basis ?? null,
           })))
           setLoading(false)
         })
@@ -456,6 +503,7 @@ function CharmBrowseModal({ existing, exaltType, caste, abilities, attributes, e
         <ChoicePickerModal
           charm={pickingCharm}
           existingPicks={existingByLib.get(pickingCharm.id)?.picks ?? []}
+          existingTargets={existingByLib.get(pickingCharm.id)?.groupedPicks?.map(g => g.target) ?? []}
           abilities={abilities}
           attributes={attributes}
           essence={essence}

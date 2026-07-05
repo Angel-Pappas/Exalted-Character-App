@@ -1,6 +1,6 @@
 import { Fragment, useEffect, useState } from 'react'
 import { supabase } from '../lib/supabase'
-import type { CharmChoiceType, CharmMode, LibraryCharm } from '../types/character'
+import type { CharmChoiceType, CharmMode, LibraryCharm, MultiselectCapBasis, MultiselectTargetType } from '../types/character'
 import AbilityChipInput from './AbilityChipInput'
 import ModalPortal from './ModalPortal'
 
@@ -15,6 +15,7 @@ interface CharmModeRow {
 interface CharmPrereqAbilityRow { text: string }
 interface CharmPrereqCharmRow { charm_name: string }
 interface CharmChoiceOptionRow { option: string; sort_order: number }
+interface CharmTargetOptionRow { option: string; sort_order: number }
 interface CharmLibraryRow {
   id: string
   type: string | null
@@ -25,6 +26,8 @@ interface CharmLibraryRow {
   mechanical_description: string | null
   prerequisite_essence: number | null
   choice_type: CharmChoiceType | null
+  target_choice_type: MultiselectTargetType | null
+  multiselect_cap_basis: MultiselectCapBasis | null
   needs_review: boolean
   review_action: ReviewAction
   charm_abilities: CharmAbilityRow[]
@@ -32,6 +35,7 @@ interface CharmLibraryRow {
   charm_prerequisite_abilities: CharmPrereqAbilityRow[]
   charm_prerequisite_charms: CharmPrereqCharmRow[]
   charm_choice_options: CharmChoiceOptionRow[]
+  charm_target_options: CharmTargetOptionRow[]
 }
 
 // Temporary review workflow (not part of the app's real data model): flags a
@@ -46,7 +50,19 @@ const CHOICE_TYPE_LABELS: Record<CharmChoiceType, string> = {
   attribute: 'Attribute',
   custom: 'Custom List',
   freetext: 'Free Text',
-  multiselect: 'Multi-select (scales with Essence)',
+  multiselect: 'Multi-select (target + scaling benefits)',
+}
+
+const TARGET_TYPE_LABELS: Record<MultiselectTargetType, string> = {
+  ability: 'Ability',
+  attribute: 'Attribute',
+  custom: 'Custom List',
+  freetext: 'Free Text',
+}
+
+const CAP_BASIS_LABELS: Record<MultiselectCapBasis, string> = {
+  essence: "Character's Essence",
+  target_rating: "Target's rating (Ability/Attribute target only)",
 }
 
 // 'custom' and 'multiselect' both draw from an admin-authored option list
@@ -61,6 +77,7 @@ function blankCharm(): LibraryCharm {
     mechanicalKey: null, mechanicalDescription: null, prerequisiteAbilities: [],
     prerequisiteEssence: null, prerequisiteCharms: [], modes: [],
     choiceType: null, choiceOptions: [],
+    targetChoiceType: null, targetOptions: [], multiselectCapBasis: null,
   }
 }
 
@@ -138,6 +155,46 @@ function sortModes(modes: CharmMode[]): CharmMode[] {
   })
 }
 
+// Shared by EditCharmRow and the New Charm form: how a multiselect charm's
+// target is picked (freetext/ability/attribute/custom), plus what caps the
+// number of benefits selectable per target.
+function MultiselectTargetConfig({ charm, onChange, textInput }: {
+  charm: Pick<LibraryCharm, 'targetChoiceType' | 'targetOptions' | 'multiselectCapBasis'>
+  onChange: (patch: Partial<Pick<LibraryCharm, 'targetChoiceType' | 'targetOptions' | 'multiselectCapBasis'>>) => void
+  textInput: string
+}) {
+  return (
+    <div className="pl-3 border-l-2 border-stone-700 space-y-1.5">
+      <div>
+        <p className="text-[10px] text-stone-500 mb-0.5">How is the target picked? (e.g. a companion, an Ability)</p>
+        <select
+          value={charm.targetChoiceType ?? 'freetext'}
+          onChange={e => onChange({ targetChoiceType: e.target.value as MultiselectTargetType, targetOptions: e.target.value === 'custom' ? charm.targetOptions : [] })}
+          className={textInput}
+        >
+          {(Object.keys(TARGET_TYPE_LABELS) as MultiselectTargetType[]).map(t => <option key={t} value={t}>{TARGET_TYPE_LABELS[t]}</option>)}
+        </select>
+        {charm.targetChoiceType === 'custom' && (
+          <div className="mt-1">
+            <p className="text-[10px] text-stone-500 mb-0.5">Target options</p>
+            <AbilityChipInput abilities={charm.targetOptions} onChange={targetOptions => onChange({ targetOptions })} suggestions={[]} />
+          </div>
+        )}
+      </div>
+      <div>
+        <p className="text-[10px] text-stone-500 mb-0.5">Benefit cap based on</p>
+        <select
+          value={charm.multiselectCapBasis ?? 'essence'}
+          onChange={e => onChange({ multiselectCapBasis: e.target.value as MultiselectCapBasis })}
+          className={textInput}
+        >
+          {(Object.keys(CAP_BASIS_LABELS) as MultiselectCapBasis[]).map(b => <option key={b} value={b}>{CAP_BASIS_LABELS[b]}</option>)}
+        </select>
+      </div>
+    </div>
+  )
+}
+
 function EditCharmRow({ charm, onSave, onCancel, saving, textInput, abilitySuggestions, charmNameSuggestions, prereqAbilitySuggestions }: {
   charm: LibraryCharm
   onSave: (c: LibraryCharm) => void
@@ -180,8 +237,13 @@ function EditCharmRow({ charm, onSave, onCancel, saving, textInput, abilitySugge
         </select>
         {usesOptionList(form.choiceType) && (
           <div className="mt-1">
-            <p className="text-[10px] text-stone-500 mb-0.5">Choice options (e.g. Sight, Hearing, Touch, Smell, Taste)</p>
+            <p className="text-[10px] text-stone-500 mb-0.5">{form.choiceType === 'multiselect' ? 'Benefit options' : 'Choice options (e.g. Sight, Hearing, Touch, Smell, Taste)'}</p>
             <AbilityChipInput abilities={form.choiceOptions} onChange={choiceOptions => set({ choiceOptions })} suggestions={[]} />
+          </div>
+        )}
+        {form.choiceType === 'multiselect' && (
+          <div className="mt-1.5">
+            <MultiselectTargetConfig charm={form} onChange={patch => set(patch)} textInput={textInput} />
           </div>
         )}
       </div>
@@ -215,7 +277,7 @@ export default function CharmLibraryTab({ isOwner, textInput }: { isOwner: boole
 
   useEffect(() => {
     supabase.from('charm_library')
-      .select('*, charm_abilities(ability), charm_modes(label, mode_text, prerequisite_essence, charm_mode_prerequisite_abilities(text)), charm_prerequisite_abilities(text), charm_prerequisite_charms(charm_name), charm_choice_options(option, sort_order)')
+      .select('*, charm_abilities(ability), charm_modes(label, mode_text, prerequisite_essence, charm_mode_prerequisite_abilities(text)), charm_prerequisite_abilities(text), charm_prerequisite_charms(charm_name), charm_choice_options(option, sort_order), charm_target_options(option, sort_order)')
       .order('type').order('page').order('name')
       .then(({ data: rows }) => {
         if (rows) setCharms((rows as unknown as CharmLibraryRow[]).map(r => ({
@@ -238,6 +300,9 @@ export default function CharmLibraryTab({ isOwner, textInput }: { isOwner: boole
           })),
           choiceType: r.choice_type ?? null,
           choiceOptions: (r.charm_choice_options ?? []).sort((a, b) => a.sort_order - b.sort_order).map(o => o.option),
+          targetChoiceType: r.target_choice_type ?? null,
+          targetOptions: (r.charm_target_options ?? []).sort((a, b) => a.sort_order - b.sort_order).map(o => o.option),
+          multiselectCapBasis: r.multiselect_cap_basis ?? null,
           needsReview: r.needs_review,
           reviewAction: r.review_action,
         })))
@@ -263,6 +328,8 @@ export default function CharmLibraryTab({ isOwner, textInput }: { isOwner: boole
       mechanical_description: newCharm.mechanicalDescription || null,
       prerequisite_essence: newCharm.prerequisiteEssence,
       choice_type: newCharm.choiceType,
+      target_choice_type: newCharm.choiceType === 'multiselect' ? newCharm.targetChoiceType : null,
+      multiselect_cap_basis: newCharm.choiceType === 'multiselect' ? newCharm.multiselectCapBasis : null,
     }).select().single()
     if (row) {
       if (newCharm.abilities.length) {
@@ -277,6 +344,9 @@ export default function CharmLibraryTab({ isOwner, textInput }: { isOwner: boole
       if (usesOptionList(newCharm.choiceType) && newCharm.choiceOptions.length) {
         await supabase.from('charm_choice_options').insert(newCharm.choiceOptions.map((option, i) => ({ charm_id: row.id, option, sort_order: i })))
       }
+      if (newCharm.choiceType === 'multiselect' && newCharm.targetChoiceType === 'custom' && newCharm.targetOptions.length) {
+        await supabase.from('charm_target_options').insert(newCharm.targetOptions.map((option, i) => ({ charm_id: row.id, option, sort_order: i })))
+      }
       setCharms(prev => [...prev, {
         id: row.id, type: row.type ?? 'Universal', abilities: newCharm.abilities, name: row.name,
         page: row.page, description: row.description, mechanicalKey: row.mechanical_key ?? null,
@@ -287,6 +357,9 @@ export default function CharmLibraryTab({ isOwner, textInput }: { isOwner: boole
         modes: [] as CharmMode[],
         choiceType: row.choice_type ?? null,
         choiceOptions: usesOptionList(newCharm.choiceType) ? newCharm.choiceOptions : [],
+        targetChoiceType: row.target_choice_type ?? null,
+        targetOptions: newCharm.choiceType === 'multiselect' && newCharm.targetChoiceType === 'custom' ? newCharm.targetOptions : [],
+        multiselectCapBasis: row.multiselect_cap_basis ?? null,
         needsReview: false,
         reviewAction: null,
       }])
@@ -303,6 +376,8 @@ export default function CharmLibraryTab({ isOwner, textInput }: { isOwner: boole
       mechanical_key: charm.mechanicalKey || null, mechanical_description: charm.mechanicalDescription || null,
       prerequisite_essence: charm.prerequisiteEssence,
       choice_type: charm.choiceType,
+      target_choice_type: charm.choiceType === 'multiselect' ? charm.targetChoiceType : null,
+      multiselect_cap_basis: charm.choiceType === 'multiselect' ? charm.multiselectCapBasis : null,
     }).eq('id', charm.id)
     await supabase.from('charm_abilities').delete().eq('charm_id', charm.id)
     if (charm.abilities.length) {
@@ -319,6 +394,10 @@ export default function CharmLibraryTab({ isOwner, textInput }: { isOwner: boole
     await supabase.from('charm_choice_options').delete().eq('charm_id', charm.id)
     if (usesOptionList(charm.choiceType) && charm.choiceOptions.length) {
       await supabase.from('charm_choice_options').insert(charm.choiceOptions.map((option, i) => ({ charm_id: charm.id, option, sort_order: i })))
+    }
+    await supabase.from('charm_target_options').delete().eq('charm_id', charm.id)
+    if (charm.choiceType === 'multiselect' && charm.targetChoiceType === 'custom' && charm.targetOptions.length) {
+      await supabase.from('charm_target_options').insert(charm.targetOptions.map((option, i) => ({ charm_id: charm.id, option, sort_order: i })))
     }
     setCharms(prev => prev.map(c => c.id === charm.id ? { ...charm, needsReview: c.needsReview, reviewAction: c.reviewAction } : c))
     setEditingId(null)
@@ -421,8 +500,13 @@ export default function CharmLibraryTab({ isOwner, textInput }: { isOwner: boole
                   </select>
                   {usesOptionList(newCharm.choiceType) && (
                     <div className="mt-1">
-                      <p className="text-[10px] text-stone-500 mb-0.5">Choice options (e.g. Sight, Hearing, Touch, Smell, Taste)</p>
+                      <p className="text-[10px] text-stone-500 mb-0.5">{newCharm.choiceType === 'multiselect' ? 'Benefit options' : 'Choice options (e.g. Sight, Hearing, Touch, Smell, Taste)'}</p>
                       <AbilityChipInput abilities={newCharm.choiceOptions} onChange={choiceOptions => setNewCharm(f => ({ ...f, choiceOptions }))} suggestions={[]} />
+                    </div>
+                  )}
+                  {newCharm.choiceType === 'multiselect' && (
+                    <div className="mt-1.5">
+                      <MultiselectTargetConfig charm={newCharm} onChange={patch => setNewCharm(f => ({ ...f, ...patch }))} textInput={textInput} />
                     </div>
                   )}
                 </div>

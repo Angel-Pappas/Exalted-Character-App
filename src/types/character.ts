@@ -12,9 +12,19 @@ export interface CharmMode {
 // charms need no choice. 'custom' draws from choiceOptions; 'ability'/'attribute'
 // draw from the character's own sheet; 'freetext' is a player-written pick.
 // 'multiselect' is for charms like Beast-Uplifting Harmony: each purchase binds
-// a free-text target (e.g. a companion) and multi-selects from choiceOptions,
-// capped at the character's current Essence — see CharacterCharm.groupedPicks.
+// a target and multi-selects from choiceOptions, capped by multiselectCapBasis
+// — see CharacterCharm.groupedPicks.
 export type CharmChoiceType = 'ability' | 'attribute' | 'custom' | 'freetext' | 'multiselect'
+
+// How a multiselect charm's target is picked (defaults to freetext if unset,
+// e.g. a companion name). 'ability'/'attribute' draw from the sheet just like
+// the top-level choiceType does; 'custom' draws from targetOptions.
+export type MultiselectTargetType = 'ability' | 'attribute' | 'custom' | 'freetext'
+
+// What bounds the number of benefits selectable per target: the character's
+// current Essence (default), or the numeric rating of whatever was picked as
+// the target (only meaningful when targetChoiceType is 'ability'/'attribute').
+export type MultiselectCapBasis = 'essence' | 'target_rating'
 
 export interface LibraryCharm {
   id: string
@@ -30,7 +40,10 @@ export interface LibraryCharm {
   prerequisiteCharms: string[]
   modes: CharmMode[]
   choiceType: CharmChoiceType | null
-  choiceOptions: string[]   // only meaningful when choiceType === 'custom'
+  choiceOptions: string[]   // only meaningful when choiceType === 'custom' or 'multiselect' (benefit list)
+  targetChoiceType: MultiselectTargetType | null   // only meaningful when choiceType === 'multiselect'; null = freetext
+  targetOptions: string[]                          // only meaningful when targetChoiceType === 'custom'
+  multiselectCapBasis: MultiselectCapBasis | null  // only meaningful when choiceType === 'multiselect'; null = essence
 }
 
 // Known charm types from the book, used to populate type pickers. Admin can still free-type others.
