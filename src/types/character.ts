@@ -11,7 +11,10 @@ export interface CharmMode {
 // or Enhanced Senses' "choose a sense") gets one of these tags. Untagged (null)
 // charms need no choice. 'custom' draws from choiceOptions; 'ability'/'attribute'
 // draw from the character's own sheet; 'freetext' is a player-written pick.
-export type CharmChoiceType = 'ability' | 'attribute' | 'custom' | 'freetext'
+// 'multiselect' is for charms like Beast-Uplifting Harmony: each purchase binds
+// a free-text target (e.g. a companion) and multi-selects from choiceOptions,
+// capped at the character's current Essence — see CharacterCharm.groupedPicks.
+export type CharmChoiceType = 'ability' | 'attribute' | 'custom' | 'freetext' | 'multiselect'
 
 export interface LibraryCharm {
   id: string
@@ -48,6 +51,7 @@ export interface CharacterCharm {
   mechanicalEnabled: boolean
   count?: number           // number of times purchased (1 + repurchases); absent = 1
   picks?: string[]         // one entry per purchase; only used when the library charm has a choiceType
+  groupedPicks?: { target: string; selected: string[] }[]  // used instead of picks for choiceType === 'multiselect'; one entry per purchase/target
 }
 
 export interface EffectEntry {

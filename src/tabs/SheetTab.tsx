@@ -128,32 +128,49 @@ function isModeInScope(label: string, exaltType: string, caste: string, showAll:
   return false
 }
 
+// A single pick is a plain string (ability/attribute/custom/freetext); a
+// multiselect pick binds a free-text target (e.g. a companion) to a set of
+// options chosen from the charm's list, capped by the character's Essence.
+type ChoicePick = string | { target: string; selected: string[] }
+
 const CHOICE_PROMPT: Record<import('../types/character').CharmChoiceType, string> = {
   ability: 'Choose an Ability',
   attribute: 'Choose an Attribute',
   custom: 'Choose an option',
   freetext: 'Enter a choice',
+  multiselect: 'Bind a target and choose benefits',
 }
 
 // Opens for every purchase (first buy included) of a charm with a choiceType.
 // Already-picked options for this specific charm instance are shown disabled
 // so the same option can't be picked twice; free text instead shows past
-// entries as reference alongside a box for the new one.
-function ChoicePickerModal({ charm, existingPicks, abilities, attributes, onConfirm, onClose }: {
+// entries as reference alongside a box for the new one. Multiselect charms
+// (e.g. Beast-Uplifting Harmony) bind a new target each purchase and let the
+// player pick up to their current Essence of the charm's fixed benefit list.
+function ChoicePickerModal({ charm, existingPicks, abilities, attributes, essence, onConfirm, onClose }: {
   charm: import('../types/character').LibraryCharm
   existingPicks: string[]
   abilities: Record<string, AbilityData>
   attributes: Record<string, number>
-  onConfirm: (pick: string) => void
+  essence: number
+  onConfirm: (pick: ChoicePick) => void
   onClose: () => void
 }) {
   const [freeText, setFreeText] = useState('')
+  const [target, setTarget] = useState('')
+  const [selected, setSelected] = useState<string[]>([])
 
   const options: { value: string; label: string; chosen: boolean }[] =
     charm.choiceType === 'custom' ? charm.choiceOptions.map(o => ({ value: o, label: o, chosen: existingPicks.includes(o) })) :
     charm.choiceType === 'ability' ? Object.keys(abilities).sort().map(a => ({ value: a, label: `${a} (${abilities[a].rating})`, chosen: existingPicks.includes(a) })) :
     charm.choiceType === 'attribute' ? Object.keys(attributes).sort().map(a => ({ value: a, label: `${a} (${attributes[a]})`, chosen: existingPicks.includes(a) })) :
     []
+
+  const multiselectCap = Math.min(essence, charm.choiceOptions.length)
+
+  function toggleSelected(option: string) {
+    setSelected(s => s.includes(option) ? s.filter(o => o !== option) : (s.length < multiselectCap ? [...s, option] : s))
+  }
 
   return (
     <ModalPortal onClose={onClose}>
@@ -183,6 +200,26 @@ function ChoicePickerModal({ charm, existingPicks, abilities, attributes, onConf
                   className={selectCls}
                 />
               </>
+            ) : charm.choiceType === 'multiselect' ? (
+              <>
+                <div>
+                  <p className="text-[10px] text-stone-500 mb-1">Target (e.g. companion name)</p>
+                  <input value={target} onChange={e => setTarget(e.target.value)} placeholder="Enter a name…" autoFocus className={selectCls} />
+                </div>
+                <div className="pt-1">
+                  <p className="text-[10px] text-stone-500 mb-1">Benefits — choose up to {multiselectCap} (Essence {essence})</p>
+                  {charm.choiceOptions.map(o => {
+                    const isSelected = selected.includes(o)
+                    const disabled = !isSelected && selected.length >= multiselectCap
+                    return (
+                      <label key={o} className={`flex items-center gap-2 px-3 py-1.5 rounded border mb-1 text-xs transition-colors ${disabled ? 'opacity-40 cursor-not-allowed border-stone-800 bg-stone-800/50' : 'cursor-pointer border-stone-700 bg-stone-800 hover:border-amber-500'}`}>
+                        <input type="checkbox" checked={isSelected} disabled={disabled} onChange={() => toggleSelected(o)} className="accent-amber-500" />
+                        <span className="text-stone-200">{o}</span>
+                      </label>
+                    )
+                  })}
+                </div>
+              </>
             ) : (
               <>
                 {options.length === 0 && <p className="text-xs text-stone-500">No options available.</p>}
@@ -210,19 +247,31 @@ function ChoicePickerModal({ charm, existingPicks, abilities, attributes, onConf
               </button>
             </div>
           )}
+          {charm.choiceType === 'multiselect' && (
+            <div className="flex justify-end px-4 py-3 border-t border-stone-800 shrink-0">
+              <button
+                onClick={() => target.trim() && selected.length > 0 && onConfirm({ target: target.trim(), selected })}
+                disabled={!target.trim() || selected.length === 0}
+                className="text-xs bg-amber-600 hover:bg-amber-500 disabled:opacity-40 text-white px-3 py-1 rounded transition-colors"
+              >
+                Confirm
+              </button>
+            </div>
+          )}
         </div>
       </div>
     </ModalPortal>
   )
 }
 
-function CharmBrowseModal({ existing, exaltType, caste, abilities, attributes, onAdd, onRemove, onClose }: {
+function CharmBrowseModal({ existing, exaltType, caste, abilities, attributes, essence, onAdd, onRemove, onClose }: {
   existing: import('../types/character').CharacterCharm[]
   exaltType: string
   caste: string
   abilities: Record<string, AbilityData>
   attributes: Record<string, number>
-  onAdd: (charm: import('../types/character').LibraryCharm, pick: string | null) => void
+  essence: number
+  onAdd: (charm: import('../types/character').LibraryCharm, pick: ChoicePick | null) => void
   onRemove: (libraryId: string) => void
   onClose: () => void
 }) {
@@ -409,6 +458,7 @@ function CharmBrowseModal({ existing, exaltType, caste, abilities, attributes, o
           existingPicks={existingByLib.get(pickingCharm.id)?.picks ?? []}
           abilities={abilities}
           attributes={attributes}
+          essence={essence}
           onConfirm={pick => { onAdd(pickingCharm, pick); setPickingCharm(null) }}
           onClose={() => setPickingCharm(null)}
         />
@@ -417,13 +467,14 @@ function CharmBrowseModal({ existing, exaltType, caste, abilities, attributes, o
   )
 }
 
-function CharmPanel({ charms, onChange, exaltType, caste, abilities, attributes }: {
+function CharmPanel({ charms, onChange, exaltType, caste, abilities, attributes, essence }: {
   charms: import('../types/character').CharacterCharm[]
   onChange: (c: import('../types/character').CharacterCharm[]) => void
   exaltType: string
   caste: string
   abilities: Record<string, AbilityData>
   attributes: Record<string, number>
+  essence: number
 }) {
   const [browsing, setBrowsing] = useState(false)
   const [expandedIds, setExpandedIds] = useState<Set<string>>(new Set())
@@ -432,14 +483,18 @@ function CharmPanel({ charms, onChange, exaltType, caste, abilities, attributes 
 
   // First purchase adds a new entry; buying an already-owned charm again
   // (Repurchase) just bumps its count. `pick` is the choice made this purchase
-  // (null for charms with no choiceType).
-  function addCharm(lib: import('../types/character').LibraryCharm, pick: string | null) {
+  // (null for charms with no choiceType); a multiselect pick (target + selected
+  // benefits) goes to groupedPicks instead of the flat picks list.
+  function addCharm(lib: import('../types/character').LibraryCharm, pick: ChoicePick | null) {
+    const grouped = pick !== null && typeof pick === 'object' ? pick : null
+    const flat = pick !== null && typeof pick === 'string' ? pick : null
     const existing = charms.find(c => c.libraryId === lib.id)
     if (existing) {
       onChange(charms.map(c => c.libraryId === lib.id ? {
         ...c,
         count: (c.count ?? 1) + 1,
-        picks: pick !== null ? [...(c.picks ?? []), pick] : c.picks,
+        picks: flat !== null ? [...(c.picks ?? []), flat] : c.picks,
+        groupedPicks: grouped !== null ? [...(c.groupedPicks ?? []), grouped] : c.groupedPicks,
       } : c))
       return
     }
@@ -452,7 +507,8 @@ function CharmPanel({ charms, onChange, exaltType, caste, abilities, attributes 
       mechanicalKeyOverride: null,
       mechanicalEnabled: true,
       count: 1,
-      picks: pick !== null ? [pick] : undefined,
+      picks: flat !== null ? [flat] : undefined,
+      groupedPicks: grouped !== null ? [grouped] : undefined,
     }])
   }
 
@@ -462,8 +518,9 @@ function CharmPanel({ charms, onChange, exaltType, caste, abilities, attributes 
   }
 
   // Used by the browse modal's Remove: undo the most recent purchase (popping
-  // its pick, if any) one at a time; the entry is dropped once the last one is
-  // removed. Removing all purchases means pressing Remove that many times.
+  // its pick/grouped pick, if any) one at a time; the entry is dropped once the
+  // last one is removed. Removing all purchases means pressing Remove that
+  // many times.
   function removeByLibraryId(libraryId: string) {
     const existing = charms.find(c => c.libraryId === libraryId)
     if (!existing) return
@@ -472,6 +529,7 @@ function CharmPanel({ charms, onChange, exaltType, caste, abilities, attributes 
         ...c,
         count: (c.count ?? 1) - 1,
         picks: c.picks && c.picks.length > 0 ? c.picks.slice(0, -1) : c.picks,
+        groupedPicks: c.groupedPicks && c.groupedPicks.length > 0 ? c.groupedPicks.slice(0, -1) : c.groupedPicks,
       } : c))
     } else {
       removeCharm(existing.id)
@@ -505,6 +563,7 @@ function CharmPanel({ charms, onChange, exaltType, caste, abilities, attributes 
           caste={caste}
           abilities={abilities}
           attributes={attributes}
+          essence={essence}
           onAdd={addCharm}
           onRemove={removeByLibraryId}
           onClose={() => setBrowsing(false)}
@@ -554,6 +613,15 @@ function CharmPanel({ charms, onChange, exaltType, caste, abilities, attributes 
                       <p className="text-xs text-stone-500">
                         Choices: <span className="text-amber-300">{charm.picks.join(', ')}</span>
                       </p>
+                    )}
+                    {charm.groupedPicks && charm.groupedPicks.length > 0 && (
+                      <div className="text-xs text-stone-500 space-y-0.5">
+                        {charm.groupedPicks.map((g, i) => (
+                          <p key={i}>
+                            <span className="text-stone-300">{g.target}</span>: <span className="text-amber-300">{g.selected.join(', ')}</span>
+                          </p>
+                        ))}
+                      </div>
                     )}
                     <p className="text-xs text-stone-400 leading-relaxed whitespace-pre-wrap">
                       {charm.customDescription ?? <em className="text-stone-600">No description loaded — library text shown in browse.</em>}
@@ -2000,6 +2068,7 @@ export default function SheetTab({ sheet, onChange, editMode, gameData: gd }: Pr
         caste={data.caste}
         abilities={data.abilities}
         attributes={data.attributes}
+        essence={data.essence ?? 1}
       />
     ),
 

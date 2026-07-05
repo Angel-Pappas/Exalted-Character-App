@@ -46,6 +46,13 @@ const CHOICE_TYPE_LABELS: Record<CharmChoiceType, string> = {
   attribute: 'Attribute',
   custom: 'Custom List',
   freetext: 'Free Text',
+  multiselect: 'Multi-select (scales with Essence)',
+}
+
+// 'custom' and 'multiselect' both draw from an admin-authored option list
+// (charm_choice_options); the others don't need one.
+function usesOptionList(choiceType: CharmChoiceType | null): boolean {
+  return choiceType === 'custom' || choiceType === 'multiselect'
 }
 
 function blankCharm(): LibraryCharm {
@@ -165,13 +172,13 @@ function EditCharmRow({ charm, onSave, onCancel, saving, textInput, abilitySugge
         <p className="text-[10px] text-stone-500 mb-0.5">Purchase choice (optional — a pick required each time the charm is bought)</p>
         <select
           value={form.choiceType ?? ''}
-          onChange={e => set({ choiceType: (e.target.value || null) as CharmChoiceType | null, choiceOptions: e.target.value === 'custom' ? form.choiceOptions : [] })}
+          onChange={e => set({ choiceType: (e.target.value || null) as CharmChoiceType | null, choiceOptions: usesOptionList(e.target.value as CharmChoiceType) ? form.choiceOptions : [] })}
           className={textInput}
         >
           <option value="">None</option>
           {(Object.keys(CHOICE_TYPE_LABELS) as CharmChoiceType[]).map(t => <option key={t} value={t}>{CHOICE_TYPE_LABELS[t]}</option>)}
         </select>
-        {form.choiceType === 'custom' && (
+        {usesOptionList(form.choiceType) && (
           <div className="mt-1">
             <p className="text-[10px] text-stone-500 mb-0.5">Choice options (e.g. Sight, Hearing, Touch, Smell, Taste)</p>
             <AbilityChipInput abilities={form.choiceOptions} onChange={choiceOptions => set({ choiceOptions })} suggestions={[]} />
@@ -267,7 +274,7 @@ export default function CharmLibraryTab({ isOwner, textInput }: { isOwner: boole
       if (newCharm.prerequisiteCharms.length) {
         await supabase.from('charm_prerequisite_charms').insert(newCharm.prerequisiteCharms.map(charm_name => ({ charm_id: row.id, charm_name })))
       }
-      if (newCharm.choiceType === 'custom' && newCharm.choiceOptions.length) {
+      if (usesOptionList(newCharm.choiceType) && newCharm.choiceOptions.length) {
         await supabase.from('charm_choice_options').insert(newCharm.choiceOptions.map((option, i) => ({ charm_id: row.id, option, sort_order: i })))
       }
       setCharms(prev => [...prev, {
@@ -279,7 +286,7 @@ export default function CharmLibraryTab({ isOwner, textInput }: { isOwner: boole
         prerequisiteCharms: newCharm.prerequisiteCharms,
         modes: [] as CharmMode[],
         choiceType: row.choice_type ?? null,
-        choiceOptions: newCharm.choiceType === 'custom' ? newCharm.choiceOptions : [],
+        choiceOptions: usesOptionList(newCharm.choiceType) ? newCharm.choiceOptions : [],
         needsReview: false,
         reviewAction: null,
       }])
@@ -310,7 +317,7 @@ export default function CharmLibraryTab({ isOwner, textInput }: { isOwner: boole
       await supabase.from('charm_prerequisite_charms').insert(charm.prerequisiteCharms.map(charm_name => ({ charm_id: charm.id, charm_name })))
     }
     await supabase.from('charm_choice_options').delete().eq('charm_id', charm.id)
-    if (charm.choiceType === 'custom' && charm.choiceOptions.length) {
+    if (usesOptionList(charm.choiceType) && charm.choiceOptions.length) {
       await supabase.from('charm_choice_options').insert(charm.choiceOptions.map((option, i) => ({ charm_id: charm.id, option, sort_order: i })))
     }
     setCharms(prev => prev.map(c => c.id === charm.id ? { ...charm, needsReview: c.needsReview, reviewAction: c.reviewAction } : c))
@@ -406,13 +413,13 @@ export default function CharmLibraryTab({ isOwner, textInput }: { isOwner: boole
                   <p className="text-[10px] text-stone-500 mb-0.5">Purchase choice (optional — a pick required each time the charm is bought)</p>
                   <select
                     value={newCharm.choiceType ?? ''}
-                    onChange={e => setNewCharm(f => ({ ...f, choiceType: (e.target.value || null) as CharmChoiceType | null, choiceOptions: e.target.value === 'custom' ? f.choiceOptions : [] }))}
+                    onChange={e => setNewCharm(f => ({ ...f, choiceType: (e.target.value || null) as CharmChoiceType | null, choiceOptions: usesOptionList(e.target.value as CharmChoiceType) ? f.choiceOptions : [] }))}
                     className={textInput}
                   >
                     <option value="">None</option>
                     {(Object.keys(CHOICE_TYPE_LABELS) as CharmChoiceType[]).map(t => <option key={t} value={t}>{CHOICE_TYPE_LABELS[t]}</option>)}
                   </select>
-                  {newCharm.choiceType === 'custom' && (
+                  {usesOptionList(newCharm.choiceType) && (
                     <div className="mt-1">
                       <p className="text-[10px] text-stone-500 mb-0.5">Choice options (e.g. Sight, Hearing, Touch, Smell, Taste)</p>
                       <AbilityChipInput abilities={newCharm.choiceOptions} onChange={choiceOptions => setNewCharm(f => ({ ...f, choiceOptions }))} suggestions={[]} />
@@ -607,7 +614,7 @@ export default function CharmLibraryTab({ isOwner, textInput }: { isOwner: boole
                         {charm.choiceType && (
                           <p className="text-xs text-stone-500">
                             Purchase choice: <span className="text-amber-400">{CHOICE_TYPE_LABELS[charm.choiceType]}</span>
-                            {charm.choiceType === 'custom' && charm.choiceOptions.length > 0 && (
+                            {usesOptionList(charm.choiceType) && charm.choiceOptions.length > 0 && (
                               <span> — {charm.choiceOptions.join(', ')}</span>
                             )}
                           </p>
