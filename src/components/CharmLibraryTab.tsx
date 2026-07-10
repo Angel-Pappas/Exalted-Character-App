@@ -161,7 +161,7 @@ function modeRank(label: string): number {
   return 3
 }
 
-function sortModes(modes: CharmMode[]): CharmMode[] {
+export function sortModes(modes: CharmMode[]): CharmMode[] {
   return [...modes].sort((a, b) => {
     const rankDiff = modeRank(a.label) - modeRank(b.label)
     if (rankDiff !== 0) return rankDiff

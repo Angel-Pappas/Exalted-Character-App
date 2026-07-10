@@ -22,3 +22,15 @@ We'll work through these one at a time later.
   Repurchase mode's "Ranged Combat 4" prerequisite isn't enforced anywhere —
   no charm's purchase prerequisites are gate-checked by the app currently,
   this isn't specific to this charm.
+
+- **Arsenal-Summoning Gesture** — purchase flow is implemented (custom list:
+  choose Weapons or Armor). Not implemented: the summon/banish action itself
+  (no "Elsewhere" storage slot, no mote-spend button on the sheet to call the
+  chosen gear into hand at short range).
+
+- **Augmented Attribute** — purchase flow is implemented (custom list:
+  choose Force, Finesse, or Fortitude). Not implemented: applying the
+  Excellency dice bonus, and more fundamentally, the sheet only tracks the
+  classic 9 Attributes (Strength/Dexterity/Stamina/etc.) — it has no concept
+  of the Alchemical Force/Finesse/Fortitude groupings the charm's choice
+  options map to, so there's currently no rating for the bonus to attach to.

@@ -65,6 +65,8 @@ export interface CharacterCharm {
   id: string               // local uuid for list operations
   libraryId: string
   name: string             // denormalized snapshot
+  libraryDescription: string  // denormalized from library at add time
+  libraryModes: CharmMode[]  // denormalized from library at add time
   libraryMechanicalKey: string | null  // denormalized from library at add time
   customDescription: string | null
   mechanicalKeyOverride: string | null  // null = use libraryMechanicalKey

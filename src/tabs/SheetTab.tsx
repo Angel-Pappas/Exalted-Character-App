@@ -7,7 +7,7 @@ const freeCompactor = { ...noCompactor, allowOverlap: true }
 import 'react-grid-layout/css/styles.css'
 import type { SheetData, FoiState, AbilityData, MeritEntry, IntimacyEntry, HealthBox, PanelLayout, CharacterCharm, EffectCategory, EffectEntry, InventoryItem, InventoryItemKind, WeaponWeight, ArtifactColor, GameData } from '../types/character'
 import { DEFAULT_GAME_DATA } from '../types/character'
-import { typeRank, baseAbility, sortAbilities, abilityRank, modeIcon } from '../components/CharmLibraryTab'
+import { typeRank, baseAbility, sortAbilities, abilityRank, modeIcon, sortModes } from '../components/CharmLibraryTab'
 import ModalPortal from '../components/ModalPortal'
 
 const ATTRIBUTE_GROUPS = [
@@ -599,6 +599,8 @@ function CharmPanel({ charms, onChange, exaltType, caste, abilities, attributes,
       id: crypto.randomUUID(),
       libraryId: lib.id,
       name: lib.name,
+      libraryDescription: lib.description,
+      libraryModes: lib.modes,
       libraryMechanicalKey: lib.mechanicalKey,
       customDescription: null,
       mechanicalKeyOverride: null,
@@ -637,9 +639,9 @@ function CharmPanel({ charms, onChange, exaltType, caste, abilities, attributes,
     }
   }
 
-  function startEdit(charm: import('../types/character').CharacterCharm, libraryDesc: string) {
+  function startEdit(charm: import('../types/character').CharacterCharm) {
     setEditingId(charm.id)
-    setEditDesc(charm.customDescription ?? libraryDesc)
+    setEditDesc(charm.customDescription ?? charm.libraryDescription ?? '')
   }
 
   function saveEdit(charm: import('../types/character').CharacterCharm) {
@@ -725,10 +727,23 @@ function CharmPanel({ charms, onChange, exaltType, caste, abilities, attributes,
                       </div>
                     )}
                     <p className="text-xs text-stone-400 leading-relaxed whitespace-pre-wrap">
-                      {charm.customDescription ?? <em className="text-stone-600">No description loaded — library text shown in browse.</em>}
+                      {charm.customDescription ?? charm.libraryDescription ?? <em className="text-stone-600">No description loaded — library text shown in browse.</em>}
                     </p>
+                    {charm.libraryModes && charm.libraryModes.length > 0 && (
+                      <div className="space-y-1">
+                        {sortModes(charm.libraryModes).map((m, i) => (
+                          <div key={`${m.label}-${i}`}>
+                            <p className="text-xs font-bold text-amber-400 flex items-center gap-1">
+                              <span>{modeIcon(m.label).glyph}</span>
+                              {m.label}
+                            </p>
+                            <p className="text-xs text-stone-400 leading-relaxed whitespace-pre-wrap">{m.text}</p>
+                          </div>
+                        ))}
+                      </div>
+                    )}
                     <div className="flex items-center gap-2 flex-wrap">
-                      <button onClick={() => startEdit(charm, charm.customDescription ?? '')} title="Edit" className="text-xs text-stone-500 hover:text-amber-400 transition-colors">✎</button>
+                      <button onClick={() => startEdit(charm)} title="Edit" className="text-xs text-stone-500 hover:text-amber-400 transition-colors">✎</button>
                       {charm.customDescription !== null && (
                         <button onClick={() => revert(charm.id)} className="text-xs text-stone-500 hover:text-amber-400 transition-colors">revert to original</button>
                       )}
