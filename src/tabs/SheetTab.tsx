@@ -1806,46 +1806,63 @@ export default function SheetTab({ sheet, onChange, editMode, gameData: gd }: Pr
       </div>
     ),
 
-    abilities: (
-      <div className={panelBase}>
-        <SectionHeader title="Abilities" />
-        <table className="w-full text-xs">
-          <thead>
-            <tr className="text-stone-500 border-b border-stone-700">
-              <th className="text-left py-1 px-1 font-medium w-[80px]">Ability</th>
-              <th className="text-center py-1 px-1 font-medium w-[38px]">Rtg</th>
-              <th className="text-left py-1 px-1 font-medium">Specialty</th>
-              <th className="text-center py-1 px-1 font-medium w-[20px]" title="Excellency">Ex</th>
-            </tr>
-          </thead>
-          <tbody>
-            {ABILITIES.map(ability => {
-              const ab = data.abilities[ability] ?? defaultAbility
-              return (
-                <tr key={ability} className={`border-b border-stone-800 transition-colors ${ab.excellency ? 'bg-amber-950/40' : 'hover:bg-stone-800/50'}`}>
-                  <td className={`py-1 px-1 font-medium ${ab.excellency ? 'text-amber-300' : 'text-stone-200'}`}>{ability}</td>
-                  <td className="py-1 px-1 text-center">
-                    <input type="number" min={0} max={10} value={ab.rating}
-                      onChange={e => setAbility(ability, { rating: parseInt(e.target.value) || 0 })}
-                      className={numInput} />
-                  </td>
-                  <td className="py-1 px-1">
-                    <input type="text" value={ab.specialty}
-                      onChange={e => setAbility(ability, { specialty: e.target.value })}
-                      placeholder="—"
-                      className="w-full bg-transparent border-b border-stone-700 text-stone-300 placeholder-stone-600 text-xs focus:outline-none focus:border-amber-500 px-1 py-0.5" />
-                  </td>
-                  <td className="py-1 px-1 text-center">
-                    <button onClick={() => setAbility(ability, { excellency: !ab.excellency })}
-                      className={`w-3 h-3 rounded-full border-2 transition-colors ${ab.excellency ? 'bg-amber-400 border-amber-400' : 'bg-transparent border-stone-600 hover:border-amber-500'}`} />
-                  </td>
-                </tr>
-              )
-            })}
-          </tbody>
-        </table>
-      </div>
-    ),
+    abilities: (() => {
+      // Excellency is purchased per-ability (choiceType 'ability'), one pick per
+      // purchase; while its implementation is active, the Ex tags are derived
+      // from those picks instead of being manually toggled — see CLAUDE.md /
+      // the mechanicalKey gating pattern used by FoI in InventoryPanel above.
+      const activeKey = (c: CharacterCharm) => c.mechanicalKeyOverride ?? c.libraryMechanicalKey
+      const excellencyCharms = data.charms.filter(c => activeKey(c) === 'excellency' && c.mechanicalEnabled)
+      const excellencyManaged = excellencyCharms.length > 0
+      const excellencyAbilities = new Set(excellencyCharms.flatMap(c => c.picks ?? []))
+
+      return (
+        <div className={panelBase}>
+          <SectionHeader title="Abilities" />
+          <table className="w-full text-xs">
+            <thead>
+              <tr className="text-stone-500 border-b border-stone-700">
+                <th className="text-left py-1 px-1 font-medium w-[80px]">Ability</th>
+                <th className="text-center py-1 px-1 font-medium w-[38px]">Rtg</th>
+                <th className="text-left py-1 px-1 font-medium">Specialty</th>
+                <th className="text-center py-1 px-1 font-medium w-[20px]" title="Excellency">Ex</th>
+              </tr>
+            </thead>
+            <tbody>
+              {ABILITIES.map(ability => {
+                const ab = data.abilities[ability] ?? defaultAbility
+                const hasEx = excellencyManaged ? excellencyAbilities.has(ability) : ab.excellency
+                return (
+                  <tr key={ability} className={`border-b border-stone-800 transition-colors ${hasEx ? 'bg-amber-950/40' : 'hover:bg-stone-800/50'}`}>
+                    <td className={`py-1 px-1 font-medium ${hasEx ? 'text-amber-300' : 'text-stone-200'}`}>{ability}</td>
+                    <td className="py-1 px-1 text-center">
+                      <input type="number" min={0} max={10} value={ab.rating}
+                        onChange={e => setAbility(ability, { rating: parseInt(e.target.value) || 0 })}
+                        className={numInput} />
+                    </td>
+                    <td className="py-1 px-1">
+                      <input type="text" value={ab.specialty}
+                        onChange={e => setAbility(ability, { specialty: e.target.value })}
+                        placeholder="—"
+                        className="w-full bg-transparent border-b border-stone-700 text-stone-300 placeholder-stone-600 text-xs focus:outline-none focus:border-amber-500 px-1 py-0.5" />
+                    </td>
+                    <td className="py-1 px-1 text-center">
+                      {excellencyManaged ? (
+                        <span title={hasEx ? 'Granted by [Ability] Excellency' : undefined}
+                          className={`inline-block w-3 h-3 rounded-full border-2 ${hasEx ? 'bg-amber-400 border-amber-400' : 'bg-transparent border-stone-700'}`} />
+                      ) : (
+                        <button onClick={() => setAbility(ability, { excellency: !ab.excellency })}
+                          className={`w-3 h-3 rounded-full border-2 transition-colors ${ab.excellency ? 'bg-amber-400 border-amber-400' : 'bg-transparent border-stone-600 hover:border-amber-500'}`} />
+                      )}
+                    </td>
+                  </tr>
+                )
+              })}
+            </tbody>
+          </table>
+        </div>
+      )
+    })(),
 
     defenses: (() => {
       const stamina = data.attributes['Stamina']   ?? 0
