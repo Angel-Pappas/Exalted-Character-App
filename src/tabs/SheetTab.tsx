@@ -5,8 +5,8 @@ import { GridLayout, useContainerWidth, noCompactor } from 'react-grid-layout'
 // Override it so panels can freely overlap — no collision resolution, no compaction.
 const freeCompactor = { ...noCompactor, allowOverlap: true }
 import 'react-grid-layout/css/styles.css'
-import type { SheetData, FoiState, AbilityData, MeritEntry, IntimacyEntry, HealthBox, PanelLayout, CharacterCharm, EffectCategory, EffectEntry, InventoryItem, InventoryItemKind, WeaponWeight, ArtifactColor, GameData } from '../types/character'
-import { DEFAULT_GAME_DATA } from '../types/character'
+import type { SheetData, FoiState, AbilityData, MeritEntry, IntimacyEntry, HealthBox, PanelLayout, CharacterCharm, EffectCategory, EffectEntry, InventoryItem, InventoryItemKind, WeaponWeight, ArtifactColor, GameData, CharmMode } from '../types/character'
+import { DEFAULT_GAME_DATA, CHARM_TYPE_OPTIONS } from '../types/character'
 import { typeRank, baseAbility, sortAbilities, abilityRank, modeIcon, sortModes } from '../components/CharmLibraryTab'
 import ModalPortal from '../components/ModalPortal'
 
@@ -116,16 +116,72 @@ function isTypeInScope(t: string, exaltType: string, showAll: boolean): boolean 
   return !!exaltType && lower === exaltTypeBase(exaltType)
 }
 
-// Upgrade/Repurchase modes apply regardless of Exalt type. Other mode labels are
-// Exalt-type- or Caste/Aspect-specific variants, so only show the character's own
-// unless Show All is on.
+// Caste/Aspect names seen across the charm library that aren't also a full Exalt
+// type name (Dragon-Blooded's five elements, Liminal's five aspects, Janest).
+// Used only to positively identify "this is someone else's caste variant" so it
+// can be hidden — anything NOT in here falls through to the safe default below.
+const KNOWN_CASTE_LABELS = ['earth', 'fire', 'water', 'wood', 'air', 'blood', 'breath', 'flesh', 'marrow', 'soil', 'janest']
+
+// Upgrade/Repurchase modes apply regardless of Exalt type. A single mode label can
+// also name several Exalt types at once (e.g. "Alchemical, Getimian, Lunar, and
+// Liminal" on [Ability] Excellency) when they all share identical rules text —
+// split on commas/"and" and check membership rather than exact-matching the whole
+// string. Anything that isn't recognized as a type or caste/aspect name defaults
+// to visible: several charms (Seasoned Criminal Method, Soul Fire Shaper Form,
+// Sharpshooter's Clever Tricks) use one-off named modes with no type restriction
+// at all, and a strict allowlist would wrongly hide those.
 function isModeInScope(label: string, exaltType: string, caste: string, showAll: boolean): boolean {
   if (showAll) return true
   const lower = label.toLowerCase()
   if (lower === 'upgrade' || lower === 'repurchase') return true
-  if (exaltType && lower === exaltTypeBase(exaltType)) return true
+  const tokens = lower.split(/,| and /).map(t => t.trim()).filter(Boolean)
+  const allAreTypes = tokens.length > 0 && tokens.every(t => CHARM_TYPE_OPTIONS.some(ct => ct.toLowerCase() === t))
+  if (allAreTypes) return !!exaltType && tokens.includes(exaltTypeBase(exaltType))
   if (caste && lower === caste.toLowerCase()) return true
-  return false
+  if (KNOWN_CASTE_LABELS.includes(lower)) return false
+  return true
+}
+
+// Parses admin-authored prerequisite strings like "Integrity 2" or "Ranged Combat 4"
+// (ability name + trailing minimum rating). Returns null if the format doesn't
+// match, which callers treat as "can't evaluate, don't lock over it."
+function parsePrereqAbility(text: string): { name: string; min: number } | null {
+  const m = text.trim().match(/^(.*?)\s+(\d+)$/)
+  return m ? { name: m[1].trim(), min: parseInt(m[2], 10) } : null
+}
+
+// What (if anything) is stopping this specific mode from being "live" for the
+// character right now. Empty array = unlocked. Exported so any future per-mode
+// mechanical implementation can gate its effect on the same check instead of
+// just the charm's overall mechanicalEnabled toggle.
+export function modeLockReasons(
+  mode: CharmMode,
+  allModes: CharmMode[],
+  charmCount: number,
+  essence: number,
+  abilities: Record<string, AbilityData>,
+): string[] {
+  const reasons: string[] = []
+  if (mode.prerequisiteEssence != null && essence < mode.prerequisiteEssence) {
+    reasons.push(`Essence ${mode.prerequisiteEssence}`)
+  }
+  for (const req of mode.prerequisiteAbilities) {
+    const parsed = parsePrereqAbility(req)
+    if (!parsed) continue
+    const key = baseAbility(parsed.name)
+    if (!(key in abilities)) continue // e.g. Alchemical Force/Finesse/Fortitude — not tracked, don't lock over it
+    if ((abilities[key]?.rating ?? 0) < parsed.min) reasons.push(`${parsed.name} ${parsed.min}`)
+  }
+  if (mode.label.toLowerCase() === 'repurchase') {
+    // Multiple same-charm "Repurchase" rows (e.g. Sorcerous Initiation's Essence 3
+    // then Essence 5 tiers) aren't ordered in the DB — rank by ascending Essence
+    // requirement to assign a tier, so each successive tier needs one more purchase.
+    const repurchaseModes = allModes.filter(m => m.label.toLowerCase() === 'repurchase')
+      .sort((a, b) => (a.prerequisiteEssence ?? 0) - (b.prerequisiteEssence ?? 0))
+    const tier = repurchaseModes.indexOf(mode)
+    if (charmCount < 2 + Math.max(tier, 0)) reasons.push('Repurchase')
+  }
+  return reasons
 }
 
 // A single pick is a plain string (ability/attribute/custom/freetext); a
@@ -731,15 +787,20 @@ function CharmPanel({ charms, onChange, exaltType, caste, abilities, attributes,
                     </p>
                     {charm.libraryModes && charm.libraryModes.length > 0 && (
                       <div className="space-y-1">
-                        {sortModes(charm.libraryModes).map((m, i) => (
-                          <div key={`${m.label}-${i}`}>
-                            <p className="text-xs font-bold text-amber-400 flex items-center gap-1">
-                              <span>{modeIcon(m.label).glyph}</span>
-                              {m.label}
-                            </p>
-                            <p className="text-xs text-stone-400 leading-relaxed whitespace-pre-wrap">{m.text}</p>
-                          </div>
-                        ))}
+                        {sortModes(charm.libraryModes.filter(m => isModeInScope(m.label, exaltType, caste, false))).map((m, i) => {
+                          const lockReasons = modeLockReasons(m, charm.libraryModes, charm.count ?? 1, essence, abilities)
+                          const locked = lockReasons.length > 0
+                          return (
+                            <div key={`${m.label}-${i}`} className={locked ? 'opacity-40' : undefined} title={locked ? `Locked: ${lockReasons.join(', ')}` : undefined}>
+                              <p className={`text-xs font-bold flex items-center gap-1 ${locked ? 'text-stone-500' : 'text-amber-400'}`}>
+                                <span>{modeIcon(m.label).glyph}</span>
+                                {m.label}
+                              </p>
+                              <p className="text-xs text-stone-400 leading-relaxed whitespace-pre-wrap">{m.text}</p>
+                              {locked && <p className="text-xs text-stone-600">Locked: {lockReasons.join(', ')}</p>}
+                            </div>
+                          )
+                        })}
                       </div>
                     )}
                     <div className="flex items-center gap-2 flex-wrap">

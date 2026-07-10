@@ -18,10 +18,14 @@ We'll work through these one at a time later.
   remaining 2, hard-capped at 2 total purchases — always leaves exactly 1 of
   4 unchosen). Not implemented: applying any of the 4 modes' actual mechanical
   effects (Ranged Combat penalty reduction, gambit cost/dice changes, Build
-  Power via non-attack shots, ensnare/pull without weapon tags, etc.), and the
-  Repurchase mode's "Ranged Combat 4" prerequisite isn't enforced anywhere —
-  no charm's purchase prerequisites are gate-checked by the app currently,
-  this isn't specific to this charm.
+  Power via non-attack shots, ensnare/pull without weapon tags, etc.). The
+  charm's Repurchase mode ("Ranged Combat 4") is now visually gated on the
+  sheet (greyed out until Ranged Combat 4 and an actual repurchase — see
+  `modeLockReasons` in `SheetTab.tsx`), but this is display-only: no charm's
+  purchase prerequisites are enforced at buy time anywhere in the app. Also
+  note the sheet shows all 4 named mode descriptions regardless of which 2-3
+  were actually picked — there's no data link between a `charm_modes` row and
+  a specific `charm_choice_options` pick, so it can't tell which to hide.
 
 - **Arsenal-Summoning Gesture** — purchase flow is implemented (custom list:
   choose Weapons or Armor). Not implemented: the summon/banish action itself
