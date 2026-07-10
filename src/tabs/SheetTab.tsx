@@ -176,7 +176,7 @@ function ChoicePickerModal({ charm, existingPicks, existingTargets, purchaseInde
 
   const options: { value: string; label: string; chosen: boolean }[] =
     charm.choiceType === 'custom' ? charm.choiceOptions.map(o => ({ value: o, label: o, chosen: existingPicks.includes(o) })) :
-    charm.choiceType === 'ability' ? Object.keys(abilities).sort().map(a => ({ value: a, label: `${a} (${abilities[a].rating})`, chosen: existingPicks.includes(a) })) :
+    charm.choiceType === 'ability' ? [...ABILITIES].sort().map(a => ({ value: a, label: `${a} (${abilities[a]?.rating ?? 0})`, chosen: existingPicks.includes(a) })) :
     charm.choiceType === 'attribute' ? Object.keys(attributes).sort().map(a => ({ value: a, label: `${a} (${attributes[a]})`, chosen: existingPicks.includes(a) })) :
     []
 
@@ -193,7 +193,7 @@ function ChoicePickerModal({ charm, existingPicks, existingTargets, purchaseInde
   const targetType = charm.targetChoiceType ?? 'freetext'
   const targetOptions: { value: string; label: string; chosen: boolean }[] =
     targetType === 'custom' ? charm.targetOptions.map(o => ({ value: o, label: o, chosen: existingTargets.includes(o) })) :
-    targetType === 'ability' ? Object.keys(abilities).sort().map(a => ({ value: a, label: `${a} (${abilities[a].rating})`, chosen: existingTargets.includes(a) })) :
+    targetType === 'ability' ? [...ABILITIES].sort().map(a => ({ value: a, label: `${a} (${abilities[a]?.rating ?? 0})`, chosen: existingTargets.includes(a) })) :
     targetType === 'attribute' ? Object.keys(attributes).sort().map(a => ({ value: a, label: `${a} (${attributes[a]})`, chosen: existingTargets.includes(a) })) :
     []
 
@@ -374,7 +374,7 @@ function CharmBrowseModal({ existing, exaltType, caste, abilities, attributes, e
   // style charms need this even without a Repurchase mode.
   function remainingOptions(charm: import('../types/character').LibraryCharm, picks: string[]): number | null {
     if (charm.choiceType === 'custom') return charm.choiceOptions.filter(o => !picks.includes(o)).length
-    if (charm.choiceType === 'ability') return Object.keys(abilities).filter(a => !picks.includes(a)).length
+    if (charm.choiceType === 'ability') return ABILITIES.filter(a => !picks.includes(a)).length
     if (charm.choiceType === 'attribute') return Object.keys(attributes).filter(a => !picks.includes(a)).length
     return null // freetext (unlimited) or no choiceType
   }
