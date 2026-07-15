@@ -197,17 +197,21 @@ Angel's account username: `angel`, UUID: `c5d208d8-3d47-4dc3-b76b-c211d8486c3b`,
 - **Settings page** (`/options`): Account (username/password edit) + Appearance (theme toggle)
 - **Admin page** (`/setup`): Tables + Charms + Users tabs; full user management with role/delete/move-character
 - **Exalt Types**: global table, seeded with 10 types, admin CRUD in Admin → Tables
-- **Character Sheet panels (13 total):** all scrollable with hidden scrollbars
-  - Attributes, Abilities (with Excellency + Specialty), Defenses (calculated, with Defend Other + Full Defense toggles + manual bonus fields), Motes (Current/Committed/Total with auto-total from essence), Health track, Languages, Merits, Intimacies
+- **Character Sheet panels (11 total):** all scrollable with hidden scrollbars
+  - Attributes, Abilities (with Excellency + Specialty), Defenses (calculated, with Defend Other + Full Defense toggles + manual bonus fields), Health track, Languages, Merits, Intimacies
   - Charms — flat CharacterCharm list, browse-from-library modal, custom descriptions, mechanical gating
   - Effects — categories + expandable entries
   - Inventory — 3 fixed sections (Weapons/Armor/Other); full item modal; FoI charm toggle gated by mechanical key
-  - Essence panel (includes read-only ExaltType + Caste display)
+  - Essence panel — one panel holding all the pools and identity, top to bottom:
+    Identity (read-only ExaltType + Caste, editable Essence rating), Motes
+    (Current/Committed with auto-total from essence), Anima (0–10 with state label
+    + color ramp), then Power and Will side by side (0–10 counters, no state text
+    or color). Each section has its own ↺ reset.
 - Milestones: 4-type XP log with session reward form, purchase form, editable transaction table
 - Notes: free-form textarea
 - Characters tab: NPC list with per-NPC notes
 - Auto-save to Supabase (1 second debounce)
-- **Drag-and-drop grid layout editor** (13 panels, 128-column grid, Edit Layout toggle)
+- **Drag-and-drop grid layout editor** (11 panels, 128-column grid, Edit Layout toggle)
 - **User role system**: admin/player, DB-enforced via RLS + SECURITY DEFINER functions
 
 ## Next Planned Features

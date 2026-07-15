@@ -197,6 +197,8 @@ export interface SheetData {
   fullDefense: boolean
   essence: number
   anima: number
+  power: number
+  will: number
   defenseBonus: { parry: number; evasion: number; soak: number; hardness: number; resolve: number }
   languages: string[]
   merits: MeritEntry[]

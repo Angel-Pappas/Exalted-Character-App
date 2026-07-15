@@ -93,7 +93,12 @@ Seeded with all 10 exalt types. Managed by admin in Admin → Tables → Exalt T
 ---
 
 ## Character Sheet
-13 draggable/resizable panels on a 128-column grid. Layout saved per character to Supabase.
+11 draggable/resizable panels on a 128-column grid. Layout saved per character to Supabase.
+
+The **Essence** panel holds Identity, Motes, Anima, Power and Will in one box. Power and
+Will are plain 0–10 counters — same look and behavior as Anima, minus the state label and
+color ramp. Older sheets that stored `motes`/`anima` as separate panels are migrated on
+load: the Essence box grows to swallow them and panels below it shift down.
 All panels are scrollable with hidden scrollbars (`overflow-y-auto no-scrollbar h-full`).
 
 ### Identity
@@ -165,7 +170,7 @@ src/
     SetupPage.tsx           # /setup — Tables | Charms | Users tabs
     LoginPage.tsx           # Username + password only; eye-icon toggle on all password fields
   tabs/
-    SheetTab.tsx            # All 13 panels + defense calculations + FoI + CharmPanel
+    SheetTab.tsx            # All 11 panels + defense calculations + FoI + CharmPanel
   types/
     character.ts            # All interfaces + DEFAULT_GAME_DATA + ExaltType
 info/

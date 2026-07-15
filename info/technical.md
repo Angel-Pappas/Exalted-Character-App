@@ -280,7 +280,7 @@ src/
     SettingsPage.tsx              # /options — Account + Appearance
     SetupPage.tsx                 # /setup — Tables | Charms | Users tabs
   tabs/
-    SheetTab.tsx                  # All 13 panels + defense calc + FoI + CharmPanel
+    SheetTab.tsx                  # All 11 panels + defense calc + FoI + CharmPanel
     MilestonesTab.tsx
     NotesTab.tsx
     CharactersTab.tsx

@@ -38,10 +38,8 @@ const DEFAULT_LAYOUT: PanelLayout[] = [
   { i: 'attributes', x: 0,  y: 0,  w: 16, h: 22, minW: 4, minH: 8 },
   { i: 'abilities',  x: 0,  y: 22, w: 16, h: 38, minW: 4, minH: 8 },
   { i: 'defenses',   x: 16, y: 0,  w: 16, h: 12, minW: 4, minH: 8 },
-  { i: 'essence',    x: 16, y: 12, w: 16, h: 6,  minW: 4, minH: 6 },
-  { i: 'motes',      x: 16, y: 18, w: 16, h: 10, minW: 4, minH: 8 },
-  { i: 'anima',      x: 16, y: 28, w: 16, h: 10, minW: 4, minH: 8 },
-  { i: 'health',     x: 16, y: 38, w: 16, h: 8,  minW: 4, minH: 8 },
+  { i: 'essence',    x: 16, y: 12, w: 16, h: 34, minW: 6, minH: 12 },
+  { i: 'health',     x: 16, y: 46, w: 16, h: 8,  minW: 4, minH: 8 },
   { i: 'merits',     x: 32, y: 0,  w: 28, h: 18, minW: 4, minH: 8 },
   { i: 'languages',  x: 32, y: 18, w: 28, h: 10, minW: 4, minH: 8 },
   { i: 'intimacies', x: 32, y: 28, w: 28, h: 18, minW: 4, minH: 8 },
@@ -49,6 +47,9 @@ const DEFAULT_LAYOUT: PanelLayout[] = [
   { i: 'effects',    x: 60, y: 46, w: 40, h: 40, minW: 4, minH: 8 },
   { i: 'inventory',  x: 100, y: 0, w: 28, h: 40, minW: 4, minH: 8 },
 ]
+
+// Grid rows the Power/Will row adds to a migrated Essence panel.
+const POWER_WILL_ROWS = 8
 
 const defaultAbility: AbilityData = { rating: 0, specialty: '', excellency: false }
 
@@ -64,6 +65,8 @@ function defaultSheet(): SheetData {
     defenseOther: false, fullDefense: false,
     essence: 1,
     anima: 0,
+    power: 0,
+    will: 0,
     defenseBonus: { parry: 0, evasion: 0, soak: 0, hardness: 0, resolve: 0 },
     languages: [], merits: [], intimacies: [],
     motes: { current: 0, committed: 0, total: 0 },
@@ -1736,6 +1739,40 @@ function InventoryPanel({ items, onChange, foi, foiOriginals, onFoiChange, dragE
 
 const numInput = "w-[30px] text-center bg-stone-800 border border-stone-600 text-stone-100 rounded px-1 py-0.5 text-xs focus:outline-none focus:border-amber-500"
 
+const counterBtnCls = "w-5 h-5 flex items-center justify-center rounded text-stone-400 hover:text-stone-100 hover:bg-stone-700 transition-colors text-sm font-bold shrink-0"
+
+// Header for a section inside the Essence panel — one step down from SectionHeader,
+// which titles a whole panel.
+function SubHeader({ title, right, onReset }: { title: string; right?: React.ReactNode; onReset?: () => void }) {
+  return (
+    <div className="flex items-center justify-between gap-1 mb-1">
+      <span className="text-[10px] font-semibold uppercase tracking-wider text-stone-400 truncate">{title}</span>
+      <div className="flex items-center gap-1.5 shrink-0">
+        {right}
+        {onReset && (
+          <button onClick={onReset} title="Reset"
+            className="text-xs leading-none text-stone-600 hover:text-amber-400 transition-colors">↺</button>
+        )}
+      </div>
+    </div>
+  )
+}
+
+function Counter({ value, onStep, size = 'lg', valueCls = 'text-stone-100' }: {
+  value: number
+  onStep: (delta: number) => void
+  size?: 'sm' | 'lg'
+  valueCls?: string
+}) {
+  return (
+    <div className="flex items-center justify-center gap-1">
+      <button onClick={() => onStep(-1)} className={counterBtnCls}>−</button>
+      <span className={`font-bold text-center tabular-nums ${size === 'lg' ? 'text-3xl w-9' : 'text-xl w-8'} ${valueCls}`}>{value}</span>
+      <button onClick={() => onStep(+1)} className={counterBtnCls}>+</button>
+    </div>
+  )
+}
+
 export default function SheetTab({ sheet, onChange, editMode, gameData: gd }: Props) {
   const gameData = gd ?? DEFAULT_GAME_DATA
   const [exaltTypes, setExaltTypes] = useState<import('../types/character').ExaltType[]>([])
@@ -1757,6 +1794,8 @@ export default function SheetTab({ sheet, onChange, editMode, gameData: gd }: Pr
     defenses: { ...def.defenses, ...sheet.defenses },
     essence: sheet.essence ?? 1,
     anima: sheet.anima ?? 0,
+    power: sheet.power ?? 0,
+    will: sheet.will ?? 0,
     defenseBonus: { ...def.defenseBonus, ...sheet.defenseBonus },
     languages: sheet.languages ?? [],
     merits: sheet.merits ?? [],
@@ -1764,7 +1803,31 @@ export default function SheetTab({ sheet, onChange, editMode, gameData: gd }: Pr
     motes: { ...def.motes, ...sheet.motes },
     health: DEFAULT_HEALTH.map((h, idx) => ({ ...h, checked: sheet.health?.[idx]?.checked ?? false })),
     layout: (() => {
-      const base = sheet.layout?.length ? sheet.layout.map(l => ({ ...l })) : DEFAULT_LAYOUT.map(l => ({ ...l }))
+      const saved = sheet.layout?.length ? sheet.layout.map(l => ({ ...l })) : DEFAULT_LAYOUT.map(l => ({ ...l }))
+      const known = new Set(DEFAULT_LAYOUT.map(l => l.i))
+      // Motes and Anima used to be their own panels; they now live inside Essence.
+      // Grow the saved Essence box to swallow their space and push whatever sat
+      // below them down, so an older sheet reopens without overlapping panels.
+      const oldMotes = saved.find(l => l.i === 'motes')
+      const oldAnima = saved.find(l => l.i === 'anima')
+      const base = saved.filter(l => known.has(l.i))
+      const essence = base.find(l => l.i === 'essence')
+      if (essence && (oldMotes || oldAnima)) {
+        const oldBottom = Math.max(
+          essence.y + essence.h,
+          oldMotes ? oldMotes.y + oldMotes.h : 0,
+          oldAnima ? oldAnima.y + oldAnima.h : 0,
+        )
+        essence.w = Math.max(essence.w, oldMotes?.w ?? 0, oldAnima?.w ?? 0)
+        essence.h = essence.h + (oldMotes?.h ?? 0) + (oldAnima?.h ?? 0) + POWER_WILL_ROWS
+        const delta = (essence.y + essence.h) - oldBottom
+        if (delta > 0) {
+          for (const l of base) {
+            const overlapsColumn = l.x < essence.x + essence.w && essence.x < l.x + l.w
+            if (l.i !== 'essence' && overlapsColumn && l.y >= oldBottom) l.y += delta
+          }
+        }
+      }
       const existingIds = new Set(base.map(l => l.i))
       const missing = DEFAULT_LAYOUT.filter(l => !existingIds.has(l.i))
       return [...base, ...missing]
@@ -1994,35 +2057,7 @@ export default function SheetTab({ sheet, onChange, editMode, gameData: gd }: Pr
 
     essence: (() => {
       const casteLabel = selectedExalt?.casteLabel ?? 'Caste'
-      return (
-        <div className={panelBase}>
-          <SectionHeader title="Identity" />
-          <div className="space-y-1.5">
-            {data.exaltType && (
-              <div className="flex items-center justify-between">
-                <span className="text-[10px] text-stone-500 uppercase tracking-wider">Exalt Type</span>
-                <span className="text-xs text-stone-200 text-right max-w-[60%] truncate">{data.exaltType}</span>
-              </div>
-            )}
-            {data.caste && (
-              <div className="flex items-center justify-between">
-                <span className="text-[10px] text-stone-500 uppercase tracking-wider">{casteLabel}</span>
-                <span className="text-xs text-stone-200">{data.caste}</span>
-              </div>
-            )}
-            {(data.exaltType || data.caste) && <div className="border-t border-stone-700/60 my-1" />}
-            <div className="flex items-center justify-between">
-              <span className="text-xs text-stone-300">Essence</span>
-              <input type="number" min={1} value={data.essence ?? 1}
-                onChange={e => update({ essence: parseInt(e.target.value) || 1 })}
-                className={numInput} />
-            </div>
-          </div>
-        </div>
-      )
-    })(),
 
-    motes: (() => {
       const essence = data.essence ?? 1
       const moteTable = gameData.essenceMotes ?? DEFAULT_GAME_DATA.essenceMotes
       const totalMotes = moteTable.find(r => r.essence === essence)?.motes
@@ -2045,40 +2080,7 @@ export default function SheetTab({ sheet, onChange, editMode, gameData: gd }: Pr
         const newAnima = delta < 0 ? Math.min(10, (data.anima ?? 0) + 1) : data.anima ?? 0
         update({ motes: { ...data.motes, current: newCurrent }, anima: newAnima })
       }
-      const counterBtn = "w-5 h-5 flex items-center justify-center rounded text-stone-400 hover:text-stone-100 hover:bg-stone-700 transition-colors text-sm font-bold shrink-0"
-      return (
-        <div className={panelBase}>
-          <div className="flex items-center justify-between mb-0.5">
-            <span className="text-xs font-semibold uppercase tracking-wider text-stone-400">Motes</span>
-            <button onClick={resetMotes} className="text-[10px] text-stone-500 hover:text-amber-400 transition-colors px-1.5 py-0.5 rounded border border-stone-700 hover:border-amber-500">Reset</button>
-          </div>
-          <div className="flex flex-col items-center mb-1.5">
-            <span className="text-[10px] text-stone-500">Total</span>
-            <span className="text-stone-300 font-semibold text-2xl">{totalMotes}</span>
-          </div>
-          <div className="flex items-start w-full">
-            <div className="flex-1 flex flex-col items-center gap-1">
-              <span className="text-[10px] uppercase tracking-wider text-stone-500">Current</span>
-              <div className="flex items-center gap-1">
-                <button onClick={() => setCurrent(-1)} className={counterBtn}>−</button>
-                <span className="text-xl font-bold text-stone-100 w-8 text-center">{current}</span>
-                <button onClick={() => setCurrent(+1)} className={counterBtn}>+</button>
-              </div>
-            </div>
-            <div className="flex-1 flex flex-col items-center gap-1">
-              <span className="text-[10px] uppercase tracking-wider text-stone-500">Committed</span>
-              <div className="flex items-center gap-1">
-                <button onClick={() => setCommitted(-1)} className={counterBtn}>−</button>
-                <span className="text-xl font-bold text-stone-100 w-8 text-center">{committed}</span>
-                <button onClick={() => setCommitted(+1)} className={counterBtn}>+</button>
-              </div>
-            </div>
-          </div>
-        </div>
-      )
-    })(),
 
-    anima: (() => {
       const animaLevel = data.anima ?? 0
       const animaTable = gameData.animaStates ?? DEFAULT_GAME_DATA.animaStates
       const animaState = animaTable.find(r => r.level === animaLevel)?.label ?? ''
@@ -2090,23 +2092,86 @@ export default function SheetTab({ sheet, onChange, editMode, gameData: gd }: Pr
         animaLevel <= 9   ? 'text-red-400' :
                             'text-amber-400'
       const setAnima = (delta: number) => {
-        const next = Math.max(0, Math.min(10, animaLevel + delta))
-        update({ anima: next })
+        update({ anima: Math.max(0, Math.min(10, animaLevel + delta)) })
       }
-      const counterBtn = "w-5 h-5 flex items-center justify-center rounded text-stone-400 hover:text-stone-100 hover:bg-stone-700 transition-colors text-sm font-bold shrink-0"
+
+      const power = data.power ?? 0
+      const will = data.will ?? 0
+      const setPower = (delta: number) => update({ power: Math.max(0, Math.min(10, power + delta)) })
+      const setWill = (delta: number) => update({ will: Math.max(0, Math.min(10, will + delta)) })
+
+      const divider = <div className="border-t border-stone-700/60" />
+
       return (
         <div className={panelBase}>
-          <div className="flex items-center justify-between mb-2">
-            <SectionHeader title="Anima" />
-            <button onClick={() => update({ anima: 0 })} className="text-[10px] text-stone-500 hover:text-amber-400 transition-colors px-1.5 py-0.5 rounded border border-stone-700 hover:border-amber-500">Reset</button>
-          </div>
-          <div className="flex flex-col items-center gap-1 pt-1">
-            <div className="flex items-center gap-1">
-              <button onClick={() => setAnima(-1)} className={counterBtn}>−</button>
-              <span className={`text-3xl font-bold w-10 text-center ${animaColor}`}>{animaLevel}</span>
-              <button onClick={() => setAnima(+1)} className={counterBtn}>+</button>
+          <SectionHeader title="Essence" />
+          <div className="space-y-2">
+
+            <div className="space-y-1">
+              {data.exaltType && (
+                <div className="flex items-center justify-between gap-1">
+                  <span className="text-[10px] text-stone-500 uppercase tracking-wider shrink-0">Exalt Type</span>
+                  <span className="text-xs text-stone-200 text-right truncate">{data.exaltType}</span>
+                </div>
+              )}
+              {data.caste && (
+                <div className="flex items-center justify-between gap-1">
+                  <span className="text-[10px] text-stone-500 uppercase tracking-wider shrink-0">{casteLabel}</span>
+                  <span className="text-xs text-stone-200 text-right truncate">{data.caste}</span>
+                </div>
+              )}
+              <div className="flex items-center justify-between gap-1">
+                <span className="text-[10px] text-stone-500 uppercase tracking-wider shrink-0">Essence</span>
+                <input type="number" min={1} value={essence}
+                  onChange={e => update({ essence: parseInt(e.target.value) || 1 })}
+                  className={numInput} />
+              </div>
             </div>
-            <span className={`text-xs font-medium ${animaColor}`}>{animaState}</span>
+
+            {divider}
+
+            <div>
+              <SubHeader
+                title="Motes"
+                onReset={resetMotes}
+                right={<span className="text-[10px] text-stone-500">Total <span className="text-stone-300 font-semibold">{totalMotes}</span></span>}
+              />
+              <div className="flex items-start">
+                <div className="flex-1 min-w-0 flex flex-col items-center gap-0.5">
+                  <span className="text-[10px] uppercase tracking-wider text-stone-500">Current</span>
+                  <Counter value={current} onStep={setCurrent} size="sm" />
+                </div>
+                <div className="flex-1 min-w-0 flex flex-col items-center gap-0.5">
+                  <span className="text-[10px] uppercase tracking-wider text-stone-500">Committed</span>
+                  <Counter value={committed} onStep={setCommitted} size="sm" />
+                </div>
+              </div>
+            </div>
+
+            {divider}
+
+            <div>
+              <SubHeader title="Anima" onReset={() => update({ anima: 0 })} />
+              <div className="flex flex-col items-center gap-0.5">
+                <Counter value={animaLevel} onStep={setAnima} valueCls={animaColor} />
+                <span className={`text-xs font-medium text-center ${animaColor}`}>{animaState}</span>
+              </div>
+            </div>
+
+            {divider}
+
+            <div className="flex items-start gap-1">
+              <div className="flex-1 min-w-0">
+                <SubHeader title="Power" onReset={() => update({ power: 0 })} />
+                <Counter value={power} onStep={setPower} />
+              </div>
+              <div className="w-px self-stretch bg-stone-700/60" />
+              <div className="flex-1 min-w-0">
+                <SubHeader title="Will" onReset={() => update({ will: 0 })} />
+                <Counter value={will} onStep={setWill} />
+              </div>
+            </div>
+
           </div>
         </div>
       )
