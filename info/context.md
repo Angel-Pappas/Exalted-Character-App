@@ -25,7 +25,7 @@ The `caste_label` field is either `'Caste'` or `'Aspect'` — controls the label
 
 All 10 exalt types are seeded: Solar, Lunar, Terrestrial, Sidereal, Abyssal, Infernal, Alchemical, Liminal, Getimian, Dreaming Sun Chosen.
 
-Exalt type and caste are set at character creation and displayed **read-only** on the sheet (merged into the Essence panel). They are not editable after creation.
+Exalt type and caste are set at character creation and displayed **read-only** in the CharacterPage header, next to the character name, as `Type · Caste`. They are not editable after creation.
 
 ## Defense Calculations
 All five defenses are calculated automatically in SheetTab. Manual bonus fields (`defenseBonus`) are additive on top.
@@ -202,11 +202,11 @@ Angel's account username: `angel`, UUID: `c5d208d8-3d47-4dc3-b76b-c211d8486c3b`,
   - Charms — flat CharacterCharm list, browse-from-library modal, custom descriptions, mechanical gating
   - Effects — categories + expandable entries
   - Inventory — 3 fixed sections (Weapons/Armor/Other); full item modal; FoI charm toggle gated by mechanical key
-  - Essence panel — one panel holding all the pools and identity, top to bottom:
-    Identity (read-only ExaltType + Caste, editable Essence rating), Motes
-    (Current/Committed with auto-total from essence), Anima (0–10 with state label
-    + color ramp), then Power and Will side by side (0–10 counters, no state text
-    or color). Each section has its own ↺ reset.
+  - Essence panel — one panel holding all the pools, top to bottom: an Essence (1–5) /
+    Power (0–10) / Will (0–10) counter row, then Motes (Current/Committed, auto-total
+    from Essence shown in the header), then Anima (0–10 with state label + color ramp).
+    Each section has a ↺ reset except Essence, which is a permanent trait.
+    ExaltType/Caste are **not** here — they live in the page header.
 - Milestones: 4-type XP log with session reward form, purchase form, editable transaction table
 - Notes: free-form textarea
 - Characters tab: NPC list with per-NPC notes

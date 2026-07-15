@@ -95,14 +95,20 @@ Seeded with all 10 exalt types. Managed by admin in Admin → Tables → Exalt T
 ## Character Sheet
 11 draggable/resizable panels on a 128-column grid. Layout saved per character to Supabase.
 
-The **Essence** panel holds Identity, Motes, Anima, Power and Will in one box. Power and
-Will are plain 0–10 counters — same look and behavior as Anima, minus the state label and
-color ramp. Older sheets that stored `motes`/`anima` as separate panels are migrated on
-load: the Essence box grows to swallow them and panels below it shift down.
+The **Essence** panel holds every pool in one box: an Essence/Power/Will counter row on
+top, then Motes, then Anima. Power and Will are 0–10; Essence is 1–5 and has no reset
+(it is a permanent trait, not a per-scene pool). All three look and behave like Anima
+minus its state label and color ramp. The panel has no title of its own — the counter
+row's labels serve as one.
+
+Older layouts are migrated on load and the rest of the column reflows to match: sheets
+with separate `motes`/`anima` panels get them folded in, and an Essence box still at the
+old `LEGACY_ESSENCE_H` is resized to `ESSENCE_H`. Any other height is player-chosen and
+left alone.
 All panels are scrollable with hidden scrollbars (`overflow-y-auto no-scrollbar h-full`).
 
 ### Identity
-Each character has: name, exalt type (from `exalt_types` table), caste/aspect. Set at creation, displayed read-only in the Essence panel (not editable on the sheet).
+Each character has: name, exalt type (from `exalt_types` table), caste/aspect. Set at creation and not editable on the sheet. Shown in the CharacterPage header next to the name as `Type · Caste` — bare values, no "Exalt Type"/"Caste" labels, matching the CharactersPage subtitle.
 
 ### Attributes (9 total)
 Physical: Strength, Dexterity, Stamina — Social: Charisma, Manipulation, Appearance — Mental: Perception, Intelligence, Wits

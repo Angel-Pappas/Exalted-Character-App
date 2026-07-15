@@ -34,12 +34,18 @@ const DEFAULT_HEALTH: HealthBox[] = [
   { penalty: 'Incap', checked: false },
 ]
 
+// Rows the Essence panel needs to show Essence/Power/Will, Motes and Anima without
+// scrolling. LEGACY_ESSENCE_H is the height the first merge assigned when it folded
+// Motes and Anima in, back when the panel still carried the Identity rows.
+const ESSENCE_H = 24
+const LEGACY_ESSENCE_H = 34
+
 const DEFAULT_LAYOUT: PanelLayout[] = [
   { i: 'attributes', x: 0,  y: 0,  w: 16, h: 22, minW: 4, minH: 8 },
   { i: 'abilities',  x: 0,  y: 22, w: 16, h: 38, minW: 4, minH: 8 },
   { i: 'defenses',   x: 16, y: 0,  w: 16, h: 12, minW: 4, minH: 8 },
-  { i: 'essence',    x: 16, y: 12, w: 16, h: 34, minW: 6, minH: 12 },
-  { i: 'health',     x: 16, y: 46, w: 16, h: 8,  minW: 4, minH: 8 },
+  { i: 'essence',    x: 16, y: 12, w: 16, h: ESSENCE_H, minW: 6, minH: 12 },
+  { i: 'health',     x: 16, y: 36, w: 16, h: 8,  minW: 4, minH: 8 },
   { i: 'merits',     x: 32, y: 0,  w: 28, h: 18, minW: 4, minH: 8 },
   { i: 'languages',  x: 32, y: 18, w: 28, h: 10, minW: 4, minH: 8 },
   { i: 'intimacies', x: 32, y: 28, w: 28, h: 18, minW: 4, minH: 8 },
@@ -47,9 +53,6 @@ const DEFAULT_LAYOUT: PanelLayout[] = [
   { i: 'effects',    x: 60, y: 46, w: 40, h: 40, minW: 4, minH: 8 },
   { i: 'inventory',  x: 100, y: 0, w: 28, h: 40, minW: 4, minH: 8 },
 ]
-
-// Grid rows the Power/Will row adds to a migrated Essence panel.
-const POWER_WILL_ROWS = 8
 
 const defaultAbility: AbilityData = { rating: 0, specialty: '', excellency: false }
 
@@ -1775,18 +1778,6 @@ function Counter({ value, onStep, size = 'lg', valueCls = 'text-stone-100' }: {
 
 export default function SheetTab({ sheet, onChange, editMode, gameData: gd }: Props) {
   const gameData = gd ?? DEFAULT_GAME_DATA
-  const [exaltTypes, setExaltTypes] = useState<import('../types/character').ExaltType[]>([])
-  useEffect(() => {
-    import('../lib/supabase').then(({ supabase }) =>
-      supabase.from('exalt_types').select('*').order('sort_order').order('name')
-        .then(({ data: rows }) => {
-          if (rows) setExaltTypes(rows.map((r: { id: string; name: string; caste_label: string; castes: string[]; sort_order: number }) => ({
-            id: r.id, name: r.name, casteLabel: r.caste_label as 'Caste' | 'Aspect',
-            castes: r.castes ?? [], sort_order: r.sort_order,
-          })))
-        })
-    )
-  }, [])
   const def = defaultSheet()
   const data: SheetData = {
     attributes: { ...def.attributes, ...sheet.attributes },
@@ -1805,29 +1796,31 @@ export default function SheetTab({ sheet, onChange, editMode, gameData: gd }: Pr
     layout: (() => {
       const saved = sheet.layout?.length ? sheet.layout.map(l => ({ ...l })) : DEFAULT_LAYOUT.map(l => ({ ...l }))
       const known = new Set(DEFAULT_LAYOUT.map(l => l.i))
-      // Motes and Anima used to be their own panels; they now live inside Essence.
-      // Grow the saved Essence box to swallow their space and push whatever sat
-      // below them down, so an older sheet reopens without overlapping panels.
-      const oldMotes = saved.find(l => l.i === 'motes')
-      const oldAnima = saved.find(l => l.i === 'anima')
       const base = saved.filter(l => known.has(l.i))
       const essence = base.find(l => l.i === 'essence')
-      if (essence && (oldMotes || oldAnima)) {
-        const oldBottom = Math.max(
-          essence.y + essence.h,
-          oldMotes ? oldMotes.y + oldMotes.h : 0,
-          oldAnima ? oldAnima.y + oldAnima.h : 0,
-        )
-        essence.w = Math.max(essence.w, oldMotes?.w ?? 0, oldAnima?.w ?? 0)
-        essence.h = essence.h + (oldMotes?.h ?? 0) + (oldAnima?.h ?? 0) + POWER_WILL_ROWS
+
+      // Two older shapes of this panel need resizing to ESSENCE_H, and both then need
+      // the rest of the column reflowed so nothing overlaps or leaves a hole:
+      //   1. Motes and Anima as their own panels, from before they were folded in.
+      //   2. An Essence box still at the height that fold assigned, from before
+      //      Identity moved out to the page header.
+      // Only the machine-assigned LEGACY_ESSENCE_H is touched — any other height is
+      // one the player chose, so it is left alone.
+      const legacy = [saved.find(l => l.i === 'motes'), saved.find(l => l.i === 'anima')]
+        .filter((l): l is PanelLayout => !!l)
+      if (essence && (legacy.length > 0 || essence.h === LEGACY_ESSENCE_H)) {
+        const oldBottom = Math.max(essence.y + essence.h, ...legacy.map(l => l.y + l.h))
+        if (legacy.length > 0) essence.w = Math.max(essence.w, ...legacy.map(l => l.w))
+        essence.h = ESSENCE_H
         const delta = (essence.y + essence.h) - oldBottom
-        if (delta > 0) {
+        if (delta !== 0) {
           for (const l of base) {
-            const overlapsColumn = l.x < essence.x + essence.w && essence.x < l.x + l.w
-            if (l.i !== 'essence' && overlapsColumn && l.y >= oldBottom) l.y += delta
+            const sharesColumn = l.x < essence.x + essence.w && essence.x < l.x + l.w
+            if (l.i !== 'essence' && sharesColumn && l.y >= oldBottom) l.y = Math.max(0, l.y + delta)
           }
         }
       }
+
       const existingIds = new Set(base.map(l => l.i))
       const missing = DEFAULT_LAYOUT.filter(l => !existingIds.has(l.i))
       return [...base, ...missing]
@@ -1903,8 +1896,6 @@ export default function SheetTab({ sheet, onChange, editMode, gameData: gd }: Pr
   }
 
   const panelBase = "bg-stone-900 border border-stone-700 rounded-lg p-2 overflow-y-auto no-scrollbar h-full"
-
-  const selectedExalt = exaltTypes.find(e => e.name === data.exaltType) ?? null
 
   const panels: Record<string, React.ReactNode> = {
     attributes: (
@@ -2056,8 +2047,6 @@ export default function SheetTab({ sheet, onChange, editMode, gameData: gd }: Pr
     })(),
 
     essence: (() => {
-      const casteLabel = selectedExalt?.casteLabel ?? 'Caste'
-
       const essence = data.essence ?? 1
       const moteTable = gameData.essenceMotes ?? DEFAULT_GAME_DATA.essenceMotes
       const totalMotes = moteTable.find(r => r.essence === essence)?.motes
@@ -2097,34 +2086,33 @@ export default function SheetTab({ sheet, onChange, editMode, gameData: gd }: Pr
 
       const power = data.power ?? 0
       const will = data.will ?? 0
+      const setEssence = (delta: number) => update({ essence: Math.max(1, Math.min(5, essence + delta)) })
       const setPower = (delta: number) => update({ power: Math.max(0, Math.min(10, power + delta)) })
       const setWill = (delta: number) => update({ will: Math.max(0, Math.min(10, will + delta)) })
 
       const divider = <div className="border-t border-stone-700/60" />
+      const vRule = <div className="w-px self-stretch bg-stone-700/60" />
 
+      // No panel-level SectionHeader here: the Essence/Power/Will labels below would
+      // sit directly under an identical "Essence" title.
       return (
         <div className={panelBase}>
-          <SectionHeader title="Essence" />
           <div className="space-y-2">
 
-            <div className="space-y-1">
-              {data.exaltType && (
-                <div className="flex items-center justify-between gap-1">
-                  <span className="text-[10px] text-stone-500 uppercase tracking-wider shrink-0">Exalt Type</span>
-                  <span className="text-xs text-stone-200 text-right truncate">{data.exaltType}</span>
-                </div>
-              )}
-              {data.caste && (
-                <div className="flex items-center justify-between gap-1">
-                  <span className="text-[10px] text-stone-500 uppercase tracking-wider shrink-0">{casteLabel}</span>
-                  <span className="text-xs text-stone-200 text-right truncate">{data.caste}</span>
-                </div>
-              )}
-              <div className="flex items-center justify-between gap-1">
-                <span className="text-[10px] text-stone-500 uppercase tracking-wider shrink-0">Essence</span>
-                <input type="number" min={1} value={essence}
-                  onChange={e => update({ essence: parseInt(e.target.value) || 1 })}
-                  className={numInput} />
+            <div className="flex items-start gap-1">
+              <div className="flex-1 min-w-0">
+                <SubHeader title="Essence" />
+                <Counter value={essence} onStep={setEssence} />
+              </div>
+              {vRule}
+              <div className="flex-1 min-w-0">
+                <SubHeader title="Power" onReset={() => update({ power: 0 })} />
+                <Counter value={power} onStep={setPower} />
+              </div>
+              {vRule}
+              <div className="flex-1 min-w-0">
+                <SubHeader title="Will" onReset={() => update({ will: 0 })} />
+                <Counter value={will} onStep={setWill} />
               </div>
             </div>
 
@@ -2155,20 +2143,6 @@ export default function SheetTab({ sheet, onChange, editMode, gameData: gd }: Pr
               <div className="flex flex-col items-center gap-0.5">
                 <Counter value={animaLevel} onStep={setAnima} valueCls={animaColor} />
                 <span className={`text-xs font-medium text-center ${animaColor}`}>{animaState}</span>
-              </div>
-            </div>
-
-            {divider}
-
-            <div className="flex items-start gap-1">
-              <div className="flex-1 min-w-0">
-                <SubHeader title="Power" onReset={() => update({ power: 0 })} />
-                <Counter value={power} onStep={setPower} />
-              </div>
-              <div className="w-px self-stretch bg-stone-700/60" />
-              <div className="flex-1 min-w-0">
-                <SubHeader title="Will" onReset={() => update({ will: 0 })} />
-                <Counter value={will} onStep={setWill} />
               </div>
             </div>
 
