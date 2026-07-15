@@ -119,15 +119,21 @@ Physical: Strength, Dexterity, Stamina — Social: Charisma, Manipulation, Appea
 Athletics, Awareness, Close Combat, Craft, Embassy, Integrity, Navigate, Performance, Physique, Presence, Ranged Combat, Sagacity, Stealth, War
 
 ### Defense Calculations (all auto-calculated)
+Maths in `src/lib/defenses.ts`, pinned by `src/lib/defenses.test.ts`, which quotes the book.
 ```
 Parry    = ceil((Stamina + Close Combat) / 2) + wpnBonus + defenseBonus.parry
 Evasion  = ceil((Dexterity + Athletics) / 2) + wpnBonus + defenseBonus.evasion
-Soak     = ceil(Stamina / 2) + bestArmorSoak + defenseBonus.soak
-Hardness = Essence + bestArmorHardness + defenseBonus.hardness
-Resolve  = ceil((Wits + Integrity) / 2) + defenseBonus.resolve
+Soak     = 1 + (Physique >= 3 ? 1 : 0) + bestArmorSoak + defenseBonus.soak
+Hardness = 2 + Essence + bestArmorHardness + defenseBonus.hardness
+Resolve  = (Integrity >= 3 ? 4 : Integrity >= 1 ? 3 : 2) + defenseBonus.resolve
 
 wpnBonus = highest defense value among equipped weapons, ONLY when Full Defense OR Defend Other is active
 ```
+**Soak uses Physique, not Stamina. Resolve does not use Wits.** These three read wrong in
+this file until 2026-07-16 — the old text was a guess that never matched the book or the
+code. See `info/context.md` for the book wording verbatim. If code and book disagree, the
+book wins; never "fix" the code to match a paraphrase.
+
 Only one armor can be equipped at a time (equipping one auto-unequips others).
 
 ### Charms

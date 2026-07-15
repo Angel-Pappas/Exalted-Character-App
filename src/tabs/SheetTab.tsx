@@ -10,6 +10,7 @@ import {
   abilityRank, baseAbility, isModeInScope, isTypeInScope, modeIcon, modeLockReasons,
   sortAbilities, sortModes, typeRank,
 } from '../lib/charmRules'
+import { bestEquipped, calculateDefenses } from '../lib/defenses'
 import type { CharmLibraryRow } from '../components/CharmLibraryTab'
 import ModalPortal from '../components/ModalPortal'
 
@@ -1919,22 +1920,23 @@ export default function SheetTab({ sheet, onChange, editMode, gameData: gd }: Pr
       const ath     = data.abilities['Athletics']?.rating    ?? 0
       const phys    = data.abilities['Physique']?.rating     ?? 0
       const integ   = data.abilities['Integrity']?.rating    ?? 0
-      const equippedWeapons = data.inventory.filter(i => i.kind === 'weapon' && i.equipped)
-      const equippedArmors  = data.inventory.filter(i => i.kind === 'armor'  && i.equipped)
-      const bestWpnDef  = equippedWeapons.length ? Math.max(...equippedWeapons.map(i => i.defense ?? 0)) : 0
-      const bestArmorSoak = equippedArmors.length ? Math.max(...equippedArmors.map(i => i.soak ?? 0)) : 0
-      const bestArmorHard = equippedArmors.length ? Math.max(...equippedArmors.map(i => i.hardness ?? 0)) : 0
+      const bestWpnDef    = bestEquipped(data.inventory, 'weapon', 'defense')
+      const bestArmorSoak = bestEquipped(data.inventory, 'armor', 'soak')
+      const bestArmorHard = bestEquipped(data.inventory, 'armor', 'hardness')
       const db = data.defenseBonus
-      const parryBase    = Math.ceil((stamina + cc) / 2)
-      const evasionBase  = Math.ceil((dex + ath) / 2)
-      const soakBase     = 1 + (phys >= 3 ? 1 : 0)
-      const hardnessBase = 2 + (data.essence ?? 1)
-      const resolveBase  = (integ >= 3 ? 4 : integ >= 1 ? 3 : 2) + (db.resolve ?? 0)
-      const wpnBonus = (data.fullDefense || data.defenseOther) ? bestWpnDef : 0
-      const parry    = parryBase   + wpnBonus + (db.parry   ?? 0)
-      const evasion  = evasionBase + wpnBonus + (db.evasion ?? 0)
-      const soak     = soakBase     + bestArmorSoak                        + (db.soak     ?? 0)
-      const hardness = hardnessBase + bestArmorHard                        + (db.hardness ?? 0)
+      const {
+        parry, evasion, soak, hardness, resolve: resolveBase,
+        soakBase, hardnessBase, weaponBonus: wpnBonus,
+      } = calculateDefenses({
+        stamina, dexterity: dex, closeCombat: cc, athletics: ath, physique: phys,
+        integrity: integ, essence: data.essence ?? 1,
+        bestWeaponDefense: bestWpnDef, bestArmorSoak, bestArmorHardness: bestArmorHard,
+        fullDefense: data.fullDefense, defendOther: data.defenseOther,
+        bonus: {
+          parry: db.parry ?? 0, evasion: db.evasion ?? 0, soak: db.soak ?? 0,
+          hardness: db.hardness ?? 0, resolve: db.resolve ?? 0,
+        },
+      })
       const bonusInput = (key: keyof typeof db) => (
         <input type="number" value={db[key] ?? 0}
           onChange={e => update({ defenseBonus: { ...db, [key]: parseInt(e.target.value) || 0 } })}

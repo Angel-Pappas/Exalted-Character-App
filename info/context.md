@@ -28,15 +28,41 @@ All 10 exalt types are seeded: Solar, Lunar, Terrestrial, Sidereal, Abyssal, Inf
 Exalt type and caste are set at character creation and displayed **read-only** in the CharacterPage header, next to the character name, as `Type · Caste`. They are not editable after creation.
 
 ## Defense Calculations
-All five defenses are calculated automatically in SheetTab. Manual bonus fields (`defenseBonus`) are additive on top.
+The maths lives in `src/lib/defenses.ts` and is pinned by `src/lib/defenses.test.ts`.
+Manual bonus fields (`defenseBonus`) are additive on top of every defense.
+
+> **This table was wrong until 2026-07-16.** It claimed Soak used Stamina, Hardness was
+> bare Essence, and Resolve averaged Wits + Integrity — none of which the book says or the
+> app ever did. It was written from a guess and never matched. The book wording is quoted
+> below verbatim so this cannot drift again; if code and book ever disagree, **the book
+> wins and the code is the bug** — do not "fix" the code to match a paraphrase.
 
 | Defense | Formula |
 |---|---|
-| Parry | `Math.ceil((Stamina + Close Combat) / 2) + wpnBonus + defenseBonus.parry` |
-| Evasion | `Math.ceil((Dexterity + Athletics) / 2) + wpnBonus + defenseBonus.evasion` |
-| Soak | `Math.ceil(Stamina / 2) + bestArmorSoak + defenseBonus.soak` |
-| Hardness | `Essence + bestArmorHardness + defenseBonus.hardness` |
-| Resolve | `Math.ceil((Wits + Integrity) / 2) + defenseBonus.resolve` |
+| Parry | `ceil((Stamina + Close Combat) / 2) + wpnBonus + defenseBonus.parry` |
+| Evasion | `ceil((Dexterity + Athletics) / 2) + wpnBonus + defenseBonus.evasion` |
+| Soak | `1 + (Physique >= 3 ? 1 : 0) + bestArmorSoak + defenseBonus.soak` |
+| Hardness | `2 + Essence + bestArmorHardness + defenseBonus.hardness` |
+| Resolve | `(Integrity >= 3 ? 4 : Integrity >= 1 ? 3 : 2) + defenseBonus.resolve` |
+
+Book wording for the three that are easy to get wrong:
+
+> **Soak** — "Without armor, your Soak is 1, plus another 1 if your Physique is 3 or
+> higher. If you are wearing armor, add its Soak value to this total against the cap."
+>
+> **Hardness** — "Characters start with Hardness 2 plus any applicable bonuses from armor.
+> Exalted characters add their Essence rating to their Hardness value."
+>
+> **Resolve** — "A character's Resolve is 2. If she has one dot of Integrity, this
+> increases to 3 and if her Integrity is 3 or higher, this starts at 4. It is modified
+> further by her Intimacies and Virtues."
+
+Note: Soak uses **Physique** (an ability), not Stamina. Resolve does **not** use Wits.
+Intimacies/Virtues aren't modelled as data — they're entered through the manual Resolve
+bonus box, which is what "modified further" maps to.
+
+**Open question:** the book's Soak line ends "against the cap". No cap is implemented, and
+it's unclear what it refers to. Raised with Angel 2026-07-16; unresolved.
 
 **Weapon bonus (`wpnBonus`):** added to both Parry and Evasion. It equals the highest `defense` value among equipped weapons, but only when **Full Defense** or **Defend Other** is active. Otherwise 0.
 
