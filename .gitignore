@@ -12,6 +12,12 @@ dist
 dist-ssr
 *.local
 
+# Secrets. *.local already covers .env.local, but a plain .env is easy to create by
+# habit and this repo is public — and every commit here is made with `git add -A`.
+.env
+.env.*
+!.env.example
+
 # Per-machine Claude Code permission state (not shared project config)
 .claude/settings.local.json
 

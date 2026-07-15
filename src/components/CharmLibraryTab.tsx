@@ -1,6 +1,7 @@
 import { Fragment, useEffect, useState } from 'react'
 import { supabase } from '../lib/supabase'
 import type { CharmChoiceType, CharmMode, LibraryCharm, MultiselectCapBasis, MultiselectTargetType } from '../types/character'
+import { baseAbility, abilityRank, modeIcon, sortAbilities, sortModes, typeRank } from '../lib/charmRules'
 import AbilityChipInput from './AbilityChipInput'
 import ModalPortal from './ModalPortal'
 
@@ -96,80 +97,6 @@ function blankCharm(): LibraryCharm {
     targetChoiceType: null, targetOptions: [], multiselectCapBasis: null,
     pickCounts: null,
   }
-}
-
-// A distinct glyph per mode label, so a row with several different Exalt-type
-// variants (e.g. Solar, Lunar, Dragon-Blooded) reads as different icons at a
-// glance, not a row of identical marks. Falls back to a generic diamond for
-// anything unrecognized (one-off labels like a specific charm name).
-const MODE_ICONS: Record<string, string> = {
-  upgrade: '↑',
-  repurchase: '↻',
-  solar: '☀',
-  lunar: '☾',
-  sidereal: '✦',
-  abyssal: '☠',
-  infernal: '♨',
-  liminal: '⚰',
-  alchemical: '⚛',
-  getimian: '⏣',
-  'dragon-blooded': '☉',
-  janest: '✿',
-  earth: '⛰',
-  fire: '🔥',
-  water: '💧',
-  wood: '🌳',
-  air: '🌬',
-}
-
-export function modeIcon(label: string): { glyph: string; title: string } {
-  const glyph = MODE_ICONS[label.toLowerCase()] ?? '◆'
-  return { glyph, title: label }
-}
-
-export function baseAbility(ability: string): string {
-  return ability.replace(/\s*\([^)]*\)\s*$/, '').trim()
-}
-
-export function typeRank(t: string): number {
-  const lower = t.toLowerCase()
-  if (lower === 'universal') return 0
-  if (lower === 'solar') return 1
-  if (lower === 'martial arts') return 2
-  return 3
-}
-
-// Excellency is the universal "buy for any ability" charm, so it always leads
-// ability lists; Style (Martial Arts) abilities trail; everything else is in
-// the alphabetical middle.
-export function abilityRank(ability: string): number {
-  if (baseAbility(ability).toLowerCase() === 'excellency') return 0
-  if (ability.includes('Style')) return 2
-  return 1
-}
-
-export function sortAbilities(abilities: string[]): string[] {
-  return [...abilities].sort((a, b) => {
-    const rankDiff = abilityRank(a) - abilityRank(b)
-    if (rankDiff !== 0) return rankDiff
-    return a.localeCompare(b)
-  })
-}
-
-function modeRank(label: string): number {
-  const lower = label.toLowerCase()
-  if (lower === 'upgrade') return 0
-  if (lower === 'repurchase') return 1
-  if (lower === 'solar') return 2
-  return 3
-}
-
-export function sortModes(modes: CharmMode[]): CharmMode[] {
-  return [...modes].sort((a, b) => {
-    const rankDiff = modeRank(a.label) - modeRank(b.label)
-    if (rankDiff !== 0) return rankDiff
-    return modeRank(a.label) === 3 ? a.label.localeCompare(b.label) : 0
-  })
 }
 
 // Shared by EditCharmRow and the New Charm form: how a multiselect charm's
