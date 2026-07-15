@@ -61,8 +61,33 @@ Note: Soak uses **Physique** (an ability), not Stamina. Resolve does **not** use
 Intimacies/Virtues aren't modelled as data — they're entered through the manual Resolve
 bonus box, which is what "modified further" maps to.
 
-**Open question:** the book's Soak line ends "against the cap". No cap is implemented, and
-it's unclear what it refers to. Raised with Angel 2026-07-16; unresolved.
+### The Dice Limit (the "cap" in the Soak line)
+> "If an effect would transform dice into successes, these count toward the success limit.
+> If something increases a static value — such as Soak or Defense — treat this as though
+> they were added successes. Therefore, anything that increases a static value above its
+> base value cannot increase it above a margin of five."
+>
+> "Penalties follow the same rule, but in the inverse. […] If something would reduce a
+> static value (including difficulty) this cannot be reduced below one."
+
+All five defenses are static values, so each is `base + min(5, gearBonus) + manualBonus`,
+floored at 1. Implemented in `applyLimits` in `src/lib/defenses.ts`.
+
+Decisions Angel made on 2026-07-16 that the book doesn't settle by itself:
+- **Essence is part of Hardness's base**, not a bonus competing for the +5. A higher
+  Essence therefore lifts the ceiling (Essence 5 → base 7 → max 12).
+- **The manual bonus box is exempt from the cap.** It's an override, not a game effect.
+  Ox Body and similar base-raisers will arrive as real charm implementations rather than
+  being faked through that box, so it stays a single uncapped field.
+- Which leaves **gear as the only capped source today**: armour Soak/Hardness, and weapon
+  Defense on Parry/Evasion. Resolve has no capped source until charms feed it one.
+- The **floor only applies to reductions**. The book limits what a penalty can do; it does
+  not declare a minimum for a value that is merely small. A blank sheet keeps Parry 0
+  rather than being promoted to 1.
+
+Still unmodelled (dice pools, not static values): the 10-bonus-dice / 5-bonus-success
+limits, "set X to Y" effects changing the base, and non-stacking repeat durations. The app
+does not roll dice, so only the static-value half of this rule applies today.
 
 **Weapon bonus (`wpnBonus`):** added to both Parry and Evasion. It equals the highest `defense` value among equipped weapons, but only when **Full Defense** or **Defend Other** is active. Otherwise 0.
 

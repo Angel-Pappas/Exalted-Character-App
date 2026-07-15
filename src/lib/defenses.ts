@@ -13,7 +13,31 @@
 //
 // Intimacies/Virtues are not modelled as data — they arrive through `bonus`, the
 // manual box on the Defenses panel.
+//
+// ── The Dice Limit, as it applies to static values ──
+// Book: "If something increases a static value — such as Soak or Defense — treat this as
+// though they were added successes. Therefore, anything that increases a static value
+// above its base value cannot increase it above a margin of five." And for penalties:
+// "If something would reduce a static value (including difficulty) this cannot be
+// reduced below one."
+//
+// So: value = base + min(5, gearBonus) + manualBonus, floored at 1 if pushed under.
+//
+// Two deliberate decisions from Angel (2026-07-16):
+//  - Essence counts as part of Hardness's BASE (so it lifts the ceiling), not as a
+//    bonus competing for the +5.
+//  - The manual bonus box is EXEMPT from the cap. It's an override, not a game effect.
+//    Ox Body and friends raise the base, but they'll arrive as real charm
+//    implementations later rather than being faked through this box.
+// Which leaves gear as the only capped source today: armour Soak/Hardness, and weapon
+// Defense on Parry/Evasion. Resolve has no capped source yet — its cap cannot bite
+// until charms feed it one. The machinery is wired for all five regardless.
 import type { InventoryItem } from '../types/character'
+
+/** "cannot increase it above a margin of five" */
+export const STATIC_BONUS_CAP = 5
+/** "this cannot be reduced below one" */
+export const STATIC_VALUE_FLOOR = 1
 
 export interface DefenseInputs {
   stamina: number
@@ -43,7 +67,29 @@ export interface DefenseResult {
   evasionBase: number
   soakBase: number
   hardnessBase: number
+  resolveBase: number
+  /** Weapon defense actually applied — 0 unless Full Defense / Defend Other is on. */
   weaponBonus: number
+  /** Which defences had gear trimmed by the +5 cap, so the panel can say so. */
+  capped: { parry: boolean; evasion: boolean; soak: boolean; hardness: boolean; resolve: boolean }
+}
+
+/**
+ * base + min(5, gearBonus) + manualBonus, floored at 1.
+ *
+ * The floor only applies when something actually *reduced* the value — the book limits
+ * reductions ("cannot be reduced below one"), it does not declare a minimum for a value
+ * that is simply small. A blank sheet with every stat at 0 therefore still shows Parry 0
+ * rather than being quietly promoted to 1.
+ */
+function applyLimits(base: number, gearBonus: number, manualBonus: number): { value: number; capped: boolean } {
+  const allowedGear = Math.min(STATIC_BONUS_CAP, gearBonus)
+  const modifiers = allowedGear + manualBonus
+  const raw = base + modifiers
+  return {
+    value: modifiers < 0 ? Math.max(STATIC_VALUE_FLOOR, raw) : raw,
+    capped: gearBonus > STATIC_BONUS_CAP,
+  }
 }
 
 /** Best value of a numeric field across the equipped items of one kind. 0 if none equipped. */
@@ -66,12 +112,25 @@ export function calculateDefenses(i: DefenseInputs): DefenseResult {
   // A weapon's defense only helps while actively defending.
   const weaponBonus = i.fullDefense || i.defendOther ? i.bestWeaponDefense : 0
 
+  const parry = applyLimits(parryBase, weaponBonus, i.bonus.parry)
+  const evasion = applyLimits(evasionBase, weaponBonus, i.bonus.evasion)
+  const soak = applyLimits(soakBase, i.bestArmorSoak, i.bonus.soak)
+  const hardness = applyLimits(hardnessBase, i.bestArmorHardness, i.bonus.hardness)
+  // No capped source feeds Resolve yet — Intimacies/Virtues come through the manual box,
+  // which is exempt. Routed through applyLimits anyway so the floor applies and so a
+  // future charm bonus has somewhere to land.
+  const resolve = applyLimits(resolveBase, 0, i.bonus.resolve)
+
   return {
-    parryBase, evasionBase, soakBase, hardnessBase, weaponBonus,
-    parry: parryBase + weaponBonus + i.bonus.parry,
-    evasion: evasionBase + weaponBonus + i.bonus.evasion,
-    soak: soakBase + i.bestArmorSoak + i.bonus.soak,
-    hardness: hardnessBase + i.bestArmorHardness + i.bonus.hardness,
-    resolve: resolveBase + i.bonus.resolve,
+    parryBase, evasionBase, soakBase, hardnessBase, resolveBase, weaponBonus,
+    parry: parry.value,
+    evasion: evasion.value,
+    soak: soak.value,
+    hardness: hardness.value,
+    resolve: resolve.value,
+    capped: {
+      parry: parry.capped, evasion: evasion.capped, soak: soak.capped,
+      hardness: hardness.capped, resolve: resolve.capped,
+    },
   }
 }

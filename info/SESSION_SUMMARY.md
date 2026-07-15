@@ -128,6 +128,11 @@ Hardness = 2 + Essence + bestArmorHardness + defenseBonus.hardness
 Resolve  = (Integrity >= 3 ? 4 : Integrity >= 1 ? 3 : 2) + defenseBonus.resolve
 
 wpnBonus = highest defense value among equipped weapons, ONLY when Full Defense OR Defend Other is active
+
+The Dice Limit applies to all five (they are static values):
+  value = base + min(5, gearBonus) + manualBonus,  floored at 1 if a penalty pushed it under
+  gearBonus = armour Soak/Hardness, or weapon Defense on Parry/Evasion
+  the manual bonus box is EXEMPT from the cap (Angel's call — it's an override)
 ```
 **Soak uses Physique, not Stamina. Resolve does not use Wits.** These three read wrong in
 this file until 2026-07-16 — the old text was a guess that never matched the book or the

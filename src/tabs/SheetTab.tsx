@@ -10,7 +10,7 @@ import {
   abilityRank, baseAbility, isModeInScope, isTypeInScope, modeIcon, modeLockReasons,
   sortAbilities, sortModes, typeRank,
 } from '../lib/charmRules'
-import { bestEquipped, calculateDefenses } from '../lib/defenses'
+import { bestEquipped, calculateDefenses, STATIC_BONUS_CAP } from '../lib/defenses'
 import type { CharmLibraryRow } from '../components/CharmLibraryTab'
 import ModalPortal from '../components/ModalPortal'
 
@@ -1925,8 +1925,8 @@ export default function SheetTab({ sheet, onChange, editMode, gameData: gd }: Pr
       const bestArmorHard = bestEquipped(data.inventory, 'armor', 'hardness')
       const db = data.defenseBonus
       const {
-        parry, evasion, soak, hardness, resolve: resolveBase,
-        soakBase, hardnessBase, weaponBonus: wpnBonus,
+        parry, evasion, soak, hardness, resolve,
+        soakBase, hardnessBase, resolveBase, weaponBonus: wpnBonus, capped,
       } = calculateDefenses({
         stamina, dexterity: dex, closeCombat: cc, athletics: ath, physique: phys,
         integrity: integ, essence: data.essence ?? 1,
@@ -1937,6 +1937,9 @@ export default function SheetTab({ sheet, onChange, editMode, gameData: gd }: Pr
           hardness: db.hardness ?? 0, resolve: db.resolve ?? 0,
         },
       })
+      // The Dice Limit trims gear to +5 over base. Say so in the tooltip rather than
+      // showing a total that silently doesn't add up.
+      const capNote = (key: keyof typeof capped) => capped[key] ? ` (capped to +${STATIC_BONUS_CAP})` : ''
       const bonusInput = (key: keyof typeof db) => (
         <input type="number" value={db[key] ?? 0}
           onChange={e => update({ defenseBonus: { ...db, [key]: parseInt(e.target.value) || 0 } })}
@@ -1958,11 +1961,11 @@ export default function SheetTab({ sheet, onChange, editMode, gameData: gd }: Pr
         <div className="bg-stone-900 border border-stone-700 rounded-lg p-2 overflow-visible h-full" data-tooltip-panel>
           <SectionHeader title="Defenses" />
           <div className="space-y-1.5">
-            {calcRow('Parry',    parry,    `ceil((Stamina ${stamina} + Close Combat ${cc}) / 2)${wpnBonus ? ` + Weapon Defense ${bestWpnDef}` : ' (no Full/Defend Other)'} + Bonus ${db.parry ?? 0}`, bonusInput('parry'))}
-            {calcRow('Evasion',  evasion,  `ceil((Dexterity ${dex} + Athletics ${ath}) / 2)${wpnBonus ? ` + Weapon Defense ${bestWpnDef}` : ' (no Full/Defend Other)'} + Bonus ${db.evasion ?? 0}`, bonusInput('evasion'))}
-            {calcRow('Soak',     soak,     `${soakBase} base + Best Armor Soak ${bestArmorSoak} + Bonus ${db.soak ?? 0}`, bonusInput('soak'))}
-            {calcRow('Hardness', hardness, `${hardnessBase} base (2 + Essence ${data.essence ?? 1}) + Best Armor Hardness ${bestArmorHard} + Bonus ${db.hardness ?? 0}`, bonusInput('hardness'))}
-            {calcRow('Resolve', resolveBase, `2 base + Integrity ${integ} bonus`, bonusInput('resolve'))}
+            {calcRow('Parry',    parry,    `ceil((Stamina ${stamina} + Close Combat ${cc}) / 2)${wpnBonus ? ` + Weapon Defense ${bestWpnDef}${capNote('parry')}` : ' (no Full/Defend Other)'} + Bonus ${db.parry ?? 0}`, bonusInput('parry'))}
+            {calcRow('Evasion',  evasion,  `ceil((Dexterity ${dex} + Athletics ${ath}) / 2)${wpnBonus ? ` + Weapon Defense ${bestWpnDef}${capNote('evasion')}` : ' (no Full/Defend Other)'} + Bonus ${db.evasion ?? 0}`, bonusInput('evasion'))}
+            {calcRow('Soak',     soak,     `${soakBase} base + Best Armor Soak ${bestArmorSoak}${capNote('soak')} + Bonus ${db.soak ?? 0}`, bonusInput('soak'))}
+            {calcRow('Hardness', hardness, `${hardnessBase} base (2 + Essence ${data.essence ?? 1}) + Best Armor Hardness ${bestArmorHard}${capNote('hardness')} + Bonus ${db.hardness ?? 0}`, bonusInput('hardness'))}
+            {calcRow('Resolve',  resolve,  `${resolveBase} base (Integrity ${integ}) + Bonus ${db.resolve ?? 0}`, bonusInput('resolve'))}
             <div className="border-t border-stone-700 pt-1 mt-1 space-y-1">
               {([['defenseOther', 'Defend Other'], ['fullDefense', 'Full Defense']] as const).map(([key, label]) => (
                 <div key={key} className="flex items-center justify-between">

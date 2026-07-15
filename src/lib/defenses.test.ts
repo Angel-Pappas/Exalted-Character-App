@@ -129,6 +129,99 @@ describe('the manual bonus box is additive on every defence', () => {
   })
 })
 
+describe('The Dice Limit — "cannot increase a static value above a margin of five"', () => {
+  it('lets gear through untouched while it is within +5', () => {
+    // Physique 3 → base 2, armour 5 → exactly at the cap, nothing trimmed.
+    const d = calculateDefenses(inputs({ physique: 3, bestArmorSoak: 5 }))
+    expect(d.soak).toBe(7)
+    expect(d.capped.soak).toBe(false)
+  })
+
+  it('trims armour Soak that would exceed +5 over base', () => {
+    const d = calculateDefenses(inputs({ physique: 3, bestArmorSoak: 9 }))
+    expect(d.soak).toBe(7) // base 2 + capped 5, not 11
+    expect(d.capped.soak).toBe(true)
+  })
+
+  it('trims armour Hardness that would exceed +5 over base', () => {
+    // Essence is part of the base, so it lifts the ceiling rather than competing for it.
+    const d = calculateDefenses(inputs({ essence: 3, bestArmorHardness: 8 }))
+    expect(d.hardnessBase).toBe(5)
+    expect(d.hardness).toBe(10) // 5 + capped 5, not 13
+    expect(d.capped.hardness).toBe(true)
+  })
+
+  it('trims weapon Defense that would exceed +5, on both Parry and Evasion', () => {
+    const d = calculateDefenses(inputs({
+      stamina: 5, closeCombat: 5, dexterity: 3, athletics: 5,
+      bestWeaponDefense: 8, fullDefense: true,
+    }))
+    expect(d.parry).toBe(10)   // base 5 + capped 5, not 13
+    expect(d.evasion).toBe(9)  // base 4 + capped 5, not 12
+    expect(d.capped.parry).toBe(true)
+  })
+
+  it('does not cap a weapon that is not actually helping', () => {
+    // Full Defense off → the weapon contributes nothing, so nothing is trimmed.
+    const d = calculateDefenses(inputs({ stamina: 5, closeCombat: 5, bestWeaponDefense: 99 }))
+    expect(d.parry).toBe(5)
+    expect(d.capped.parry).toBe(false)
+  })
+
+  it('measures the +5 from the base, so a higher base means a higher ceiling', () => {
+    // Angel's worked example: base Soak 2 from Physique. Ox Body would raise the base
+    // to 3, lifting the ceiling from 7 to 8 — the cap is +5 over base, not an absolute.
+    expect(calculateDefenses(inputs({ physique: 3, bestArmorSoak: 99 })).soak).toBe(7)
+    expect(calculateDefenses(inputs({ essence: 1, bestArmorHardness: 99 })).hardness).toBe(8)
+    expect(calculateDefenses(inputs({ essence: 5, bestArmorHardness: 99 })).hardness).toBe(12)
+  })
+
+  it('exempts the manual bonus box from the cap', () => {
+    // Angel's call: the box is an override, not a game effect. Ox Body will arrive as a
+    // real charm later rather than being faked through here.
+    const d = calculateDefenses(inputs({ physique: 3, bonus: { ...base.bonus, soak: 20 } }))
+    expect(d.soak).toBe(22)
+    expect(d.capped.soak).toBe(false)
+  })
+
+  it('caps gear and the manual box independently', () => {
+    // Armour trimmed to +5; the box then adds on top of the trimmed total.
+    const d = calculateDefenses(inputs({
+      physique: 3, bestArmorSoak: 9, bonus: { ...base.bonus, soak: 2 },
+    }))
+    expect(d.soak).toBe(9) // base 2 + capped 5 + box 2
+  })
+})
+
+describe('The Dice Limit — "cannot be reduced below one"', () => {
+  it('floors a defence that a penalty would push below 1', () => {
+    const d = calculateDefenses(inputs({ physique: 5, bonus: { ...base.bonus, soak: -10 } }))
+    expect(d.soak).toBe(1)
+  })
+
+  it('floors every one of the five', () => {
+    const heavy = { parry: -99, evasion: -99, soak: -99, hardness: -99, resolve: -99 }
+    const d = calculateDefenses(inputs({
+      stamina: 5, closeCombat: 5, dexterity: 5, athletics: 5,
+      physique: 5, integrity: 5, essence: 5, bonus: heavy,
+    }))
+    expect([d.parry, d.evasion, d.soak, d.hardness, d.resolve]).toEqual([1, 1, 1, 1, 1])
+  })
+
+  it('leaves a penalty alone when it does not breach the floor', () => {
+    const d = calculateDefenses(inputs({ essence: 5, bonus: { ...base.bonus, hardness: -2 } }))
+    expect(d.hardness).toBe(5) // 2 + 5 - 2
+  })
+
+  it('does not promote a naturally-zero value on a blank sheet', () => {
+    // The book limits *reductions*; it does not declare a minimum for a value that is
+    // simply small. An untouched new character keeps Parry 0 rather than showing 1.
+    const d = calculateDefenses(inputs())
+    expect(d.parry).toBe(0)
+    expect(d.evasion).toBe(0)
+  })
+})
+
 describe('bestEquipped — only equipped gear counts, and only the best of it', () => {
   it('is 0 when nothing is equipped', () => {
     expect(bestEquipped([item({ kind: 'weapon', defense: 5 })], 'weapon', 'defense')).toBe(0)
