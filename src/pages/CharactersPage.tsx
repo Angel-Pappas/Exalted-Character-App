@@ -19,17 +19,21 @@ export default function CharactersPage() {
   const [creating, setCreating] = useState(false)
   const [exaltTypes, setExaltTypes] = useState<ExaltType[]>([])
 
+  // Keyed on the id rather than the user object: Supabase hands back a fresh object
+  // on every token refresh, which would refetch the list for no reason.
+  const userId = user?.id
   useEffect(() => {
+    if (!userId) return
     supabase
       .from('characters')
       .select('*')
-      .eq('user_id', user!.id)
+      .eq('user_id', userId)
       .order('created_at', { ascending: false })
       .then(({ data }) => {
         setCharacters(data ?? [])
         setLoading(false)
       })
-  }, [])
+  }, [userId])
 
   useEffect(() => {
     supabase.from('exalt_types').select('*').order('sort_order').order('name')

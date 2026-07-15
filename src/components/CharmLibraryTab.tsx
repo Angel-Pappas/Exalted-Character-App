@@ -16,7 +16,10 @@ interface CharmPrereqAbilityRow { text: string }
 interface CharmPrereqCharmRow { charm_name: string }
 interface CharmChoiceOptionRow { option: string; sort_order: number }
 interface CharmTargetOptionRow { option: string; sort_order: number }
-interface CharmLibraryRow {
+
+// Raw shape of a charm_library row with every join this app selects. The sheet's
+// own query selects a subset of the joins — see SheetCharmRow in SheetTab.
+export interface CharmLibraryRow {
   id: string
   type: string | null
   name: string

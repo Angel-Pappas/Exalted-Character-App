@@ -151,7 +151,7 @@ export default function SetupPage() {
   function toggleExpand(userId: string) {
     setExpandedUsers(s => {
       const next = new Set(s)
-      next.has(userId) ? next.delete(userId) : next.add(userId)
+      if (next.has(userId)) next.delete(userId); else next.add(userId)
       return next
     })
   }
@@ -312,8 +312,11 @@ export default function SetupPage() {
   }
 
   useEffect(() => {
+    // loadUsers awaits its queries before it touches state, so nothing is set
+    // synchronously here — set-state-in-effect can't see through the await.
+    // eslint-disable-next-line react-hooks/set-state-in-effect
     if (activeTab === 'Users' && !usersLoaded) loadUsers()
-  }, [activeTab])
+  }, [activeTab, usersLoaded])
 
   const textInput = "bg-stone-800 border border-stone-700 text-stone-100 rounded px-2 py-1 text-xs focus:outline-none focus:border-amber-500 w-full"
   const numInput  = "bg-stone-800 border border-stone-700 text-stone-100 rounded px-1 py-1 text-xs focus:outline-none focus:border-amber-500 text-center w-14"

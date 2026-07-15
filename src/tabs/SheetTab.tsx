@@ -1,5 +1,4 @@
 import { useState, useRef, useEffect } from 'react' // useState used by CharmPanel and other local state
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
 import { GridLayout, useContainerWidth, noCompactor } from 'react-grid-layout'
 // noCompactor has allowOverlap:false which causes panels to push each other during drag.
 // Override it so panels can freely overlap — no collision resolution, no compaction.
@@ -8,7 +7,13 @@ import 'react-grid-layout/css/styles.css'
 import type { SheetData, FoiState, AbilityData, MeritEntry, IntimacyEntry, HealthBox, PanelLayout, CharacterCharm, EffectCategory, EffectEntry, InventoryItem, InventoryItemKind, WeaponWeight, ArtifactColor, GameData, CharmMode } from '../types/character'
 import { DEFAULT_GAME_DATA, CHARM_TYPE_OPTIONS } from '../types/character'
 import { typeRank, baseAbility, sortAbilities, abilityRank, modeIcon, sortModes } from '../components/CharmLibraryTab'
+import type { CharmLibraryRow } from '../components/CharmLibraryTab'
 import ModalPortal from '../components/ModalPortal'
+
+// The sheet's charm query selects every join except the charm-level prerequisite
+// tables, so those keys are absent at runtime — omit them rather than let the type
+// claim they exist.
+type SheetCharmRow = Omit<CharmLibraryRow, 'charm_prerequisite_abilities' | 'charm_prerequisite_charms'>
 
 const ATTRIBUTE_GROUPS = [
   { label: 'Physical', attrs: ['Strength', 'Dexterity', 'Stamina'] },
@@ -455,21 +460,23 @@ function CharmBrowseModal({ existing, exaltType, caste, abilities, attributes, e
         .select('*, charm_abilities(ability), charm_modes(label, mode_text, prerequisite_essence, charm_mode_prerequisite_abilities(text)), charm_choice_options(option, sort_order), charm_target_options(option, sort_order)')
         .order('type').order('page').order('name')
         .then(({ data }) => {
-          if (data) setLibrary(data.map((r: any) => ({
+          if (data) setLibrary((data as unknown as SheetCharmRow[]).map(r => ({
             id: r.id, type: r.type ?? 'Universal',
-            abilities: (r.charm_abilities ?? []).map((a: any) => a.ability),
+            abilities: (r.charm_abilities ?? []).map(a => a.ability),
             name: r.name, page: r.page, description: r.description,
             mechanicalKey: r.mechanical_key ?? null, mechanicalDescription: r.mechanical_description ?? null,
+            // Charm-level prerequisites aren't selected above; the sheet only reads
+            // the per-mode ones. Keep them empty rather than pretending to load them.
             prerequisiteAbilities: [], prerequisiteEssence: r.prerequisite_essence ?? null,
             prerequisiteCharms: [],
-            modes: (r.charm_modes ?? []).map((m: any) => ({
+            modes: (r.charm_modes ?? []).map(m => ({
               label: m.label, text: m.mode_text, prerequisiteEssence: m.prerequisite_essence,
-              prerequisiteAbilities: (m.charm_mode_prerequisite_abilities ?? []).map((p: any) => p.text),
+              prerequisiteAbilities: (m.charm_mode_prerequisite_abilities ?? []).map(p => p.text),
             })),
             choiceType: r.choice_type ?? null,
-            choiceOptions: (r.charm_choice_options ?? []).sort((a: any, b: any) => a.sort_order - b.sort_order).map((o: any) => o.option),
+            choiceOptions: (r.charm_choice_options ?? []).sort((a, b) => a.sort_order - b.sort_order).map(o => o.option),
             targetChoiceType: r.target_choice_type ?? null,
-            targetOptions: (r.charm_target_options ?? []).sort((a: any, b: any) => a.sort_order - b.sort_order).map((o: any) => o.option),
+            targetOptions: (r.charm_target_options ?? []).sort((a, b) => a.sort_order - b.sort_order).map(o => o.option),
             multiselectCapBasis: r.multiselect_cap_basis ?? null,
             pickCounts: r.pick_counts ?? null,
           })))
@@ -502,7 +509,7 @@ function CharmBrowseModal({ existing, exaltType, caste, abilities, attributes, e
 
   const allExpanded = charms.length > 0 && charms.every(c => expandedIds.has(c.id))
   function toggleExpanded(id: string) {
-    setExpandedIds(s => { const n = new Set(s); n.has(id) ? n.delete(id) : n.add(id); return n })
+    setExpandedIds(s => { const n = new Set(s); if (n.has(id)) n.delete(id); else n.add(id); return n })
   }
 
   return (
@@ -746,7 +753,7 @@ function CharmPanel({ charms, onChange, exaltType, caste, abilities, attributes,
           <div key={charm.id} className="rounded border border-stone-700/50">
             {/* Row */}
             <div className="flex items-center gap-1 px-1.5 py-1 text-xs">
-              <button onClick={() => setExpandedIds(s => { const n = new Set(s); n.has(charm.id) ? n.delete(charm.id) : n.add(charm.id); return n })}
+              <button onClick={() => setExpandedIds(s => { const n = new Set(s); if (n.has(charm.id)) n.delete(charm.id); else n.add(charm.id); return n })}
                 className="text-left text-stone-200 hover:text-amber-300 transition-colors flex-1 min-w-0 truncate">
                 {charm.name}
               </button>
@@ -937,7 +944,7 @@ function EffectPanel({ categories, onChange, dragEnabled, anima }: {
                     return (
                       <div className="flex items-center justify-between py-1 text-xs gap-1">
                         {dotLit !== null && <span className={`shrink-0 w-2 h-2 rounded-full ${dotLit ? 'bg-amber-400 shadow-[0_0_4px_1px_rgba(251,191,36,0.7)]' : 'bg-stone-700'}`} />}
-                        <button onClick={() => setExpandedIds(s => { const n = new Set(s); n.has(effect.id) ? n.delete(effect.id) : n.add(effect.id); return n })} className="text-left text-stone-200 hover:text-amber-300 transition-colors flex-1 min-w-0 truncate">{effect.name}</button>
+                        <button onClick={() => setExpandedIds(s => { const n = new Set(s); if (n.has(effect.id)) n.delete(effect.id); else n.add(effect.id); return n })} className="text-left text-stone-200 hover:text-amber-300 transition-colors flex-1 min-w-0 truncate">{effect.name}</button>
                         <div className="flex gap-1 shrink-0"><button onClick={() => { setEditingEffect({ catId: cat.id, effect }); setEditEffectName(effect.name); setEditEffectText(effect.text) }} title="Edit" className="text-stone-500 hover:text-amber-400 transition-colors">✎</button><button onClick={() => removeEffect(cat.id, effect.id)} title="Delete" className="text-stone-500 hover:text-red-400 transition-colors">✕</button></div>
                       </div>
                     )
@@ -1454,14 +1461,14 @@ function InventoryPanel({ items, onChange, foi, foiOriginals, onFoiChange, dragE
       if (item.kind === 'weapon' && item.weight === 'Unarmed' && foi.active) return item
       if (item.kind === 'weapon' && item.weight) {
         const computed = computeWeaponStats(item)
-        if (Object.entries(computed).some(([k, v]) => (item as any)[k] !== v)) {
+        if (Object.entries(computed).some(([k, v]) => item[k as keyof InventoryItem] !== v)) {
           anyChanged = true
           return { ...item, ...computed }
         }
       }
       if (item.kind === 'armor' && item.type) {
         const computed = computeArmorStats(item)
-        if (Object.entries(computed).some(([k, v]) => (item as any)[k] !== v)) {
+        if (Object.entries(computed).some(([k, v]) => item[k as keyof InventoryItem] !== v)) {
           anyChanged = true
           return { ...item, ...computed }
         }
@@ -1469,6 +1476,10 @@ function InventoryPanel({ items, onChange, foi, foiOriginals, onFoiChange, dragE
       return item
     })
     if (anyChanged) onChange(next)
+    // migrationDone gates this to a single run on the first non-empty items, so the
+    // other values it closes over are read once, at that moment, and can't go stale.
+    // Listing them would only re-arm an effect that refuses to run twice anyway.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [items])
 
   const weightBadgeCls: Record<string, string> = {
@@ -1548,7 +1559,10 @@ function InventoryPanel({ items, onChange, foi, foiOriginals, onFoiChange, dragE
   }
 
   function saveItem(item: InventoryItem) {
-    let final = { ...item } as any
+    // _tagsApplied is a vestigial key from an older version — nothing writes it now,
+    // but strip it so any item still carrying one from a previously saved sheet
+    // doesn't keep round-tripping it back into Supabase.
+    let final: InventoryItem & { _tagsApplied?: boolean } = { ...item }
     delete final._tagsApplied
     if (item.kind === 'weapon' && item.weight) {
       final = { ...final, ...computeWeaponStats(item) }
@@ -1611,7 +1625,7 @@ function InventoryPanel({ items, onChange, foi, foiOriginals, onFoiChange, dragE
           current={foi}
           foiWeights={foiWeights}
           foiTags={foiTags}
-          onSave={s => { s.active ? applyFoi(s) : deactivateFoi(); setFoiModalOpen(false) }}
+          onSave={s => { if (s.active) applyFoi(s); else deactivateFoi(); setFoiModalOpen(false) }}
           onClose={() => setFoiModalOpen(false)}
         />
       )}

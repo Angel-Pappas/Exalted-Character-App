@@ -47,8 +47,12 @@ function handleKeydown(e: KeyboardEvent) {
 
 export default function ModalPortal({ children, onClose }: { children: React.ReactNode; onClose?: () => void }) {
   // Keep the latest onClose without re-registering the stack entry each render.
+  // Written in an effect rather than during render: a render can be discarded before
+  // it commits, and a ref written during one would keep the stale value.
   const onCloseRef = useRef(onClose)
-  onCloseRef.current = onClose
+  useEffect(() => {
+    onCloseRef.current = onClose
+  })
 
   useEffect(() => {
     lockScroll()
