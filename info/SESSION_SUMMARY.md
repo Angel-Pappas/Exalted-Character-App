@@ -169,6 +169,7 @@ Only one armor can be equipped at a time (equipping one auto-unequips others).
 3. Ignore "highest appropriate attribute" from book quotes — each stat has a fixed attribute mapping
 4. Light mode toggle exists in Settings but CSS is not wired up yet (all colors are hardcoded stone/amber)
 5. **Never prompt for permission** except before permanently deleting DB data or changing admin access
+6. **Tooltips on the sheet use `data-tip="…"`, never `title=`** — `src/components/Tooltip.tsx` renders them above every panel and keeps them in the window. Rich content (the Defenses breakdown) uses `<Tooltip content={…}>`. Icon-only buttons also need `aria-label`, since the hint no longer names them.
 
 ---
 

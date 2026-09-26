@@ -13,6 +13,7 @@ import {
 import { bestEquipped, calculateDefenses, STATIC_BONUS_CAP } from '../lib/defenses'
 import type { CharmLibraryRow } from '../components/CharmLibraryTab'
 import ModalPortal from '../components/ModalPortal'
+import { Tooltip, TooltipLayer } from '../components/Tooltip'
 
 // The sheet's charm query selects every join except the charm-level prerequisite
 // tables, so those keys are absent at runtime — omit them rather than let the type
@@ -453,14 +454,14 @@ function CharmBrowseModal({ existing, exaltType, caste, abilities, attributes, e
               <input value={search} onChange={e => setSearch(e.target.value)} placeholder="Search name, ability, or description…" className={`${selectCls} flex-1 min-w-0`} />
               <button
                 onClick={() => setShowAll(s => !s)}
-                title="Show charms from every Exalt type and mode"
+                data-tip="Show charms from every Exalt type and mode"
                 className={`shrink-0 text-xs px-2 py-1 rounded border transition-colors ${showAll ? 'bg-amber-600 border-amber-500 text-white' : 'bg-stone-800 border-stone-700 text-stone-400 hover:border-amber-500'}`}
               >
                 Show All
               </button>
               <button
                 onClick={() => setExpandedIds(allExpanded ? new Set() : new Set(charms.map(c => c.id)))}
-                title="Expand every charm to read its full text"
+                data-tip="Expand every charm to read its full text"
                 className={`shrink-0 text-xs px-2 py-1 rounded border transition-colors whitespace-nowrap ${allExpanded ? 'bg-amber-600 border-amber-500 text-white' : 'bg-stone-800 border-stone-700 text-stone-400 hover:border-amber-500'}`}
               >
                 {allExpanded ? 'Collapse All' : 'Expand All'}
@@ -490,26 +491,26 @@ function CharmBrowseModal({ existing, exaltType, caste, abilities, attributes, e
               return (
                 <div key={charm.id} className="px-4 py-2 border-b border-stone-800 last:border-0 hover:bg-stone-800/40">
                   <div className="flex items-center justify-between gap-2">
-                    <div className="flex-1 min-w-0 cursor-pointer" onClick={() => toggleExpanded(charm.id)} title="Click to expand/collapse">
+                    <div className="flex-1 min-w-0 cursor-pointer" onClick={() => toggleExpanded(charm.id)} data-tip="Click to expand/collapse">
                       <div className="flex items-center gap-2 flex-wrap">
                         <span className={`text-xs font-semibold ${owned ? 'text-amber-300' : 'text-stone-100'}`}>{charm.name}</span>
-                        {count > 1 && <span title={`Purchased ${count}×`} className="text-[9px] px-1 py-0.5 rounded bg-stone-800 border border-stone-600 text-stone-300">×{count}</span>}
+                        {count > 1 && <span data-tip={`Purchased ${count}×`} className="text-[9px] px-1 py-0.5 rounded bg-stone-800 border border-stone-600 text-stone-300">×{count}</span>}
                         {charm.mechanicalKey && <span className="text-[9px] px-1 py-0.5 rounded bg-amber-900/40 border border-amber-700/50 text-amber-400">{charm.mechanicalKey}</span>}
                         {visibleModes.map(m => {
                           const icon = modeIcon(m.label)
-                          return <span key={m.label} title={icon.title} className="text-stone-400 cursor-default shrink-0">{icon.glyph}</span>
+                          return <span key={m.label} data-tip={icon.title} className="text-stone-400 cursor-default shrink-0">{icon.glyph}</span>
                         })}
                       </div>
                     </div>
                     <div className="shrink-0 flex items-center gap-1.5">
                       {!owned && (
-                        <button onClick={() => startPurchase(charm)} title="Add" className="bg-amber-600 hover:bg-amber-500 text-white w-6 h-6 rounded transition-colors">+</button>
+                        <button onClick={() => startPurchase(charm)} data-tip="Add" aria-label="Add" className="bg-amber-600 hover:bg-amber-500 text-white w-6 h-6 rounded transition-colors">+</button>
                       )}
                       {owned && canBuyAgain && (
-                        <button onClick={() => startPurchase(charm)} title="Repurchase (buy again)" className="bg-amber-600 hover:bg-amber-500 text-white w-6 h-6 rounded transition-colors">↻</button>
+                        <button onClick={() => startPurchase(charm)} data-tip="Repurchase (buy again)" aria-label="Repurchase (buy again)" className="bg-amber-600 hover:bg-amber-500 text-white w-6 h-6 rounded transition-colors">↻</button>
                       )}
                       {owned && (
-                        <button onClick={() => onRemove(charm)} title="Remove (undo a purchase)" className="w-6 h-6 rounded border border-stone-600 text-stone-400 hover:border-stone-400 hover:text-stone-200 transition-colors">✕</button>
+                        <button onClick={() => onRemove(charm)} data-tip="Remove (undo a purchase)" aria-label="Remove (undo a purchase)" className="w-6 h-6 rounded border border-stone-600 text-stone-400 hover:border-stone-400 hover:text-stone-200 transition-colors">✕</button>
                       )}
                     </div>
                   </div>
@@ -664,7 +665,7 @@ function CharmPanel({ charms, onChange, exaltType, caste, abilities, attributes,
 
       <div className="flex items-center justify-between mb-2 shrink-0">
         <SectionHeader title="Charms" />
-        <button onClick={() => setBrowsing(true)} title="Add charm" className="text-stone-500 hover:text-amber-400 transition-colors text-base font-bold leading-none">+</button>
+        <button onClick={() => setBrowsing(true)} data-tip="Add charm" aria-label="Add charm" className="text-stone-500 hover:text-amber-400 transition-colors text-base font-bold leading-none">+</button>
       </div>
 
       <div className="space-y-px overflow-y-auto no-scrollbar flex-1">
@@ -678,10 +679,10 @@ function CharmPanel({ charms, onChange, exaltType, caste, abilities, attributes,
                 {charm.name}
               </button>
               {(charm.count ?? 1) > 1 && (
-                <span title={`Purchased ${charm.count}×`} className="text-[9px] px-1 py-0.5 rounded bg-stone-800 border border-stone-600 text-stone-300 shrink-0">×{charm.count}</span>
+                <span data-tip={`Purchased ${charm.count}×`} className="text-[9px] px-1 py-0.5 rounded bg-stone-800 border border-stone-600 text-stone-300 shrink-0">×{charm.count}</span>
               )}
               {charm.customDescription !== null && (
-                <span title="Customized" className="w-1.5 h-1.5 rounded-full bg-amber-500 shrink-0" />
+                <span data-tip="Customized" className="w-1.5 h-1.5 rounded-full bg-amber-500 shrink-0" />
               )}
               {(charm.mechanicalKeyOverride ?? null) !== null || charms.find(c => c.id === charm.id)?.mechanicalEnabled !== undefined ? null : null}
               <button onClick={() => removeCharm(charm.id)} className="text-stone-600 hover:text-red-400 transition-colors shrink-0">✕</button>
@@ -724,7 +725,7 @@ function CharmPanel({ charms, onChange, exaltType, caste, abilities, attributes,
                           const lockReasons = modeLockReasons(m, charm.libraryModes, charm.count ?? 1, essence, abilities)
                           const locked = lockReasons.length > 0
                           return (
-                            <div key={`${m.label}-${i}`} className={locked ? 'opacity-40' : undefined} title={locked ? `Locked: ${lockReasons.join(', ')}` : undefined}>
+                            <div key={`${m.label}-${i}`} className={locked ? 'opacity-40' : undefined} data-tip={locked ? `Locked: ${lockReasons.join(', ')}` : undefined}>
                               <p className={`text-xs font-bold flex items-center gap-1 ${locked ? 'text-stone-500' : 'text-amber-400'}`}>
                                 <span>{modeIcon(m.label).glyph}</span>
                                 {m.label}
@@ -737,7 +738,7 @@ function CharmPanel({ charms, onChange, exaltType, caste, abilities, attributes,
                       </div>
                     )}
                     <div className="flex items-center gap-2 flex-wrap">
-                      <button onClick={() => startEdit(charm)} title="Edit" className="text-xs text-stone-500 hover:text-amber-400 transition-colors">✎</button>
+                      <button onClick={() => startEdit(charm)} data-tip="Edit" aria-label="Edit" className="text-xs text-stone-500 hover:text-amber-400 transition-colors">✎</button>
                       {charm.customDescription !== null && (
                         <button onClick={() => revert(charm.id)} className="text-xs text-stone-500 hover:text-amber-400 transition-colors">revert to original</button>
                       )}
@@ -827,7 +828,7 @@ function EffectPanel({ categories, onChange, dragEnabled, anima }: {
   const gPlus = "text-stone-500 hover:text-amber-400 transition-colors text-base font-bold leading-none"
   return (
     <div className="bg-stone-900 border border-stone-700 rounded-lg p-2 overflow-hidden h-full flex flex-col no-scrollbar">
-      <div className="flex items-center justify-between mb-2 shrink-0"><SectionHeader title="Effects" /><button onClick={() => setAddingCat(v => !v)} title="Add category" className={gPlus}>+</button></div>
+      <div className="flex items-center justify-between mb-2 shrink-0"><SectionHeader title="Effects" /><button onClick={() => setAddingCat(v => !v)} data-tip="Add category" aria-label="Add category" className={gPlus}>+</button></div>
       {addingCat && <div className="flex gap-1 mb-2 shrink-0"><input autoFocus type="text" value={newCatName} onChange={e => setNewCatName(e.target.value)} onKeyDown={e => { if (e.key === 'Enter') addCat(); if (e.key === 'Escape') setAddingCat(false) }} placeholder="Category name…" className={inputCls} /><button onClick={addCat} className="bg-amber-600 hover:bg-amber-500 text-white rounded px-2 py-0.5 text-xs">✓</button><button onClick={() => setAddingCat(false)} className="text-stone-500 hover:text-stone-300 text-xs px-1">✕</button></div>}
       <div className="space-y-2 overflow-y-auto no-scrollbar flex-1">
         {categories.length === 0 && <p className="text-xs text-stone-500">No categories yet.</p>}
@@ -845,7 +846,7 @@ function EffectPanel({ categories, onChange, dragEnabled, anima }: {
               className={`flex items-center justify-between px-1.5 py-1 ${dragEnabled ? 'cursor-grab active:cursor-grabbing' : ''}`}
             >
               {editingCatId === cat.id ? <div className="flex gap-1 flex-1"><input autoFocus type="text" value={editCatName} onChange={e => setEditCatName(e.target.value)} onKeyDown={e => { if (e.key === 'Enter') saveCat(); if (e.key === 'Escape') setEditingCatId(null) }} className={inputActive} /><button onClick={saveCat} className="bg-amber-600 hover:bg-amber-500 text-white rounded px-1.5 py-0.5 text-xs">✓</button><button onClick={() => setEditingCatId(null)} className="text-stone-500 hover:text-stone-300 text-xs">✕</button></div>
-              : <><span className="text-xs font-semibold text-amber-400/80 uppercase tracking-wider">{cat.name}</span><div className="flex items-center gap-2"><button onClick={() => setAddingEffectCatId(cat.id === addingEffectCatId ? null : cat.id)} title="Add effect" className={gPlus}>+</button><button onClick={() => { setEditingCatId(cat.id); setEditCatName(cat.name) }} title="Edit" className={g}>✎</button><button onClick={() => removeCat(cat.id)} title="Delete" className="text-stone-500 hover:text-red-400 transition-colors text-xs">✕</button></div></>}
+              : <><span className="text-xs font-semibold text-amber-400/80 uppercase tracking-wider">{cat.name}</span><div className="flex items-center gap-2"><button onClick={() => setAddingEffectCatId(cat.id === addingEffectCatId ? null : cat.id)} data-tip="Add effect" aria-label="Add effect" className={gPlus}>+</button><button onClick={() => { setEditingCatId(cat.id); setEditCatName(cat.name) }} data-tip="Edit" aria-label="Edit" className={g}>✎</button><button onClick={() => removeCat(cat.id)} data-tip="Delete" aria-label="Delete" className="text-stone-500 hover:text-red-400 transition-colors text-xs">✕</button></div></>}
             </div>
             {addingEffectCatId === cat.id && <div className="px-1.5 pb-1.5 space-y-1 border-t border-stone-700/50 pt-1"><input autoFocus type="text" value={newEffectName} onChange={e => setNewEffectName(e.target.value)} placeholder="Effect name…" className={inputCls} /><textarea value={newEffectText} onChange={e => setNewEffectText(e.target.value)} placeholder="Description…" rows={3} className="w-full bg-stone-800 border border-stone-600 text-stone-100 rounded px-2 py-1 text-xs focus:outline-none focus:border-amber-500 placeholder-stone-500 resize-none" /><div className="flex gap-1 justify-end"><button onClick={() => addEffect(cat.id)} className="bg-amber-600 hover:bg-amber-500 text-white rounded px-2 py-0.5 text-xs">Add</button><button onClick={() => { setAddingEffectCatId(null); setNewEffectName(''); setNewEffectText('') }} className="text-stone-500 hover:text-stone-300 text-xs px-1">Cancel</button></div></div>}
             <div>
@@ -865,7 +866,7 @@ function EffectPanel({ categories, onChange, dragEnabled, anima }: {
                       <div className="flex items-center justify-between py-1 text-xs gap-1">
                         {dotLit !== null && <span className={`shrink-0 w-2 h-2 rounded-full ${dotLit ? 'bg-amber-400 shadow-[0_0_4px_1px_rgba(251,191,36,0.7)]' : 'bg-stone-700'}`} />}
                         <button onClick={() => setExpandedIds(s => { const n = new Set(s); if (n.has(effect.id)) n.delete(effect.id); else n.add(effect.id); return n })} className="text-left text-stone-200 hover:text-amber-300 transition-colors flex-1 min-w-0 truncate">{effect.name}</button>
-                        <div className="flex gap-1 shrink-0"><button onClick={() => { setEditingEffect({ catId: cat.id, effect }); setEditEffectName(effect.name); setEditEffectText(effect.text) }} title="Edit" className="text-stone-500 hover:text-amber-400 transition-colors">✎</button><button onClick={() => removeEffect(cat.id, effect.id)} title="Delete" className="text-stone-500 hover:text-red-400 transition-colors">✕</button></div>
+                        <div className="flex gap-1 shrink-0"><button onClick={() => { setEditingEffect({ catId: cat.id, effect }); setEditEffectName(effect.name); setEditEffectText(effect.text) }} data-tip="Edit" aria-label="Edit" className="text-stone-500 hover:text-amber-400 transition-colors">✎</button><button onClick={() => removeEffect(cat.id, effect.id)} data-tip="Delete" aria-label="Delete" className="text-stone-500 hover:text-red-400 transition-colors">✕</button></div>
                       </div>
                     )
                   })()}
@@ -1047,7 +1048,7 @@ function ItemModal({ item, onSave, onClose, gameData }: {
               {group.tags.map(tag => {
                 const active = (form.tags ?? []).includes(tag.name)
                 return (
-                  <button key={tag.name} title={tag.description} onClick={() => toggleTag(tag.name)}
+                  <button key={tag.name} data-tip={tag.description} onClick={() => toggleTag(tag.name)}
                     className={`px-1.5 py-0.5 rounded text-[10px] transition-colors border ${active ? 'bg-amber-600/30 border-amber-500 text-amber-300' : 'bg-stone-800 border-stone-600 text-stone-400 hover:border-stone-400'}`}>
                     {tag.name}
                   </button>
@@ -1137,12 +1138,12 @@ function ItemModal({ item, onSave, onClose, gameData }: {
                       </button>
                     ))}
                   </div>
-                  <button onClick={toggleArtifact} title="Artifact (+1 to all stats)"
+                  <button onClick={toggleArtifact} data-tip="Artifact (+1 to all stats)"
                     className={`px-2 py-0.5 rounded text-xs transition-colors border ${form.artifact ? 'bg-amber-600/30 border-amber-500 text-amber-300' : 'bg-stone-700 border-stone-600 text-stone-400 hover:border-stone-400'}`}>
                     Artifact
                   </button>
                   {form.artifact && ARTIFACT_COLORS.map(c => (
-                    <button key={c.value} title={c.label} onClick={() => set({ artifactColor: c.value })}
+                    <button key={c.value} data-tip={c.label} aria-label={c.label} onClick={() => set({ artifactColor: c.value })}
                       className={`w-4 h-4 rounded-full ${c.bg} transition-all ${form.artifactColor === c.value ? `ring-2 ${c.ring} ring-offset-1 ring-offset-stone-900` : 'opacity-60 hover:opacity-100'}`} />
                   ))}
                 </div>
@@ -1181,12 +1182,12 @@ function ItemModal({ item, onSave, onClose, gameData }: {
                       </button>
                     ))}
                   </div>
-                  <button onClick={toggleArtifact} title="Artifact (+1 Soak & Hardness)"
+                  <button onClick={toggleArtifact} data-tip="Artifact (+1 Soak & Hardness)"
                     className={`px-2 py-0.5 rounded text-xs transition-colors border ${form.artifact ? 'bg-amber-600/30 border-amber-500 text-amber-300' : 'bg-stone-700 border-stone-600 text-stone-400 hover:border-stone-400'}`}>
                     Artifact
                   </button>
                   {form.artifact && ARTIFACT_COLORS.map(c => (
-                    <button key={c.value} title={c.label} onClick={() => set({ artifactColor: c.value })}
+                    <button key={c.value} data-tip={c.label} aria-label={c.label} onClick={() => set({ artifactColor: c.value })}
                       className={`w-4 h-4 rounded-full ${c.bg} transition-all ${form.artifactColor === c.value ? `ring-2 ${c.ring} ring-offset-1 ring-offset-stone-900` : 'opacity-60 hover:opacity-100'}`} />
                   ))}
                 </div>
@@ -1293,7 +1294,7 @@ function FoiModal({ current, foiWeights, foiTags, onSave, onClose }: {
               ))}
               <div className="w-px h-3 bg-stone-700 mx-0.5" />
               <button onClick={() => setArtifact(a => !a)}
-                title="Grant unarmed attacks the Artifact tag (+1 all stats)"
+                data-tip="Grant unarmed attacks the Artifact tag (+1 all stats)"
                 className={`px-2 py-0.5 rounded text-xs transition-colors border ${artifact ? 'bg-amber-600/30 border-amber-500 text-amber-300' : 'bg-stone-700 border-stone-600 text-stone-400 hover:border-amber-500'}`}>
                 Artifact
               </button>
@@ -1305,7 +1306,7 @@ function FoiModal({ current, foiWeights, foiTags, onSave, onClose }: {
             <p className="text-[10px] uppercase tracking-wider text-stone-400">Tag</p>
             <div className="flex flex-wrap gap-1">
               {foiTags.map(t => (
-                <button key={t.name} title={t.description} onClick={() => setTag(tag === t.name ? null : t.name)}
+                <button key={t.name} data-tip={t.description} onClick={() => setTag(tag === t.name ? null : t.name)}
                   className={`px-1.5 py-0.5 rounded text-[10px] transition-colors border ${tag === t.name ? 'bg-orange-600/30 border-orange-500 text-orange-300' : 'bg-stone-800 border-stone-600 text-stone-400 hover:border-orange-400'}`}>
                   {t.name}
                 </button>
@@ -1552,7 +1553,7 @@ function InventoryPanel({ items, onChange, foi, foiOriginals, onFoiChange, dragE
       <div className="bg-stone-900 border border-stone-700 rounded-lg p-2 overflow-hidden h-full flex flex-col">
         <div className="flex items-center justify-between mb-2 shrink-0">
           <SectionHeader title="Inventory" />
-          <button onClick={() => setModal({ kind: 'weapon' })} title="Add item" className="text-stone-500 hover:text-amber-400 transition-colors text-base font-bold leading-none">+</button>
+          <button onClick={() => setModal({ kind: 'weapon' })} data-tip="Add item" aria-label="Add item" className="text-stone-500 hover:text-amber-400 transition-colors text-base font-bold leading-none">+</button>
         </div>
         <div className="space-y-2 overflow-y-auto no-scrollbar flex-1">
           {INVENTORY_KINDS.map(({ kind, label }) => {
@@ -1574,7 +1575,7 @@ function InventoryPanel({ items, onChange, foi, foiOriginals, onFoiChange, dragE
                       return (
                         <button
                           onClick={() => hasUnarmed && setFoiModalOpen(true)}
-                          title={hasUnarmed ? 'Fists of Iron Technique' : 'You need an unarmed weapon'}
+                          data-tip={hasUnarmed ? 'Fists of Iron Technique' : 'You need an unarmed weapon'}
                           className={`text-[9px] px-1 py-0.5 rounded border transition-colors ${foi.active ? 'bg-orange-600/30 border-orange-500 text-orange-300' : hasUnarmed ? 'border-stone-600 text-stone-500 hover:border-orange-500 hover:text-orange-400' : 'border-stone-700 text-stone-700 cursor-not-allowed'}`}>
                           FoI
                         </button>
@@ -1619,7 +1620,7 @@ function InventoryPanel({ items, onChange, foi, foiOriginals, onFoiChange, dragE
 
                           {/* FoI active: tag chip + weight badge — shown before stats so numbers stay in the same column */}
                           {isUnarmed && foi.active && foiTagEntry && (
-                            <span title={foiTagEntry.description}
+                            <span data-tip={foiTagEntry.description}
                               className="text-[9px] px-1 py-0.5 rounded bg-orange-900/40 border border-orange-600/50 text-orange-300 cursor-help shrink-0">
                               {foiTagEntry.name}
                             </span>
@@ -1649,8 +1650,8 @@ function InventoryPanel({ items, onChange, foi, foiOriginals, onFoiChange, dragE
                           )}
 
                           <div className="flex gap-1 shrink-0">
-                            <button onClick={() => setModal(item)} title="Edit" className="text-stone-500 hover:text-amber-400 transition-colors text-xs">✎</button>
-                            <button onClick={() => removeItem(item.id)} title="Delete" className="text-stone-500 hover:text-red-400 transition-colors text-xs">✕</button>
+                            <button onClick={() => setModal(item)} data-tip="Edit" aria-label="Edit" className="text-stone-500 hover:text-amber-400 transition-colors text-xs">✎</button>
+                            <button onClick={() => removeItem(item.id)} data-tip="Delete" aria-label="Delete" className="text-stone-500 hover:text-red-400 transition-colors text-xs">✕</button>
                           </div>
                         </div>
 
@@ -1680,6 +1681,49 @@ const counterBtnCls = "w-5 h-5 flex items-center justify-center rounded text-sto
 
 // Header for a section inside the Essence panel — one step down from SectionHeader,
 // which titles a whole panel.
+// One row of a Defenses tooltip: where part of the number comes from.
+interface BreakdownLine {
+  label: string
+  value: number
+  /** Show as a modifier ("+2") rather than a plain number ("4"). */
+  signed?: boolean
+  /** Contributes nothing right now — shown dimmed rather than hidden, so it's clear it exists. */
+  muted?: boolean
+  detail?: string
+}
+
+// The hover card for a defence: a receipt that adds up to the number on the sheet.
+function DefenseBreakdown({ title, total, lines }: { title: string; total: number; lines: BreakdownLine[] }) {
+  const fmt = (l: BreakdownLine) => l.signed ? (l.value < 0 ? `−${-l.value}` : `+${l.value}`) : `${l.value}`
+  // The only way the lines fail to add up is the Dice Limit floor lifting a
+  // penalised value back to its minimum, so a gap is always that.
+  const floored = lines.reduce((sum, l) => sum + l.value, 0) !== total
+  return (
+    <div className="w-60">
+      <div className="flex items-baseline justify-between pb-1.5 mb-1.5 border-b border-stone-700">
+        <span className="text-[10px] font-semibold uppercase tracking-widest text-amber-400">{title}</span>
+        <span className="text-lg font-bold leading-none text-stone-50">{total}</span>
+      </div>
+      <div className="space-y-1">
+        {lines.map(l => (
+          <div key={l.label} className={l.muted ? 'opacity-45' : undefined}>
+            <div className="flex items-baseline justify-between gap-3">
+              <span className="text-stone-200">{l.label}</span>
+              <span className="font-semibold tabular-nums text-stone-100">{fmt(l)}</span>
+            </div>
+            {l.detail && <div className="text-[10px] leading-tight text-stone-400">{l.detail}</div>}
+          </div>
+        ))}
+      </div>
+      {floored && (
+        <div className="mt-1.5 pt-1.5 border-t border-stone-700 text-[10px] text-amber-300/80">
+          Raised to the minimum of 1
+        </div>
+      )}
+    </div>
+  )
+}
+
 function SubHeader({ title, right, onReset }: { title: string; right?: React.ReactNode; onReset?: () => void }) {
   return (
     <div className="flex items-center justify-between gap-1 mb-1">
@@ -1687,7 +1731,7 @@ function SubHeader({ title, right, onReset }: { title: string; right?: React.Rea
       <div className="flex items-center gap-1.5 shrink-0">
         {right}
         {onReset && (
-          <button onClick={onReset} title="Reset"
+          <button onClick={onReset} data-tip="Reset" aria-label="Reset"
             className="text-xs leading-none text-stone-600 hover:text-amber-400 transition-colors">↺</button>
         )}
       </div>
@@ -1874,7 +1918,7 @@ export default function SheetTab({ sheet, onChange, editMode, gameData: gd }: Pr
                 <th className="text-left py-1 px-1 font-medium w-[80px]">Ability</th>
                 <th className="text-center py-1 px-1 font-medium w-[38px]">Rtg</th>
                 <th className="text-left py-1 px-1 font-medium">Specialty</th>
-                <th className="text-center py-1 px-1 font-medium w-[20px]" title="Excellency">Ex</th>
+                <th className="text-center py-1 px-1 font-medium w-[20px]" data-tip="Excellency">Ex</th>
               </tr>
             </thead>
             <tbody>
@@ -1897,7 +1941,7 @@ export default function SheetTab({ sheet, onChange, editMode, gameData: gd }: Pr
                     </td>
                     <td className="py-1 px-1 text-center">
                       {excellencyManaged ? (
-                        <span title={hasEx ? 'Granted by [Ability] Excellency' : undefined}
+                        <span data-tip={hasEx ? 'Granted by [Ability] Excellency' : undefined}
                           className={`inline-block w-3 h-3 rounded-full border-2 ${hasEx ? 'bg-amber-400 border-amber-400' : 'bg-transparent border-stone-700'}`} />
                       ) : (
                         <button onClick={() => setAbility(ability, { excellency: !ab.excellency })}
@@ -1926,7 +1970,7 @@ export default function SheetTab({ sheet, onChange, editMode, gameData: gd }: Pr
       const db = data.defenseBonus
       const {
         parry, evasion, soak, hardness, resolve,
-        soakBase, hardnessBase, resolveBase, weaponBonus: wpnBonus, capped,
+        parryBase, evasionBase, soakBase, hardnessBase, resolveBase, weaponBonus: wpnBonus, capped,
       } = calculateDefenses({
         stamina, dexterity: dex, closeCombat: cc, athletics: ath, physique: phys,
         integrity: integ, essence: data.essence ?? 1,
@@ -1937,35 +1981,54 @@ export default function SheetTab({ sheet, onChange, editMode, gameData: gd }: Pr
           hardness: db.hardness ?? 0, resolve: db.resolve ?? 0,
         },
       })
-      // The Dice Limit trims gear to +5 over base. Say so in the tooltip rather than
-      // showing a total that silently doesn't add up.
-      const capNote = (key: keyof typeof capped) => capped[key] ? ` (capped to +${STATIC_BONUS_CAP})` : ''
       const bonusInput = (key: keyof typeof db) => (
         <input type="number" value={db[key] ?? 0}
           onChange={e => update({ defenseBonus: { ...db, [key]: parseInt(e.target.value) || 0 } })}
           className="w-[30px] text-center bg-stone-800 border border-stone-600 text-stone-100 rounded px-1 py-0.5 text-xs focus:outline-none focus:border-amber-500" />
       )
-      const calcRow = (label: string, total: number, tip: string, bonus: ReturnType<typeof bonusInput>) => (
-        <div className="flex items-center gap-1.5 group/row relative">
+      // Display only: every number here is read from calculateDefenses' result or its
+      // inputs. The one piece of arithmetic is showing gear at the +5 it was trimmed
+      // to, which is what `capped` reports; any gap left after that is the floor.
+      const gearLine = (label: string, source: string, gear: number, isCapped: boolean): BreakdownLine => ({
+        label, value: isCapped ? STATIC_BONUS_CAP : gear, signed: true,
+        detail: isCapped ? `${source} ${gear}, capped at +${STATIC_BONUS_CAP}` : source,
+      })
+      const weaponLine = (key: 'parry' | 'evasion'): BreakdownLine => wpnBonus
+        ? gearLine('Weapon', 'Best equipped weapon', bestWpnDef, capped[key])
+        : { label: 'Weapon', value: 0, signed: true, muted: true, detail: 'Only with Full Defense or Defend Other' }
+      const bonusLine = (key: keyof typeof db): BreakdownLine =>
+        ({ label: 'Bonus', value: db[key] ?? 0, signed: true, muted: !db[key], detail: 'Manual adjustment' })
+      const calcRow = (label: string, total: number, lines: BreakdownLine[], bonus: ReturnType<typeof bonusInput>) => (
+        <Tooltip className="flex items-center gap-1.5" content={<DefenseBreakdown title={label} total={total} lines={lines} />}>
           <span className="text-xs text-stone-400 w-16 shrink-0">{label}</span>
           <span className="text-sm font-semibold text-stone-100 flex-1 cursor-default">{total}</span>
           {bonus}
-          <div className="absolute bottom-full left-0 mb-1.5 z-50 pointer-events-none opacity-0 group-hover/row:opacity-100 transition-opacity">
-            <div className="bg-stone-800 border border-stone-600 rounded-lg px-3 py-1.5 text-xs text-stone-300 whitespace-nowrap shadow-xl">
-              {tip}
-            </div>
-          </div>
-        </div>
+        </Tooltip>
       )
       return (
-        <div className="bg-stone-900 border border-stone-700 rounded-lg p-2 overflow-visible h-full" data-tooltip-panel>
+        <div className={panelBase}>
           <SectionHeader title="Defenses" />
           <div className="space-y-1.5">
-            {calcRow('Parry',    parry,    `ceil((Stamina ${stamina} + Close Combat ${cc}) / 2)${wpnBonus ? ` + Weapon Defense ${bestWpnDef}${capNote('parry')}` : ' (no Full/Defend Other)'} + Bonus ${db.parry ?? 0}`, bonusInput('parry'))}
-            {calcRow('Evasion',  evasion,  `ceil((Dexterity ${dex} + Athletics ${ath}) / 2)${wpnBonus ? ` + Weapon Defense ${bestWpnDef}${capNote('evasion')}` : ' (no Full/Defend Other)'} + Bonus ${db.evasion ?? 0}`, bonusInput('evasion'))}
-            {calcRow('Soak',     soak,     `${soakBase} base + Best Armor Soak ${bestArmorSoak}${capNote('soak')} + Bonus ${db.soak ?? 0}`, bonusInput('soak'))}
-            {calcRow('Hardness', hardness, `${hardnessBase} base (2 + Essence ${data.essence ?? 1}) + Best Armor Hardness ${bestArmorHard}${capNote('hardness')} + Bonus ${db.hardness ?? 0}`, bonusInput('hardness'))}
-            {calcRow('Resolve',  resolve,  `${resolveBase} base (Integrity ${integ}) + Bonus ${db.resolve ?? 0}`, bonusInput('resolve'))}
+            {calcRow('Parry', parry, [
+              { label: 'Base', value: parryBase, detail: `Stamina ${stamina} + Close Combat ${cc}, halved, rounded up` },
+              weaponLine('parry'), bonusLine('parry'),
+            ], bonusInput('parry'))}
+            {calcRow('Evasion', evasion, [
+              { label: 'Base', value: evasionBase, detail: `Dexterity ${dex} + Athletics ${ath}, halved, rounded up` },
+              weaponLine('evasion'), bonusLine('evasion'),
+            ], bonusInput('evasion'))}
+            {calcRow('Soak', soak, [
+              { label: 'Base', value: soakBase, detail: `1, plus 1 at Physique 3+ (you have ${phys})` },
+              gearLine('Armor', 'Best equipped armor', bestArmorSoak, capped.soak), bonusLine('soak'),
+            ], bonusInput('soak'))}
+            {calcRow('Hardness', hardness, [
+              { label: 'Base', value: hardnessBase, detail: `2 + Essence ${data.essence ?? 1}` },
+              gearLine('Armor', 'Best equipped armor', bestArmorHard, capped.hardness), bonusLine('hardness'),
+            ], bonusInput('hardness'))}
+            {calcRow('Resolve', resolve, [
+              { label: 'Base', value: resolveBase, detail: `From Integrity ${integ}` },
+              bonusLine('resolve'),
+            ], bonusInput('resolve'))}
             <div className="border-t border-stone-700 pt-1 mt-1 space-y-1">
               {([['defenseOther', 'Defend Other'], ['fullDefense', 'Full Defense']] as const).map(([key, label]) => (
                 <div key={key} className="flex items-center justify-between">
@@ -2307,6 +2370,7 @@ export default function SheetTab({ sheet, onChange, editMode, gameData: gd }: Pr
           ))}
         </GridLayout>
       )}
+      <TooltipLayer />
     </div>
   )
 }

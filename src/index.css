@@ -56,9 +56,14 @@ body {
   display: none !important;
 }
 
-/* Allow tooltips inside grid panels to escape their container */
-.react-grid-item:has([data-tooltip-panel]) {
-  overflow: visible !important;
+/* Tooltips (src/components/Tooltip.tsx) render into <body>, so they need no
+   overflow exceptions on the grid panels. This is just their fade-in. */
+@keyframes tooltip-in {
+  from { opacity: 0; transform: translateY(2px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+.tooltip-in {
+  animation: tooltip-in 120ms ease-out;
 }
 
 .react-resizable-handle {
