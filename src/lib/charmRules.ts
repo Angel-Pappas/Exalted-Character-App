@@ -34,10 +34,15 @@ export function isTypeInScope(t: string, exaltType: string, showAll: boolean): b
 }
 
 // Caste/Aspect names seen across the charm library that aren't also a full Exalt
-// type name (Dragon-Blooded's five elements, Liminal's five aspects, Janest).
-// Used only to positively identify "this is someone else's caste variant" so it
-// can be hidden — anything NOT in here falls through to the safe default below.
-const KNOWN_CASTE_LABELS = ['earth', 'fire', 'water', 'wood', 'air', 'blood', 'breath', 'flesh', 'marrow', 'soil', 'janest']
+// type name (Dragon-Blooded's five elements, Liminal's five aspects, Solar castes,
+// Janest). Used only to positively identify "this is someone else's caste variant"
+// so it can be hidden — anything NOT in here falls through to the safe default below.
+const KNOWN_CASTE_LABELS = [
+  'earth', 'fire', 'water', 'wood', 'air',
+  'blood', 'breath', 'flesh', 'marrow', 'soil',
+  'dawn', 'zenith', 'twilight', 'night', 'eclipse',
+  'janest',
+]
 
 // Upgrade/Repurchase modes apply regardless of Exalt type. A single mode label can
 // also name several Exalt types at once (e.g. "Alchemical, Getimian, Lunar, and

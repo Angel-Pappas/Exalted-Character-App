@@ -69,6 +69,13 @@ describe('isModeInScope — which modes of a charm apply', () => {
     expect(isModeInScope('Water', 'Dragon-Blooded', 'Fire', false)).toBe(false)
   })
 
+  it('shows a Solar caste mode only to that caste', () => {
+    // Perfected Panoply Selection (Dawn) on Arsenal-Summoning Gesture.
+    expect(isModeInScope('Dawn', 'Solar Exalted', 'Dawn', false)).toBe(true)
+    expect(isModeInScope('Dawn', 'Solar Exalted', 'Zenith', false)).toBe(false)
+    expect(isModeInScope('Night', 'Solar Exalted', 'Dawn', false)).toBe(false)
+  })
+
   it('defaults an unrecognized one-off mode name to visible', () => {
     // e.g. Sharpshooter's Clever Tricks — a named mode with no type restriction.
     // A strict allowlist would wrongly hide these.
