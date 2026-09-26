@@ -95,8 +95,8 @@ Seeded with all 10 exalt types. Managed by admin in Admin → Tables → Exalt T
 ## Character Sheet
 11 draggable/resizable panels on a 128-column grid. Layout saved per character to Supabase.
 
-The **Essence** panel holds every pool in one box: an Essence/Power/Will counter row on
-top, then Motes, then Anima. Power and Will are 0–10; Essence is 1–5 and has no reset
+The **Essence** panel holds every pool in one box: an Essence | Anima row on top,
+then Motes (Current | Committed), then a Power | Will row. Power and Will are 0–10; Essence is 1–5 and has no reset
 (it is a permanent trait, not a per-scene pool). All three look and behave like Anima
 minus its state label and color ramp. The panel has no title of its own — the counter
 row's labels serve as one.

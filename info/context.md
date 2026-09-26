@@ -253,9 +253,10 @@ Angel's account username: `angel`, UUID: `c5d208d8-3d47-4dc3-b76b-c211d8486c3b`,
   - Charms — flat CharacterCharm list, browse-from-library modal, custom descriptions, mechanical gating
   - Effects — categories + expandable entries
   - Inventory — 3 fixed sections (Weapons/Armor/Other); full item modal; FoI charm toggle gated by mechanical key
-  - Essence panel — one panel holding all the pools, top to bottom: an Essence (1–5) /
-    Power (0–10) / Will (0–10) counter row, then Motes (Current/Committed, auto-total
-    from Essence shown in the header), then Anima (0–10 with state label + color ramp).
+  - Essence panel — one panel holding all the pools as a 2-column, 3-row grid: an
+    Essence (1–5) | Anima (0–10 with state label + color ramp) row, then Motes
+    (Current | Committed, auto-total from Essence shown in the header), then a
+    Power (0–10) | Will (0–10) row.
     Each section has a ↺ reset except Essence, which is a permanent trait.
     ExaltType/Caste are **not** here — they live in the page header.
 - Milestones: 4-type XP log with session reward form, purchase form, editable transaction table

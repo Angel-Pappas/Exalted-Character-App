@@ -2031,8 +2031,10 @@ export default function SheetTab({ sheet, onChange, editMode, gameData: gd }: Pr
       const divider = <div className="border-t border-stone-700/60" />
       const vRule = <div className="w-px self-stretch bg-stone-700/60" />
 
-      // No panel-level SectionHeader here: the Essence/Power/Will labels below would
-      // sit directly under an identical "Essence" title.
+      // No panel-level SectionHeader here: the Essence label below would sit directly
+      // under an identical "Essence" title.
+      // Layout is a 2-column grid of three rows: Essence | Anima, then Motes (whose
+      // Current | Committed pair fills both columns), then Power | Will.
       return (
         <div className={panelBase}>
           <div className="space-y-2">
@@ -2044,13 +2046,11 @@ export default function SheetTab({ sheet, onChange, editMode, gameData: gd }: Pr
               </div>
               {vRule}
               <div className="flex-1 min-w-0">
-                <SubHeader title="Power" onReset={() => update({ power: 0 })} />
-                <Counter value={power} onStep={setPower} />
-              </div>
-              {vRule}
-              <div className="flex-1 min-w-0">
-                <SubHeader title="Will" onReset={() => update({ will: 0 })} />
-                <Counter value={will} onStep={setWill} />
+                <SubHeader title="Anima" onReset={() => update({ anima: 0 })} />
+                <div className="flex flex-col items-center gap-0.5">
+                  <Counter value={animaLevel} onStep={setAnima} valueCls={animaColor} />
+                  <span className={`text-xs font-medium text-center ${animaColor}`}>{animaState}</span>
+                </div>
               </div>
             </div>
 
@@ -2076,11 +2076,15 @@ export default function SheetTab({ sheet, onChange, editMode, gameData: gd }: Pr
 
             {divider}
 
-            <div>
-              <SubHeader title="Anima" onReset={() => update({ anima: 0 })} />
-              <div className="flex flex-col items-center gap-0.5">
-                <Counter value={animaLevel} onStep={setAnima} valueCls={animaColor} />
-                <span className={`text-xs font-medium text-center ${animaColor}`}>{animaState}</span>
+            <div className="flex items-start gap-1">
+              <div className="flex-1 min-w-0">
+                <SubHeader title="Power" onReset={() => update({ power: 0 })} />
+                <Counter value={power} onStep={setPower} />
+              </div>
+              {vRule}
+              <div className="flex-1 min-w-0">
+                <SubHeader title="Will" onReset={() => update({ will: 0 })} />
+                <Counter value={will} onStep={setWill} />
               </div>
             </div>
 
