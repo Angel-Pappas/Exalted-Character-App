@@ -123,15 +123,18 @@ export interface InventoryCategory {
   items: InventoryItem[]
 }
 
+// gain = Income, purchase = Expense, creation = bought with the starting build (costs nothing)
+export type MilestoneKind = 'gain' | 'purchase' | 'creation'
+
 export interface MilestoneTransaction {
   id: string
-  kind: 'gain' | 'purchase'
+  kind: MilestoneKind
   personal: number
   exalted: number
   minor: number
   major: number
   description: string
-  date: string
+  date: string   // YYYY-MM-DD (older entries: full ISO timestamp); '' = undated
 }
 
 export interface NpcEntry {

@@ -259,7 +259,7 @@ Angel's account username: `angel`, UUID: `c5d208d8-3d47-4dc3-b76b-c211d8486c3b`,
     Power (0–10) | Will (0–10) row.
     Each section has a ↺ reset except Essence, which is a permanent trait.
     ExaltType/Caste are **not** here — they live in the page header.
-- Milestones: 4-type XP log with session reward form, purchase form, editable transaction table
+- Milestones: 4-type ledger mirroring Angel's spreadsheet — Income / Expense / Char. Creation rows (creation = free, not counted), optional dates, Remaining = income − expenses; logic + tests in `src/lib/milestones.ts`
 - Notes: free-form textarea
 - Characters tab: NPC list with per-NPC notes
 - Auto-save to Supabase (1 second debounce)

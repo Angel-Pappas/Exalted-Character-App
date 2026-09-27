@@ -1,219 +1,259 @@
-import { useState } from 'react'
-import type { MilestoneTransaction } from '../types/character'
-
-const TYPES = ['personal', 'exalted', 'minor', 'major'] as const
-type MType = typeof TYPES[number]
+import { Fragment, useState } from 'react'
+import type { MilestoneKind, MilestoneTransaction } from '../types/character'
+import {
+  KIND_LABELS, MILESTONE_TYPES, dateKey, formatDate, isValidEntry, parseAmount,
+  remaining, sortLedger, todayKey, totalEarned, totalSpent,
+  type MilestoneAmounts, type MilestoneType,
+} from '../lib/milestones'
 
 interface Props {
   milestones: MilestoneTransaction[]
   onChange: (milestones: MilestoneTransaction[]) => void
 }
 
-const emptyAmounts = { personal: '', exalted: '', minor: '', major: '' }
+// Form state keeps raw strings so a field can be blank while typing.
+interface Draft {
+  kind: MilestoneKind
+  amounts: Record<MilestoneType, string>
+  description: string
+  date: string
+}
 
-function toAmounts(tx: MilestoneTransaction) {
+type Order = 'oldest' | 'newest'
+const ORDER_KEY = 'milestones.order'
+
+const blankAmounts = { personal: '', exalted: '', minor: '', major: '' }
+
+const KIND_BADGE: Record<MilestoneKind, string> = {
+  gain: 'bg-emerald-900 text-emerald-300',
+  purchase: 'bg-red-900 text-red-300',
+  creation: 'bg-stone-700 text-stone-300',
+}
+
+const DESC_PLACEHOLDER: Record<MilestoneKind, string> = {
+  gain: 'e.g. Session 26/9/26',
+  purchase: 'e.g. Charm (Excellent Strike)',
+  creation: 'e.g. Charm (Ox-Body Technique)',
+}
+
+const inputClass = 'w-full bg-stone-800 border border-stone-600 text-stone-100 rounded px-2 py-1 text-sm focus:outline-none focus:border-amber-500'
+
+function newDraft(kind: MilestoneKind): Draft {
+  return { kind, amounts: blankAmounts, description: '', date: kind === 'creation' ? '' : todayKey() }
+}
+
+function draftFrom(tx: MilestoneTransaction): Draft {
+  const amounts = { ...blankAmounts }
+  for (const t of MILESTONE_TYPES) amounts[t] = tx[t] ? String(tx[t]) : ''
+  return { kind: tx.kind, amounts, description: tx.description, date: dateKey(tx.date) }
+}
+
+function parsedAmounts(draft: Draft): MilestoneAmounts {
+  // Creation notes are free by definition, whatever was typed before switching kind.
+  if (draft.kind === 'creation') return { personal: 0, exalted: 0, minor: 0, major: 0 }
   return {
-    personal: tx.personal ? String(tx.personal) : '',
-    exalted: tx.exalted ? String(tx.exalted) : '',
-    minor: tx.minor ? String(tx.minor) : '',
-    major: tx.major ? String(tx.major) : '',
+    personal: parseAmount(draft.amounts.personal),
+    exalted: parseAmount(draft.amounts.exalted),
+    minor: parseAmount(draft.amounts.minor),
+    major: parseAmount(draft.amounts.major),
   }
 }
 
-function totalEarned(milestones: MilestoneTransaction[], type: MType) {
-  return milestones
-    .filter(m => m.kind === 'gain')
-    .reduce((sum, m) => sum + (m[type] ?? 0), 0)
+function readOrder(): Order {
+  try {
+    return localStorage.getItem(ORDER_KEY) === 'oldest' ? 'oldest' : 'newest'
+  } catch {
+    return 'newest'
+  }
 }
 
-function balance(milestones: MilestoneTransaction[], type: MType) {
-  return milestones.reduce((sum, m) => {
-    return m.kind === 'gain'
-      ? sum + (m[type] ?? 0)
-      : sum - (m[type] ?? 0)
-  }, 0)
+function EntryFields({ draft, setDraft }: { draft: Draft; setDraft: (d: Draft) => void }) {
+  return (
+    <div className="space-y-3">
+      <div className="flex flex-wrap gap-3">
+        <div>
+          <label className="block text-xs text-stone-400 mb-1">Type</label>
+          <select
+            value={draft.kind}
+            onChange={e => setDraft({ ...draft, kind: e.target.value as MilestoneKind })}
+            className={inputClass}
+          >
+            {(Object.keys(KIND_LABELS) as MilestoneKind[]).map(k => (
+              <option key={k} value={k}>{KIND_LABELS[k]}</option>
+            ))}
+          </select>
+        </div>
+        <div>
+          <label className="block text-xs text-stone-400 mb-1">Date (optional)</label>
+          <input
+            type="date"
+            value={draft.date}
+            onChange={e => setDraft({ ...draft, date: e.target.value })}
+            className={inputClass}
+          />
+        </div>
+      </div>
+      {draft.kind === 'creation' ? (
+        <p className="text-xs text-stone-500">Bought with the starting build — recorded for reference, costs no milestones.</p>
+      ) : (
+        <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+          {MILESTONE_TYPES.map(type => (
+            <div key={type}>
+              <label className="block text-xs text-stone-400 mb-1 capitalize">{type}</label>
+              <input
+                type="number" min="0"
+                value={draft.amounts[type]}
+                onChange={e => setDraft({ ...draft, amounts: { ...draft.amounts, [type]: e.target.value } })}
+                placeholder="0"
+                className={inputClass}
+              />
+            </div>
+          ))}
+        </div>
+      )}
+      <div>
+        <label className="block text-xs text-stone-400 mb-1">Description</label>
+        <input
+          type="text"
+          value={draft.description}
+          onChange={e => setDraft({ ...draft, description: e.target.value })}
+          placeholder={DESC_PLACEHOLDER[draft.kind]}
+          className={inputClass}
+        />
+      </div>
+    </div>
+  )
 }
 
 export default function MilestonesTab({ milestones, onChange }: Props) {
-  const [showGain, setShowGain] = useState(false)
-  const [showPurchase, setShowPurchase] = useState(false)
-  const [gainAmounts, setGainAmounts] = useState(emptyAmounts)
-  const [gainDesc, setGainDesc] = useState('')
-  const [purchaseAmounts, setPurchaseAmounts] = useState(emptyAmounts)
-  const [purchaseDesc, setPurchaseDesc] = useState('')
+  const [adding, setAdding] = useState<Draft | null>(null)
   const [editingId, setEditingId] = useState<string | null>(null)
-  const [editAmounts, setEditAmounts] = useState(emptyAmounts)
-  const [editDesc, setEditDesc] = useState('')
+  const [editDraft, setEditDraft] = useState<Draft>(newDraft('gain'))
+  const [order, setOrder] = useState<Order>(readOrder)
 
-  function addGain() {
-    const vals = {
-      personal: parseInt(gainAmounts.personal) || 0,
-      exalted: parseInt(gainAmounts.exalted) || 0,
-      minor: parseInt(gainAmounts.minor) || 0,
-      major: parseInt(gainAmounts.major) || 0,
-    }
-    if (Object.values(vals).every(v => v === 0)) return
-    const tx: MilestoneTransaction = {
-      id: crypto.randomUUID(),
-      kind: 'gain',
-      ...vals,
-      description: gainDesc.trim() || 'Session reward',
-      date: new Date().toISOString(),
-    }
-    onChange([tx, ...milestones])
-    setGainAmounts(emptyAmounts)
-    setGainDesc('')
-    setShowGain(false)
+  function toggleOrder() {
+    const next: Order = order === 'newest' ? 'oldest' : 'newest'
+    setOrder(next)
+    try { localStorage.setItem(ORDER_KEY, next) } catch { /* order is a convenience; ignore blocked storage */ }
   }
 
-  function addPurchase() {
-    const vals = {
-      personal: parseInt(purchaseAmounts.personal) || 0,
-      exalted: parseInt(purchaseAmounts.exalted) || 0,
-      minor: parseInt(purchaseAmounts.minor) || 0,
-      major: parseInt(purchaseAmounts.major) || 0,
-    }
-    if (Object.values(vals).every(v => v === 0) || !purchaseDesc.trim()) return
+  function openAdd(kind: MilestoneKind) {
+    setAdding(a => (a?.kind === kind ? null : newDraft(kind)))
+    setEditingId(null)
+  }
+
+  function saveAdd() {
+    if (!adding) return
+    const amounts = parsedAmounts(adding)
+    if (!isValidEntry(adding.kind, amounts, adding.description)) return
     const tx: MilestoneTransaction = {
       id: crypto.randomUUID(),
-      kind: 'purchase',
-      ...vals,
-      description: purchaseDesc.trim(),
-      date: new Date().toISOString(),
+      kind: adding.kind,
+      ...amounts,
+      description: adding.description.trim() || 'Session',
+      date: adding.date,
     }
-    onChange([tx, ...milestones])
-    setPurchaseAmounts(emptyAmounts)
-    setPurchaseDesc('')
-    setShowPurchase(false)
+    // Appended, so entries sharing a date keep the order they were logged in.
+    onChange([...milestones, tx])
+    setAdding(null)
   }
 
   function startEdit(tx: MilestoneTransaction) {
     setEditingId(tx.id)
-    setEditAmounts(toAmounts(tx))
-    setEditDesc(tx.description)
-    setShowGain(false)
-    setShowPurchase(false)
+    setEditDraft(draftFrom(tx))
+    setAdding(null)
   }
 
   function saveEdit(tx: MilestoneTransaction) {
+    const amounts = parsedAmounts(editDraft)
+    if (!isValidEntry(editDraft.kind, amounts, editDraft.description)) return
     const updated: MilestoneTransaction = {
       ...tx,
-      personal: parseInt(editAmounts.personal) || 0,
-      exalted: parseInt(editAmounts.exalted) || 0,
-      minor: parseInt(editAmounts.minor) || 0,
-      major: parseInt(editAmounts.major) || 0,
-      description: editDesc.trim() || tx.description,
+      kind: editDraft.kind,
+      ...amounts,
+      description: editDraft.description.trim() || tx.description,
+      date: editDraft.date,
     }
-    onChange(milestones.map(m => m.id === tx.id ? updated : m))
+    onChange(milestones.map(m => (m.id === tx.id ? updated : m)))
     setEditingId(null)
   }
 
-  const sorted = [...milestones].sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime())
+  const sorted = sortLedger(milestones, order)
+  const addValid = adding ? isValidEntry(adding.kind, parsedAmounts(adding), adding.description) : false
+  const editValid = isValidEntry(editDraft.kind, parsedAmounts(editDraft), editDraft.description)
 
   return (
-    <div className="p-4 max-w-4xl mx-auto space-y-4">
+    <div className="p-4 max-w-5xl mx-auto space-y-4">
 
-      {/* Totals row */}
-      <div className="grid grid-cols-4 gap-3">
-        {TYPES.map(type => (
+      {/* Totals — Remaining big, Total and Spent underneath (the spreadsheet's two summary rows) */}
+      <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+        {MILESTONE_TYPES.map(type => (
           <div key={type} className="bg-stone-900 border border-stone-700 rounded-lg p-3 text-center">
-            <div className="text-xs text-stone-400 mb-2 capitalize">{type}</div>
-            <div className="text-lg font-bold text-amber-400">{balance(milestones, type)}</div>
-            <div className="text-xs text-stone-500 mt-1">of {totalEarned(milestones, type)} earned</div>
+            <div className="text-xs text-stone-400 mb-1 capitalize">{type}</div>
+            <div className="text-2xl font-bold text-amber-400">{remaining(milestones, type)}</div>
+            <div className="text-[11px] text-stone-500 uppercase tracking-wide">remaining</div>
+            <div className="text-xs text-stone-500 mt-1">
+              {totalEarned(milestones, type)} earned · {totalSpent(milestones, type)} spent
+            </div>
           </div>
         ))}
       </div>
 
       {/* Action buttons */}
-      <div className="flex gap-3">
+      <div className="flex flex-wrap gap-3 items-center">
         <button
-          onClick={() => { setShowGain(v => !v); setShowPurchase(false); setEditingId(null) }}
+          onClick={() => openAdd('gain')}
           className="bg-amber-600 hover:bg-amber-500 text-white font-semibold rounded px-4 py-2 text-sm transition-colors"
         >
-          + Add Session Rewards
+          + Add Income
         </button>
         <button
-          onClick={() => { setShowPurchase(v => !v); setShowGain(false); setEditingId(null) }}
+          onClick={() => openAdd('purchase')}
           className="bg-stone-700 hover:bg-stone-600 text-white font-semibold rounded px-4 py-2 text-sm transition-colors"
         >
-          − Make Purchase
+          − Add Expense
         </button>
+        <button
+          onClick={() => openAdd('creation')}
+          className="bg-stone-800 hover:bg-stone-700 text-stone-300 font-semibold rounded px-4 py-2 text-sm transition-colors"
+        >
+          + Char. Creation
+        </button>
+        {milestones.length > 1 && (
+          <button
+            onClick={toggleOrder}
+            className="ml-auto text-xs text-stone-400 hover:text-amber-400 transition-colors"
+          >
+            {order === 'newest' ? 'Newest first ↓' : 'Oldest first ↑'}
+          </button>
+        )}
       </div>
 
-      {/* Gain form */}
-      {showGain && (
+      {/* Add form */}
+      {adding && (
         <div className="bg-stone-900 border border-stone-700 rounded-lg p-4 space-y-3">
-          <h3 className="text-sm font-semibold text-stone-200">Add Session Rewards</h3>
-          <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
-            {TYPES.map(type => (
-              <div key={type}>
-                <label className="block text-xs text-stone-400 mb-1 capitalize">{type}</label>
-                <input
-                  type="number" min="0"
-                  value={gainAmounts[type]}
-                  onChange={e => setGainAmounts(a => ({ ...a, [type]: e.target.value }))}
-                  placeholder="0"
-                  className="w-full bg-stone-800 border border-stone-600 text-stone-100 rounded px-2 py-1 text-sm focus:outline-none focus:border-amber-500"
-                />
-              </div>
-            ))}
-          </div>
-          <div>
-            <label className="block text-xs text-stone-400 mb-1">Note (e.g. Session 5 — rescued the village)</label>
-            <input
-              type="text" value={gainDesc}
-              onChange={e => setGainDesc(e.target.value)}
-              placeholder="Session description…"
-              className="w-full bg-stone-800 border border-stone-600 text-stone-100 rounded px-2 py-1 text-sm focus:outline-none focus:border-amber-500"
-            />
-          </div>
+          <h3 className="text-sm font-semibold text-stone-200">New entry</h3>
+          <EntryFields draft={adding} setDraft={setAdding} />
           <div className="flex gap-2">
-            <button onClick={addGain} className="bg-amber-600 hover:bg-amber-500 text-white rounded px-4 py-1.5 text-sm transition-colors">Save</button>
-            <button onClick={() => setShowGain(false)} className="text-stone-400 hover:text-stone-200 text-sm px-2">Cancel</button>
+            <button
+              onClick={saveAdd}
+              disabled={!addValid}
+              className="bg-amber-600 hover:bg-amber-500 disabled:opacity-40 disabled:hover:bg-amber-600 text-white rounded px-4 py-1.5 text-sm transition-colors"
+            >
+              Save
+            </button>
+            <button onClick={() => setAdding(null)} className="text-stone-400 hover:text-stone-200 text-sm px-2">Cancel</button>
           </div>
         </div>
       )}
 
-      {/* Purchase form */}
-      {showPurchase && (
-        <div className="bg-stone-900 border border-stone-700 rounded-lg p-4 space-y-3">
-          <h3 className="text-sm font-semibold text-stone-200">Make a Purchase</h3>
-          <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
-            {TYPES.map(type => (
-              <div key={type}>
-                <label className="block text-xs text-stone-400 mb-1 capitalize">{type}</label>
-                <input
-                  type="number" min="0"
-                  value={purchaseAmounts[type]}
-                  onChange={e => setPurchaseAmounts(a => ({ ...a, [type]: e.target.value }))}
-                  placeholder="0"
-                  className="w-full bg-stone-800 border border-stone-600 text-stone-100 rounded px-2 py-1 text-sm focus:outline-none focus:border-amber-500"
-                />
-              </div>
-            ))}
-          </div>
-          <div>
-            <label className="block text-xs text-stone-400 mb-1">What did you spend it on?</label>
-            <input
-              type="text" value={purchaseDesc}
-              onChange={e => setPurchaseDesc(e.target.value)}
-              placeholder="e.g. Bought Charm: Solar Flare"
-              className="w-full bg-stone-800 border border-stone-600 text-stone-100 rounded px-2 py-1 text-sm focus:outline-none focus:border-amber-500"
-            />
-          </div>
-          <div className="flex gap-2">
-            <button onClick={addPurchase} className="bg-red-700 hover:bg-red-600 text-white rounded px-4 py-1.5 text-sm transition-colors">Spend</button>
-            <button onClick={() => setShowPurchase(false)} className="text-stone-400 hover:text-stone-200 text-sm px-2">Cancel</button>
-          </div>
-        </div>
-      )}
-
-      {/* Log table */}
+      {/* Ledger */}
       {sorted.length > 0 && (
         <div className="overflow-x-auto">
           <table className="w-full text-sm">
             <thead>
               <tr className="text-xs text-stone-400 border-b border-stone-700">
+                <th className="text-left py-2 pr-3 font-medium">Date</th>
                 <th className="text-left py-2 pr-3 font-medium">Type</th>
                 <th className="text-center py-2 px-2 font-medium">Personal</th>
                 <th className="text-center py-2 px-2 font-medium">Exalted</th>
@@ -225,18 +265,17 @@ export default function MilestonesTab({ milestones, onChange }: Props) {
             </thead>
             <tbody>
               {sorted.map(tx => (
-                <>
-                  <tr key={tx.id} className="border-b border-stone-800 hover:bg-stone-900/50">
+                <Fragment key={tx.id}>
+                  <tr className="border-b border-stone-800 hover:bg-stone-900/50">
+                    <td className="py-2 pr-3 text-xs text-stone-400 whitespace-nowrap">{formatDate(tx.date)}</td>
                     <td className="py-2 pr-3">
-                      <span className={`text-xs font-semibold px-1.5 py-0.5 rounded ${
-                        tx.kind === 'gain' ? 'bg-emerald-900 text-emerald-300' : 'bg-red-900 text-red-300'
-                      }`}>
-                        {tx.kind === 'gain' ? 'Gain' : 'Purchase'}
+                      <span className={`text-xs font-semibold px-1.5 py-0.5 rounded whitespace-nowrap ${KIND_BADGE[tx.kind]}`}>
+                        {KIND_LABELS[tx.kind]}
                       </span>
                     </td>
-                    {TYPES.map(type => (
+                    {MILESTONE_TYPES.map(type => (
                       <td key={type} className="text-center py-2 px-2 font-mono">
-                        {tx[type] > 0 ? (
+                        {tx.kind !== 'creation' && tx[type] > 0 ? (
                           <span className={tx.kind === 'gain' ? 'text-emerald-400' : 'text-red-400'}>
                             {tx.kind === 'gain' ? '+' : '-'}{tx[type]}
                           </span>
@@ -249,7 +288,7 @@ export default function MilestonesTab({ milestones, onChange }: Props) {
                     <td className="py-2 pl-2">
                       <div className="flex items-center gap-2">
                         <button
-                          onClick={() => editingId === tx.id ? setEditingId(null) : startEdit(tx)}
+                          onClick={() => (editingId === tx.id ? setEditingId(null) : startEdit(tx))}
                           className="text-stone-600 hover:text-amber-400 transition-colors"
                           title="Edit"
                         >
@@ -267,38 +306,22 @@ export default function MilestonesTab({ milestones, onChange }: Props) {
                   </tr>
                   {editingId === tx.id && (
                     <tr className="border-b border-stone-700 bg-stone-900">
-                      <td colSpan={7} className="px-3 py-3">
-                        <div className="flex flex-wrap gap-3 items-end">
-                          {TYPES.map(type => (
-                            <div key={type}>
-                              <label className="block text-xs text-stone-400 mb-1 capitalize">{type}</label>
-                              <input
-                                type="number" min="0"
-                                value={editAmounts[type]}
-                                onChange={e => setEditAmounts(a => ({ ...a, [type]: e.target.value }))}
-                                placeholder="0"
-                                className="w-16 bg-stone-800 border border-stone-600 text-stone-100 rounded px-2 py-1 text-sm focus:outline-none focus:border-amber-500"
-                              />
-                            </div>
-                          ))}
-                          <div className="flex-1 min-w-40">
-                            <label className="block text-xs text-stone-400 mb-1">Description</label>
-                            <input
-                              type="text"
-                              value={editDesc}
-                              onChange={e => setEditDesc(e.target.value)}
-                              className="w-full bg-stone-800 border border-stone-600 text-stone-100 rounded px-2 py-1 text-sm focus:outline-none focus:border-amber-500"
-                            />
-                          </div>
-                          <div className="flex gap-2">
-                            <button onClick={() => saveEdit(tx)} className="bg-amber-600 hover:bg-amber-500 text-white rounded px-3 py-1 text-sm transition-colors">Save</button>
-                            <button onClick={() => setEditingId(null)} className="text-stone-400 hover:text-stone-200 text-sm px-2">Cancel</button>
-                          </div>
+                      <td colSpan={8} className="px-3 py-3 space-y-3">
+                        <EntryFields draft={editDraft} setDraft={setEditDraft} />
+                        <div className="flex gap-2">
+                          <button
+                            onClick={() => saveEdit(tx)}
+                            disabled={!editValid}
+                            className="bg-amber-600 hover:bg-amber-500 disabled:opacity-40 disabled:hover:bg-amber-600 text-white rounded px-3 py-1 text-sm transition-colors"
+                          >
+                            Save
+                          </button>
+                          <button onClick={() => setEditingId(null)} className="text-stone-400 hover:text-stone-200 text-sm px-2">Cancel</button>
                         </div>
                       </td>
                     </tr>
                   )}
-                </>
+                </Fragment>
               ))}
             </tbody>
           </table>
