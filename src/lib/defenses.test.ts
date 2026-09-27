@@ -6,7 +6,7 @@ import type { InventoryItem } from '../types/character'
 
 const base: DefenseInputs = {
   stamina: 0, dexterity: 0, closeCombat: 0, athletics: 0, physique: 0, integrity: 0,
-  essence: 1, bestWeaponDefense: 0, bestArmorSoak: 0, bestArmorHardness: 0,
+  essence: 1, bestWeaponDefense: 0, bestArmorSoak: 0, bestArmorHardness: 0, oxBody: false,
   fullDefense: false, defendOther: false,
   bonus: { parry: 0, evasion: 0, soak: 0, hardness: 0, resolve: 0 },
 }
@@ -14,6 +14,29 @@ const inputs = (over: Partial<DefenseInputs> = {}): DefenseInputs => ({ ...base,
 
 const item = (over: Partial<InventoryItem> & Pick<InventoryItem, 'kind'>): InventoryItem => ({
   id: crypto.randomUUID(), name: '', type: '', equipped: false, ...over,
+})
+
+describe('Ox Body Technique — "increases her base Soak by one ... only applies once"', () => {
+  it('adds 1 to base Soak', () => {
+    expect(calculateDefenses(inputs({ physique: 5, oxBody: true })).soakBase).toBe(3)
+    expect(calculateDefenses(inputs({ physique: 5, oxBody: true })).soak).toBe(3)
+  })
+
+  it('works below Physique 3 too', () => {
+    expect(calculateDefenses(inputs({ physique: 1, oxBody: true })).soak).toBe(2)
+  })
+
+  it('raises the base, so armour still gets its full +5 on top', () => {
+    const r = calculateDefenses(inputs({ physique: 5, oxBody: true, bestArmorSoak: 7 }))
+    expect(r.soak).toBe(3 + 5)
+    expect(r.capped.soak).toBe(true)
+  })
+
+  it('touches nothing but Soak', () => {
+    const off = calculateDefenses(inputs({ stamina: 3, closeCombat: 3, integrity: 3, oxBody: false }))
+    const on = calculateDefenses(inputs({ stamina: 3, closeCombat: 3, integrity: 3, oxBody: true }))
+    expect({ ...on, soak: 0, soakBase: 0 }).toEqual({ ...off, soak: 0, soakBase: 0 })
+  })
 })
 
 describe('Soak — "1, plus another 1 if your Physique is 3 or higher, plus armor"', () => {

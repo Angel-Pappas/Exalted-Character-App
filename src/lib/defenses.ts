@@ -27,8 +27,11 @@
 //  - Essence counts as part of Hardness's BASE (so it lifts the ceiling), not as a
 //    bonus competing for the +5.
 //  - The manual bonus box is EXEMPT from the cap. It's an override, not a game effect.
-//    Ox Body and friends raise the base, but they'll arrive as real charm
-//    implementations later rather than being faked through this box.
+//    Ox Body raises the base instead — see `oxBody` below.
+//
+// Ox Body Technique (charm library text): "The Exalt increases her base Soak by one."
+// Repurchase: "The Soak increase only applies once." So it's a flag, not a count, and
+// it lands in the base, lifting the ceiling the +5 cap measures from.
 // Which leaves gear as the only capped source today: armour Soak/Hardness, and weapon
 // Defense on Parry/Evasion. Resolve has no capped source yet — its cap cannot bite
 // until charms feed it one. The machinery is wired for all five regardless.
@@ -51,6 +54,8 @@ export interface DefenseInputs {
   bestWeaponDefense: number
   bestArmorSoak: number
   bestArmorHardness: number
+  /** Owns Ox Body Technique (any number of purchases) with its implementation on. */
+  oxBody: boolean
   fullDefense: boolean
   defendOther: boolean
   bonus: { parry: number; evasion: number; soak: number; hardness: number; resolve: number }
@@ -105,7 +110,7 @@ export function bestEquipped(
 export function calculateDefenses(i: DefenseInputs): DefenseResult {
   const parryBase = Math.ceil((i.stamina + i.closeCombat) / 2)
   const evasionBase = Math.ceil((i.dexterity + i.athletics) / 2)
-  const soakBase = 1 + (i.physique >= 3 ? 1 : 0)
+  const soakBase = 1 + (i.physique >= 3 ? 1 : 0) + (i.oxBody ? 1 : 0)
   const hardnessBase = 2 + i.essence
   const resolveBase = i.integrity >= 3 ? 4 : i.integrity >= 1 ? 3 : 2
 

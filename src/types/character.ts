@@ -74,7 +74,11 @@ export interface CharacterCharm {
   count?: number           // number of times purchased (1 + repurchases); absent = 1
   picks?: string[]         // one entry per purchase; only used when the library charm has a choiceType
   groupedPicks?: { target: string; selected: string[] }[]  // used instead of picks for choiceType === 'multiselect'; one entry per purchase/target
+  oxBodyPicks?: OxBodyPick[]  // Ox Body Technique only: health levels chosen per purchase, where the Exalt type gets a choice
 }
+
+// Solar/Abyssal Ox Body: each purchase grants one 0 level or two −1 levels.
+export type OxBodyPick = 'zero' | 'twoInjured'
 
 export interface EffectEntry {
   id: string
@@ -207,7 +211,8 @@ export interface SheetData {
   merits: MeritEntry[]
   intimacies: IntimacyEntry[]
   motes: { current: number; committed: number; total: number }
-  health: HealthBox[]
+  damage: number          // health boxes filled, counted from the left
+  health?: HealthBox[]    // legacy: one checkbox per box, read once to seed `damage`
   layout: PanelLayout[]
   charms: CharacterCharm[]
   effects: EffectCategory[]

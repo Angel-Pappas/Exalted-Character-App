@@ -4,13 +4,17 @@ import { GridLayout, useContainerWidth, noCompactor } from 'react-grid-layout'
 // Override it so panels can freely overlap — no collision resolution, no compaction.
 const freeCompactor = { ...noCompactor, allowOverlap: true }
 import 'react-grid-layout/css/styles.css'
-import type { SheetData, FoiState, AbilityData, MeritEntry, IntimacyEntry, HealthBox, PanelLayout, CharacterCharm, EffectCategory, EffectEntry, InventoryItem, InventoryItemKind, WeaponWeight, ArtifactColor, GameData } from '../types/character'
+import type { SheetData, FoiState, AbilityData, MeritEntry, IntimacyEntry, OxBodyPick, PanelLayout, CharacterCharm, EffectCategory, EffectEntry, InventoryItem, InventoryItemKind, WeaponWeight, ArtifactColor, GameData } from '../types/character'
 import { DEFAULT_GAME_DATA } from '../types/character'
 import {
   abilityRank, baseAbility, isModeInScope, isTypeInScope, modeIcon, modeLockReasons,
   sortAbilities, sortModes, typeRank,
 } from '../lib/charmRules'
 import { bestEquipped, calculateDefenses, STATIC_BONUS_CAP } from '../lib/defenses'
+import {
+  DEFAULT_OX_BODY_PICK, LEVEL_NAMES, buildHealthTrack, clampDamage, currentWound, damageAfterClick,
+  legacyDamage, oxBodyGrant, oxBodyHasChoice, woundPenalty,
+} from '../lib/health'
 import type { CharmLibraryRow } from '../components/CharmLibraryTab'
 import ModalPortal from '../components/ModalPortal'
 import { Tooltip, TooltipLayer } from '../components/Tooltip'
@@ -34,15 +38,10 @@ const ABILITIES = [
 
 const DEFENSES = ['Parry', 'Evasion', 'Soak', 'Hardness', 'Resolve']
 
-const DEFAULT_HEALTH: HealthBox[] = [
-  { penalty: '-0', checked: false },
-  { penalty: '-0', checked: false },
-  { penalty: '-1', checked: false },
-  { penalty: '-1', checked: false },
-  { penalty: '-2', checked: false },
-  { penalty: '-2', checked: false },
-  { penalty: 'Incap', checked: false },
-]
+// A charm's implementation is live when it carries this key and its toggle is on.
+const activeKey = (c: CharacterCharm) => c.mechanicalKeyOverride ?? c.libraryMechanicalKey
+const OX_BODY_KEY = 'ox_body'
+const findOxBody = (charms: CharacterCharm[]) => charms.find(c => activeKey(c) === OX_BODY_KEY && c.mechanicalEnabled)
 
 // Rows the Essence panel needs to show Essence/Power/Will, Motes and Anima without
 // scrolling. LEGACY_ESSENCE_H is the height the first merge assigned when it folded
@@ -55,7 +54,7 @@ const DEFAULT_LAYOUT: PanelLayout[] = [
   { i: 'abilities',  x: 0,  y: 22, w: 16, h: 38, minW: 4, minH: 8 },
   { i: 'defenses',   x: 16, y: 0,  w: 16, h: 12, minW: 4, minH: 8 },
   { i: 'essence',    x: 16, y: 12, w: 16, h: ESSENCE_H, minW: 6, minH: 12 },
-  { i: 'health',     x: 16, y: 36, w: 16, h: 8,  minW: 4, minH: 8 },
+  { i: 'health',     x: 16, y: 36, w: 16, h: 16, minW: 4, minH: 8 },
   { i: 'merits',     x: 32, y: 0,  w: 28, h: 18, minW: 4, minH: 8 },
   { i: 'languages',  x: 32, y: 18, w: 28, h: 10, minW: 4, minH: 8 },
   { i: 'intimacies', x: 32, y: 28, w: 28, h: 18, minW: 4, minH: 8 },
@@ -83,7 +82,7 @@ function defaultSheet(): SheetData {
     defenseBonus: { parry: 0, evasion: 0, soak: 0, hardness: 0, resolve: 0 },
     languages: [], merits: [], intimacies: [],
     motes: { current: 0, committed: 0, total: 0 },
-    health: DEFAULT_HEALTH.map(h => ({ ...h })),
+    damage: 0,
     layout: DEFAULT_LAYOUT.map(l => ({ ...l })),
     charms: [],
     effects: [],
@@ -629,6 +628,13 @@ function CharmPanel({ charms, onChange, exaltType, caste, abilities, attributes,
     }
   }
 
+  // Ox Body: record which health levels purchase `index` took (Solar/Abyssal/Janest choose).
+  function setOxBodyPick(charm: CharacterCharm, index: number, pick: OxBodyPick) {
+    const picks = Array.from({ length: charm.count ?? 1 }, (_, i) => charm.oxBodyPicks?.[i] ?? DEFAULT_OX_BODY_PICK)
+    picks[index] = pick
+    onChange(charms.map(c => c.id === charm.id ? { ...c, oxBodyPicks: picks } : c))
+  }
+
   function startEdit(charm: import('../types/character').CharacterCharm) {
     setEditingId(charm.id)
     setEditDesc(charm.customDescription ?? charm.libraryDescription ?? '')
@@ -714,6 +720,36 @@ function CharmPanel({ charms, onChange, exaltType, caste, abilities, attributes,
                             <span className="text-stone-300">{g.target}</span>: <span className="text-amber-300">{g.selected.join(', ')}</span>
                           </p>
                         ))}
+                      </div>
+                    )}
+                    {activeKey(charm) === OX_BODY_KEY && charm.mechanicalEnabled && (
+                      <div className="rounded border border-amber-900/50 bg-amber-950/20 px-1.5 py-1 space-y-1">
+                        <p className="text-[10px] font-semibold uppercase tracking-wider text-amber-400">Health levels gained</p>
+                        {oxBodyHasChoice(exaltType, caste) ? (
+                          Array.from({ length: charm.count ?? 1 }, (_, i) => {
+                            const pick = charm.oxBodyPicks?.[i] ?? DEFAULT_OX_BODY_PICK
+                            return (
+                              <div key={i} className="flex items-center gap-1.5 text-xs">
+                                <span className="text-stone-500 w-14 shrink-0">Purchase {i + 1}</span>
+                                {([['zero', 'One 0'], ['twoInjured', 'Two −1']] as const).map(([value, label]) => (
+                                  <button key={value} onClick={() => setOxBodyPick(charm, i, value)}
+                                    className={`px-1.5 py-0.5 rounded border text-[11px] transition-colors ${
+                                      pick === value
+                                        ? 'bg-amber-600 border-amber-500 text-white'
+                                        : 'border-stone-600 text-stone-400 hover:border-amber-500 hover:text-amber-300'
+                                    }`}>
+                                    {label}
+                                  </button>
+                                ))}
+                              </div>
+                            )
+                          })
+                        ) : (
+                          <p className="text-xs text-stone-400">
+                            Each purchase adds {oxBodyGrant(exaltType, caste, DEFAULT_OX_BODY_PICK).map(l => l === 0 ? '0' : `−${-l}`).join(' and ')} ({charm.count ?? 1}×)
+                          </p>
+                        )}
+                        <p className="text-[10px] text-stone-500">Plus 1 base Soak, counted once.</p>
                       </div>
                     )}
                     <p className="text-xs text-stone-400 leading-relaxed whitespace-pre-wrap">
@@ -1568,7 +1604,6 @@ function InventoryPanel({ items, onChange, foi, foiOriginals, onFoiChange, dragE
                   <span className="text-xs font-semibold text-amber-400/80 uppercase tracking-wider">{label}</span>
                   <div className="flex items-center gap-1.5">
                     {kind === 'weapon' && (() => {
-                      const activeKey = (c: CharacterCharm) => c.mechanicalKeyOverride ?? c.libraryMechanicalKey
                       const foiCharm = charms.find(c => activeKey(c) === 'foi' && c.mechanicalEnabled)
                       if (!foiCharm) return null
                       const hasUnarmed = kindItems.some(i => i.weight === 'Unarmed')
@@ -1770,7 +1805,7 @@ export default function SheetTab({ sheet, onChange, editMode, gameData: gd }: Pr
     merits: sheet.merits ?? [],
     intimacies: sheet.intimacies ?? [],
     motes: { ...def.motes, ...sheet.motes },
-    health: DEFAULT_HEALTH.map((h, idx) => ({ ...h, checked: sheet.health?.[idx]?.checked ?? false })),
+    damage: sheet.damage ?? legacyDamage(sheet.health),
     layout: (() => {
       const saved = sheet.layout?.length ? sheet.layout.map(l => ({ ...l })) : DEFAULT_LAYOUT.map(l => ({ ...l }))
       const known = new Set(DEFAULT_LAYOUT.map(l => l.i))
@@ -1869,9 +1904,11 @@ export default function SheetTab({ sheet, onChange, editMode, gameData: gd }: Pr
     update({ intimacies: data.intimacies.map(i => i.id === editingIntimacyId ? { ...i, intensity: editIntimacyIntensity, description: editIntimacyDesc.trim() } : i) })
     setEditingIntimacyId(null)
   }
-  function toggleHealth(i: number) {
-    update({ health: data.health.map((h, idx) => idx === i ? { ...h, checked: !h.checked } : h) })
-  }
+  // The track is rebuilt from Ox Body on every render, so it can't drift from the charm.
+  const oxBody = findOxBody(data.charms)
+  const healthTrack = buildHealthTrack(data.exaltType, data.caste, oxBody ? (oxBody.count ?? 1) : 0, oxBody?.oxBodyPicks ?? [])
+  const damage = clampDamage(data.damage, healthTrack.length)
+  const setDamage = (n: number) => update({ damage: clampDamage(n, healthTrack.length) })
 
   const panelBase = "bg-stone-900 border border-stone-700 rounded-lg p-2 overflow-y-auto no-scrollbar h-full"
 
@@ -1904,7 +1941,6 @@ export default function SheetTab({ sheet, onChange, editMode, gameData: gd }: Pr
       // purchase; while its implementation is active, the Ex tags are derived
       // from those picks instead of being manually toggled — see CLAUDE.md /
       // the mechanicalKey gating pattern used by FoI in InventoryPanel above.
-      const activeKey = (c: CharacterCharm) => c.mechanicalKeyOverride ?? c.libraryMechanicalKey
       const excellencyCharms = data.charms.filter(c => activeKey(c) === 'excellency' && c.mechanicalEnabled)
       const excellencyManaged = excellencyCharms.length > 0
       const excellencyAbilities = new Set(excellencyCharms.flatMap(c => c.picks ?? []))
@@ -1975,6 +2011,7 @@ export default function SheetTab({ sheet, onChange, editMode, gameData: gd }: Pr
         stamina, dexterity: dex, closeCombat: cc, athletics: ath, physique: phys,
         integrity: integ, essence: data.essence ?? 1,
         bestWeaponDefense: bestWpnDef, bestArmorSoak, bestArmorHardness: bestArmorHard,
+        oxBody: !!oxBody,
         fullDefense: data.fullDefense, defendOther: data.defenseOther,
         bonus: {
           parry: db.parry ?? 0, evasion: db.evasion ?? 0, soak: db.soak ?? 0,
@@ -2018,7 +2055,7 @@ export default function SheetTab({ sheet, onChange, editMode, gameData: gd }: Pr
               weaponLine('evasion'), bonusLine('evasion'),
             ], bonusInput('evasion'))}
             {calcRow('Soak', soak, [
-              { label: 'Base', value: soakBase, detail: `1, plus 1 at Physique 3+ (you have ${phys})` },
+              { label: 'Base', value: soakBase, detail: `1, plus 1 at Physique 3+ (you have ${phys})${oxBody ? ', plus 1 from Ox Body Technique' : ''}` },
               gearLine('Armor', 'Best equipped armor', bestArmorSoak, capped.soak), bonusLine('soak'),
             ], bonusInput('soak'))}
             {calcRow('Hardness', hardness, [
@@ -2156,20 +2193,63 @@ export default function SheetTab({ sheet, onChange, editMode, gameData: gd }: Pr
       )
     })(),
 
-    health: (
-      <div className={panelBase}>
-        <SectionHeader title="Health" />
-        <div className="flex flex-wrap gap-2">
-          {data.health.map((box, i) => (
-            <div key={i} className="flex flex-col items-center gap-0.5">
-              <span className="text-xs text-stone-500">{box.penalty}</span>
-              <button onClick={() => toggleHealth(i)}
-                className={`w-6 h-6 rounded border-2 transition-colors ${box.checked ? 'bg-red-600 border-red-500' : 'bg-transparent border-stone-600 hover:border-red-400'}`} />
-            </div>
-          ))}
+    health: (() => {
+      const wound = currentWound(healthTrack, damage)
+      const penalty = woundPenalty(healthTrack, damage)
+      const status = wound === null ? { text: 'Unhurt', cls: 'bg-emerald-950 text-emerald-300 border-emerald-800' }
+        : wound === 'incap' ? { text: 'Incapacitated', cls: 'bg-red-950 text-red-300 border-red-700' }
+        : penalty === 0 ? { text: 'Bruised · no penalty', cls: 'bg-amber-950 text-amber-300 border-amber-800' }
+        : { text: `${penalty} to rolls`, cls: 'bg-red-950 text-red-300 border-red-800' }
+      // Consecutive levels of the same kind form one labelled group.
+      const groups: { level: typeof healthTrack[number]['level']; start: number; boxes: typeof healthTrack }[] = []
+      healthTrack.forEach((box, idx) => {
+        const last = groups[groups.length - 1]
+        if (last && last.level === box.level) last.boxes.push(box)
+        else groups.push({ level: box.level, start: idx, boxes: [box] })
+      })
+      return (
+        <div className={panelBase}>
+          <div className="flex items-center gap-2 mb-2">
+            <div className="text-xs font-semibold text-stone-400 uppercase tracking-widest">Health</div>
+            <span className="text-xs text-stone-500 font-mono" data-tip="Damage taken / health levels">
+              <span className="text-stone-200">{damage}</span>/{healthTrack.length}
+            </span>
+            <span className={`ml-auto text-[10px] font-semibold px-1.5 py-0.5 rounded border whitespace-nowrap ${status.cls}`}>{status.text}</span>
+            {damage > 0 && (
+              <button onClick={() => setDamage(0)} data-tip="Heal all" aria-label="Heal all"
+                className="text-stone-500 hover:text-emerald-400 transition-colors text-sm leading-none">↺</button>
+            )}
+          </div>
+          <div className="flex flex-wrap gap-x-3 gap-y-2">
+            {groups.map(g => (
+              <div key={g.start} className="flex flex-col gap-1">
+                <span className="text-[10px] text-stone-500 whitespace-nowrap">
+                  {LEVEL_NAMES[String(g.level)]}{g.level !== 'incap' && <span className="text-stone-600"> {g.level === 0 ? '0' : `−${-g.level}`}</span>}
+                </span>
+                <div className="flex gap-1">
+                  {g.boxes.map((box, j) => {
+                    const idx = g.start + j
+                    const filled = idx < damage
+                    return (
+                      <button key={idx} onClick={() => setDamage(damageAfterClick(damage, idx))}
+                        aria-label={`${LEVEL_NAMES[String(box.level)]} level ${idx + 1}${filled ? ', damaged' : ''}`}
+                        data-tip={box.oxBody ? 'From Ox Body Technique' : undefined}
+                        className={`relative w-5 h-5 rounded border-2 transition-colors ${
+                          filled
+                            ? (box.level === 'incap' ? 'bg-red-800 border-red-600' : 'bg-red-600 border-red-500')
+                            : 'bg-transparent border-stone-600 hover:border-red-400'
+                        }`}>
+                        {box.oxBody && <span className="absolute top-0.5 right-0.5 w-1 h-1 rounded-full bg-amber-500" />}
+                      </button>
+                    )
+                  })}
+                </div>
+              </div>
+            ))}
+          </div>
         </div>
-      </div>
-    ),
+      )
+    })(),
 
     merits: (
       <div className="bg-stone-900 border border-stone-700 rounded-lg p-2 overflow-hidden h-full flex flex-col">

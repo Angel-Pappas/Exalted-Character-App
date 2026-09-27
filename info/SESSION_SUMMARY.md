@@ -155,6 +155,10 @@ Only one armor can be equipped at a time (equipping one auto-unequips others).
 - Tag effects: Shield→−1 dmg, Balanced→+1 ovw, Improvised→−2 acc, Defensive→+1 def
 - FoI state (`foi` + `foiOriginals`) is **persisted in SheetData → Supabase** (survives refresh)
 
+### Health track and Ox Body Technique
+- Damage is one number (`SheetData.damage`), filled left to right; the track itself is rebuilt each render from the starting seven plus Ox Body levels (`src/lib/health.ts`, tested)
+- Ox Body is recognised by mechanical key `ox_body` (+ implementation on): +1 base Soak once (`defenses.ts`), and per-purchase health levels by Exalt type; Solar/Abyssal/Janest choose per purchase (`CharacterCharm.oxBodyPicks`)
+
 ### Inventory
 - Flat `InventoryItem[]`, rendered as Weapons → Armor → Other
 - Weapons: accuracy, damage, defense, overwhelming; artifact toggle (+1 all stats); tags
