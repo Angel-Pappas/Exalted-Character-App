@@ -10,6 +10,14 @@ export type MilestoneType = typeof MILESTONE_TYPES[number]
 
 export type MilestoneAmounts = Record<MilestoneType, number>
 
+/** What each milestone type can be spent on (Angel's house table). */
+export const MILESTONE_USES: Record<MilestoneType, string[]> = {
+  personal: ['New mode or repurchase a Charm', '1–3 dots of an Ability', '1 specialty'],
+  exalted: ['New Charm (Universal or Exalt)', 'New mode or repurchase'],
+  minor: ['New Universal or Exalt Charm', 'Ability by 1'],
+  major: ['Attribute by 1'],
+}
+
 export const KIND_LABELS: Record<MilestoneKind, string> = {
   gain: 'Income',
   purchase: 'Expense',
@@ -66,25 +74,19 @@ export function todayKey(now: Date = new Date()): string {
   return `${y}-${m}-${d}`
 }
 
-const MONTHS = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec']
-
-/** "2026-01-03" → "3 Jan 2026"; undated → "—". */
-export function formatDate(date: string | undefined): string {
-  const key = dateKey(date)
-  if (!key) return '—'
-  const [y, m, d] = key.split('-').map(Number)
-  return `${d} ${MONTHS[m - 1]} ${y}`
-}
-
 /**
- * Ledger order. Oldest-first reads like the spreadsheet: undated entries
- * (the starting build) on top, then by date, and entries sharing a date keep
- * the order they were logged in. Newest-first is the exact reverse.
+ * Ledger order. Oldest-first reads like the spreadsheet: the Char. Creation
+ * rows on top, then undated entries (the starting build), then by date;
+ * entries sharing a date keep the order they were logged in. Newest-first is
+ * the exact reverse, so the creation rows sink to the bottom.
  */
 export function sortLedger(entries: MilestoneTransaction[], order: 'oldest' | 'newest'): MilestoneTransaction[] {
-  const oldest = entries
+  const creation = entries.filter(e => e.kind === 'creation')
+  const rest = entries
     .map((entry, index) => ({ entry, index, key: dateKey(entry.date) }))
+    .filter(x => x.entry.kind !== 'creation')
     .sort((a, b) => (a.key < b.key ? -1 : a.key > b.key ? 1 : a.index - b.index))
     .map(x => x.entry)
+  const oldest = [...creation, ...rest]
   return order === 'oldest' ? oldest : oldest.reverse()
 }

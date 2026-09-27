@@ -1,6 +1,6 @@
 import { describe, it, expect } from 'vitest'
 import {
-  dateKey, formatDate, isValidEntry, parseAmount, remaining, sortLedger, todayKey, totalEarned, totalSpent,
+  MILESTONE_TYPES, MILESTONE_USES, dateKey, isValidEntry, parseAmount, remaining, sortLedger, todayKey, totalEarned, totalSpent,
 } from './milestones'
 import type { MilestoneTransaction } from '../types/character'
 
@@ -88,12 +88,6 @@ describe('Dates', () => {
     expect(dateKey('3/1/26')).toBe('')
   })
 
-  it('formats day-first like the spreadsheet, without month/day ambiguity', () => {
-    expect(formatDate('2026-01-03')).toBe('3 Jan 2026')
-    expect(formatDate('2026-09-26')).toBe('26 Sep 2026')
-    expect(formatDate('')).toBe('—')
-  })
-
   it('today is taken in local time, zero-padded', () => {
     expect(todayKey(new Date(2026, 0, 3, 23, 59))).toBe('2026-01-03')
   })
@@ -105,20 +99,28 @@ describe('Ledger order', () => {
   const buy1a = tx({ kind: 'purchase', description: 'buy1a', date: '2026-01-03' })
   const buy1b = tx({ kind: 'purchase', description: 'buy1b', date: '2026-01-03' })
   const s2 = tx({ kind: 'gain', description: 's2', date: '2026-01-30T10:00:00.000Z' })
-  const logged = [s2, buy1a, start, s1, buy1b] // deliberately scrambled across dates
+  const cc1 = tx({ kind: 'creation', description: 'cc1' })
+  const cc2 = tx({ kind: 'creation', description: 'cc2', date: '2026-09-01' }) // a date never moves a creation row
+  const logged = [s2, cc1, buy1a, start, s1, cc2, buy1b] // deliberately scrambled across dates
   const names = (list: MilestoneTransaction[]) => list.map(t => t.description)
 
-  it('oldest-first puts undated rows on top, then by date, same-day rows in logged order', () => {
-    expect(names(sortLedger(logged, 'oldest'))).toEqual(['start', 'buy1a', 's1', 'buy1b', 's2'])
+  it('oldest-first: creation rows on top, then undated rows, then by date, same-day rows in logged order', () => {
+    expect(names(sortLedger(logged, 'oldest'))).toEqual(['cc1', 'cc2', 'start', 'buy1a', 's1', 'buy1b', 's2'])
   })
 
-  it('newest-first is the exact reverse', () => {
-    expect(names(sortLedger(logged, 'newest'))).toEqual(['s2', 'buy1b', 's1', 'buy1a', 'start'])
+  it('newest-first is the exact reverse, so creation rows sit at the bottom', () => {
+    expect(names(sortLedger(logged, 'newest'))).toEqual(['s2', 'buy1b', 's1', 'buy1a', 'start', 'cc2', 'cc1'])
   })
 
   it('does not mutate the stored list', () => {
     const copy = [...logged]
     sortLedger(logged, 'newest')
     expect(logged).toEqual(copy)
+  })
+})
+
+describe('Spend options', () => {
+  it('every milestone type lists at least one thing it can buy', () => {
+    for (const t of MILESTONE_TYPES) expect(MILESTONE_USES[t].length).toBeGreaterThan(0)
   })
 })

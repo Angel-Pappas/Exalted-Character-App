@@ -1,8 +1,9 @@
 import { Fragment, useState } from 'react'
 import type { MilestoneKind, MilestoneTransaction } from '../types/character'
+import { Tooltip } from '../components/Tooltip'
 import {
-  KIND_LABELS, MILESTONE_TYPES, dateKey, formatDate, isValidEntry, parseAmount,
-  remaining, sortLedger, todayKey, totalEarned, totalSpent,
+  KIND_LABELS, MILESTONE_TYPES, MILESTONE_USES, dateKey, isValidEntry, parseAmount,
+  remaining, sortLedger, todayKey, totalEarned,
   type MilestoneAmounts, type MilestoneType,
 } from '../lib/milestones'
 
@@ -67,7 +68,27 @@ function readOrder(): Order {
   }
 }
 
-function EntryFields({ draft, setDraft }: { draft: Draft; setDraft: (d: Draft) => void }) {
+function SpendOptions({ type }: { type: MilestoneType }) {
+  return (
+    <div className="min-w-44">
+      <div className="text-[10px] font-semibold uppercase tracking-wider text-amber-400 mb-1.5">
+        Spend <span className="capitalize">{type}</span> on
+      </div>
+      <ul className="space-y-1">
+        {MILESTONE_USES[type].map(use => (
+          <li key={use} className="flex gap-2">
+            <span className="text-amber-500/70">◆</span>
+            <span>{use}</span>
+          </li>
+        ))}
+      </ul>
+    </div>
+  )
+}
+
+// Date isn't shown in the log; it only decides the order. New entries take
+// today's date automatically, and the edit form lets a misplaced one be moved.
+function EntryFields({ draft, setDraft, showDate }: { draft: Draft; setDraft: (d: Draft) => void; showDate: boolean }) {
   return (
     <div className="space-y-3">
       <div className="flex flex-wrap gap-3">
@@ -83,15 +104,17 @@ function EntryFields({ draft, setDraft }: { draft: Draft; setDraft: (d: Draft) =
             ))}
           </select>
         </div>
-        <div>
-          <label className="block text-xs text-stone-400 mb-1">Date (optional)</label>
-          <input
-            type="date"
-            value={draft.date}
-            onChange={e => setDraft({ ...draft, date: e.target.value })}
-            className={inputClass}
-          />
-        </div>
+        {showDate && draft.kind !== 'creation' && (
+          <div>
+            <label className="block text-xs text-stone-400 mb-1">Date (sets its place in the log)</label>
+            <input
+              type="date"
+              value={draft.date}
+              onChange={e => setDraft({ ...draft, date: e.target.value })}
+              className={inputClass}
+            />
+          </div>
+        )}
       </div>
       {draft.kind === 'creation' ? (
         <p className="text-xs text-stone-500">Bought with the starting build — recorded for reference, costs no milestones.</p>
@@ -185,18 +208,27 @@ export default function MilestonesTab({ milestones, onChange }: Props) {
   return (
     <div className="p-4 max-w-5xl mx-auto space-y-4">
 
-      {/* Totals — Remaining big, Total and Spent underneath (the spreadsheet's two summary rows) */}
+      {/* Totals — remaining / total earned; hover a box for what that type can buy */}
       <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
-        {MILESTONE_TYPES.map(type => (
-          <div key={type} className="bg-stone-900 border border-stone-700 rounded-lg p-3 text-center">
-            <div className="text-xs text-stone-400 mb-1 capitalize">{type}</div>
-            <div className="text-2xl font-bold text-amber-400">{remaining(milestones, type)}</div>
-            <div className="text-[11px] text-stone-500 uppercase tracking-wide">remaining</div>
-            <div className="text-xs text-stone-500 mt-1">
-              {totalEarned(milestones, type)} earned · {totalSpent(milestones, type)} spent
-            </div>
-          </div>
-        ))}
+        {MILESTONE_TYPES.map(type => {
+          const left = remaining(milestones, type)
+          return (
+            <Tooltip
+              key={type}
+              content={<SpendOptions type={type} />}
+              className="group cursor-help rounded-xl border border-stone-700 bg-gradient-to-b from-stone-900 to-stone-950 px-3 py-4 text-center transition-colors hover:border-amber-500/50"
+            >
+              <div className="text-[11px] font-semibold uppercase tracking-widest text-stone-400 group-hover:text-amber-300 transition-colors">
+                {type}
+              </div>
+              <div className="mt-2 font-mono leading-none">
+                <span className={`text-3xl font-bold ${left > 0 ? 'text-amber-400' : 'text-stone-500'}`}>{left}</span>
+                <span className="text-lg text-stone-500"> / {totalEarned(milestones, type)}</span>
+              </div>
+              <div className="mt-2 text-[10px] uppercase tracking-wider text-stone-600">remaining / total</div>
+            </Tooltip>
+          )
+        })}
       </div>
 
       {/* Action buttons */}
@@ -233,7 +265,7 @@ export default function MilestonesTab({ milestones, onChange }: Props) {
       {adding && (
         <div className="bg-stone-900 border border-stone-700 rounded-lg p-4 space-y-3">
           <h3 className="text-sm font-semibold text-stone-200">New entry</h3>
-          <EntryFields draft={adding} setDraft={setAdding} />
+          <EntryFields draft={adding} setDraft={setAdding} showDate={false} />
           <div className="flex gap-2">
             <button
               onClick={saveAdd}
@@ -253,7 +285,6 @@ export default function MilestonesTab({ milestones, onChange }: Props) {
           <table className="w-full text-sm">
             <thead>
               <tr className="text-xs text-stone-400 border-b border-stone-700">
-                <th className="text-left py-2 pr-3 font-medium">Date</th>
                 <th className="text-left py-2 pr-3 font-medium">Type</th>
                 <th className="text-center py-2 px-2 font-medium">Personal</th>
                 <th className="text-center py-2 px-2 font-medium">Exalted</th>
@@ -267,7 +298,6 @@ export default function MilestonesTab({ milestones, onChange }: Props) {
               {sorted.map(tx => (
                 <Fragment key={tx.id}>
                   <tr className="border-b border-stone-800 hover:bg-stone-900/50">
-                    <td className="py-2 pr-3 text-xs text-stone-400 whitespace-nowrap">{formatDate(tx.date)}</td>
                     <td className="py-2 pr-3">
                       <span className={`text-xs font-semibold px-1.5 py-0.5 rounded whitespace-nowrap ${KIND_BADGE[tx.kind]}`}>
                         {KIND_LABELS[tx.kind]}
@@ -306,8 +336,8 @@ export default function MilestonesTab({ milestones, onChange }: Props) {
                   </tr>
                   {editingId === tx.id && (
                     <tr className="border-b border-stone-700 bg-stone-900">
-                      <td colSpan={8} className="px-3 py-3 space-y-3">
-                        <EntryFields draft={editDraft} setDraft={setEditDraft} />
+                      <td colSpan={7} className="px-3 py-3 space-y-3">
+                        <EntryFields draft={editDraft} setDraft={setEditDraft} showDate />
                         <div className="flex gap-2">
                           <button
                             onClick={() => saveEdit(tx)}
