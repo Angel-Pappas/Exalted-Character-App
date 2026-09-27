@@ -31,7 +31,9 @@
 //
 // Ox Body Technique (charm library text): "The Exalt increases her base Soak by one."
 // Repurchase: "The Soak increase only applies once." So it's a flag, not a count, and
-// it lands in the base, lifting the ceiling the +5 cap measures from.
+// it lands in the base, lifting the ceiling the +5 cap measures from. It is still
+// reported separately (`oxBodySoak`) so the tooltip can give it its own line, leaving
+// `soakBase` as just the book's Physique formula.
 // Which leaves gear as the only capped source today: armour Soak/Hardness, and weapon
 // Defense on Parry/Evasion. Resolve has no capped source yet — its cap cannot bite
 // until charms feed it one. The machinery is wired for all five regardless.
@@ -73,6 +75,8 @@ export interface DefenseResult {
   soakBase: number
   hardnessBase: number
   resolveBase: number
+  /** Ox Body Technique's +1 — part of Soak's base for the cap, but listed on its own. */
+  oxBodySoak: number
   /** Weapon defense actually applied — 0 unless Full Defense / Defend Other is on. */
   weaponBonus: number
   /** Which defences had gear trimmed by the +5 cap, so the panel can say so. */
@@ -110,7 +114,8 @@ export function bestEquipped(
 export function calculateDefenses(i: DefenseInputs): DefenseResult {
   const parryBase = Math.ceil((i.stamina + i.closeCombat) / 2)
   const evasionBase = Math.ceil((i.dexterity + i.athletics) / 2)
-  const soakBase = 1 + (i.physique >= 3 ? 1 : 0) + (i.oxBody ? 1 : 0)
+  const soakBase = 1 + (i.physique >= 3 ? 1 : 0)
+  const oxBodySoak = i.oxBody ? 1 : 0
   const hardnessBase = 2 + i.essence
   const resolveBase = i.integrity >= 3 ? 4 : i.integrity >= 1 ? 3 : 2
 
@@ -119,7 +124,7 @@ export function calculateDefenses(i: DefenseInputs): DefenseResult {
 
   const parry = applyLimits(parryBase, weaponBonus, i.bonus.parry)
   const evasion = applyLimits(evasionBase, weaponBonus, i.bonus.evasion)
-  const soak = applyLimits(soakBase, i.bestArmorSoak, i.bonus.soak)
+  const soak = applyLimits(soakBase + oxBodySoak, i.bestArmorSoak, i.bonus.soak)
   const hardness = applyLimits(hardnessBase, i.bestArmorHardness, i.bonus.hardness)
   // No capped source feeds Resolve yet — Intimacies/Virtues come through the manual box,
   // which is exempt. Routed through applyLimits anyway so the floor applies and so a
@@ -127,7 +132,7 @@ export function calculateDefenses(i: DefenseInputs): DefenseResult {
   const resolve = applyLimits(resolveBase, 0, i.bonus.resolve)
 
   return {
-    parryBase, evasionBase, soakBase, hardnessBase, resolveBase, weaponBonus,
+    parryBase, evasionBase, soakBase, hardnessBase, resolveBase, oxBodySoak, weaponBonus,
     parry: parry.value,
     evasion: evasion.value,
     soak: soak.value,

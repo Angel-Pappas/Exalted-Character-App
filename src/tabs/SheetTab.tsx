@@ -722,6 +722,27 @@ function CharmPanel({ charms, onChange, exaltType, caste, abilities, attributes,
                         ))}
                       </div>
                     )}
+                    <p className="text-xs text-stone-400 leading-relaxed whitespace-pre-wrap">
+                      {charm.customDescription ?? charm.libraryDescription ?? <em className="text-stone-600">No description loaded — library text shown in browse.</em>}
+                    </p>
+                    {charm.libraryModes && charm.libraryModes.length > 0 && (
+                      <div className="space-y-1">
+                        {sortModes(charm.libraryModes.filter(m => isModeInScope(m.label, exaltType, caste, false))).map((m, i) => {
+                          const lockReasons = modeLockReasons(m, charm.libraryModes, charm.count ?? 1, essence, abilities)
+                          const locked = lockReasons.length > 0
+                          return (
+                            <div key={`${m.label}-${i}`} className={locked ? 'opacity-40' : undefined} data-tip={locked ? `Locked: ${lockReasons.join(', ')}` : undefined}>
+                              <p className={`text-xs font-bold flex items-center gap-1 ${locked ? 'text-stone-500' : 'text-amber-400'}`}>
+                                <span>{modeIcon(m.label).glyph}</span>
+                                {m.label}
+                              </p>
+                              <p className="text-xs text-stone-400 leading-relaxed whitespace-pre-wrap">{m.text}</p>
+                              {locked && <p className="text-xs text-stone-600">Locked: {lockReasons.join(', ')}</p>}
+                            </div>
+                          )
+                        })}
+                      </div>
+                    )}
                     {activeKey(charm) === OX_BODY_KEY && charm.mechanicalEnabled && (
                       <div className="rounded border border-amber-900/50 bg-amber-950/20 px-1.5 py-1 space-y-1">
                         <p className="text-[10px] font-semibold uppercase tracking-wider text-amber-400">Health levels gained</p>
@@ -750,27 +771,6 @@ function CharmPanel({ charms, onChange, exaltType, caste, abilities, attributes,
                           </p>
                         )}
                         <p className="text-[10px] text-stone-500">Plus 1 base Soak, counted once.</p>
-                      </div>
-                    )}
-                    <p className="text-xs text-stone-400 leading-relaxed whitespace-pre-wrap">
-                      {charm.customDescription ?? charm.libraryDescription ?? <em className="text-stone-600">No description loaded — library text shown in browse.</em>}
-                    </p>
-                    {charm.libraryModes && charm.libraryModes.length > 0 && (
-                      <div className="space-y-1">
-                        {sortModes(charm.libraryModes.filter(m => isModeInScope(m.label, exaltType, caste, false))).map((m, i) => {
-                          const lockReasons = modeLockReasons(m, charm.libraryModes, charm.count ?? 1, essence, abilities)
-                          const locked = lockReasons.length > 0
-                          return (
-                            <div key={`${m.label}-${i}`} className={locked ? 'opacity-40' : undefined} data-tip={locked ? `Locked: ${lockReasons.join(', ')}` : undefined}>
-                              <p className={`text-xs font-bold flex items-center gap-1 ${locked ? 'text-stone-500' : 'text-amber-400'}`}>
-                                <span>{modeIcon(m.label).glyph}</span>
-                                {m.label}
-                              </p>
-                              <p className="text-xs text-stone-400 leading-relaxed whitespace-pre-wrap">{m.text}</p>
-                              {locked && <p className="text-xs text-stone-600">Locked: {lockReasons.join(', ')}</p>}
-                            </div>
-                          )
-                        })}
                       </div>
                     )}
                     <div className="flex items-center gap-2 flex-wrap">
@@ -2006,7 +2006,7 @@ export default function SheetTab({ sheet, onChange, editMode, gameData: gd }: Pr
       const db = data.defenseBonus
       const {
         parry, evasion, soak, hardness, resolve,
-        parryBase, evasionBase, soakBase, hardnessBase, resolveBase, weaponBonus: wpnBonus, capped,
+        parryBase, evasionBase, soakBase, hardnessBase, resolveBase, oxBodySoak, weaponBonus: wpnBonus, capped,
       } = calculateDefenses({
         stamina, dexterity: dex, closeCombat: cc, athletics: ath, physique: phys,
         integrity: integ, essence: data.essence ?? 1,
@@ -2023,6 +2023,10 @@ export default function SheetTab({ sheet, onChange, editMode, gameData: gd }: Pr
           onChange={e => update({ defenseBonus: { ...db, [key]: parseInt(e.target.value) || 0 } })}
           className="w-[30px] text-center bg-stone-800 border border-stone-600 text-stone-100 rounded px-1 py-0.5 text-xs focus:outline-none focus:border-amber-500" />
       )
+      // Line order in every breakdown (Angel, 2026-09-27): Base (the book formula only),
+      // then item bonuses, then each other source (charms etc.) on its own line, and
+      // Manual bonus always last. A new bonus source gets a new line — never folded
+      // into Base's text.
       // Display only: every number here is read from calculateDefenses' result or its
       // inputs. The one piece of arithmetic is showing gear at the +5 it was trimmed
       // to, which is what `capped` reports; any gap left after that is the floor.
@@ -2034,7 +2038,7 @@ export default function SheetTab({ sheet, onChange, editMode, gameData: gd }: Pr
         ? gearLine('Weapon', 'Best equipped weapon', bestWpnDef, capped[key])
         : { label: 'Weapon', value: 0, signed: true, muted: true, detail: 'Only with Full Defense or Defend Other' }
       const bonusLine = (key: keyof typeof db): BreakdownLine =>
-        ({ label: 'Bonus', value: db[key] ?? 0, signed: true, muted: !db[key], detail: 'Manual adjustment' })
+        ({ label: 'Manual bonus', value: db[key] ?? 0, signed: true, muted: !db[key], detail: 'Typed into the box beside it' })
       const calcRow = (label: string, total: number, lines: BreakdownLine[], bonus: ReturnType<typeof bonusInput>) => (
         <Tooltip className="flex items-center gap-1.5" content={<DefenseBreakdown title={label} total={total} lines={lines} />}>
           <span className="text-xs text-stone-400 w-16 shrink-0">{label}</span>
@@ -2055,8 +2059,10 @@ export default function SheetTab({ sheet, onChange, editMode, gameData: gd }: Pr
               weaponLine('evasion'), bonusLine('evasion'),
             ], bonusInput('evasion'))}
             {calcRow('Soak', soak, [
-              { label: 'Base', value: soakBase, detail: `1, plus 1 at Physique 3+ (you have ${phys})${oxBody ? ', plus 1 from Ox Body Technique' : ''}` },
-              gearLine('Armor', 'Best equipped armor', bestArmorSoak, capped.soak), bonusLine('soak'),
+              { label: 'Base', value: soakBase, detail: `1, plus 1 at Physique 3+ (you have ${phys})` },
+              gearLine('Armor', 'Best equipped armor', bestArmorSoak, capped.soak),
+              ...(oxBodySoak ? [{ label: 'Ox Body', value: oxBodySoak, signed: true, detail: 'Ox Body Technique, counted once' }] : []),
+              bonusLine('soak'),
             ], bonusInput('soak'))}
             {calcRow('Hardness', hardness, [
               { label: 'Base', value: hardnessBase, detail: `2 + Essence ${data.essence ?? 1}` },
@@ -2196,10 +2202,11 @@ export default function SheetTab({ sheet, onChange, editMode, gameData: gd }: Pr
     health: (() => {
       const wound = currentWound(healthTrack, damage)
       const penalty = woundPenalty(healthTrack, damage)
-      const status = wound === null ? { text: 'Unhurt', cls: 'bg-emerald-950 text-emerald-300 border-emerald-800' }
+      // No badge while unhurt; otherwise the rightmost filled level's name and penalty.
+      const status = wound === null ? null
         : wound === 'incap' ? { text: 'Incapacitated', cls: 'bg-red-950 text-red-300 border-red-700' }
-        : penalty === 0 ? { text: 'Bruised · no penalty', cls: 'bg-amber-950 text-amber-300 border-amber-800' }
-        : { text: `${penalty} to rolls`, cls: 'bg-red-950 text-red-300 border-red-800' }
+        : penalty === 0 ? { text: 'Bruised', cls: 'bg-amber-950 text-amber-300 border-amber-800' }
+        : { text: `${LEVEL_NAMES[String(wound)]} −${-penalty}`, cls: 'bg-red-950 text-red-300 border-red-800' }
       // Consecutive levels of the same kind form one labelled group.
       const groups: { level: typeof healthTrack[number]['level']; start: number; boxes: typeof healthTrack }[] = []
       healthTrack.forEach((box, idx) => {
@@ -2214,7 +2221,7 @@ export default function SheetTab({ sheet, onChange, editMode, gameData: gd }: Pr
             <span className="text-xs text-stone-500 font-mono" data-tip="Damage taken / health levels">
               <span className="text-stone-200">{damage}</span>/{healthTrack.length}
             </span>
-            <span className={`ml-auto text-[10px] font-semibold px-1.5 py-0.5 rounded border whitespace-nowrap ${status.cls}`}>{status.text}</span>
+            {status && <span className={`ml-auto text-[10px] font-semibold px-1.5 py-0.5 rounded border whitespace-nowrap ${status.cls}`}>{status.text}</span>}
             {damage > 0 && (
               <button onClick={() => setDamage(0)} data-tip="Heal all" aria-label="Heal all"
                 className="text-stone-500 hover:text-emerald-400 transition-colors text-sm leading-none">↺</button>

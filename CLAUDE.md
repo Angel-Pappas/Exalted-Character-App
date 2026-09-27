@@ -15,6 +15,13 @@ Stated 2026-07-16, and it does not expire:
 - **Tests come before the refactor they protect, not after.** Extract pure logic into `src/lib/*`, test it, then change it.
 - **"Best practice" is a means, not the goal.** Working software is the goal. A rule that buys this project nothing (e.g. dev-server-only lint rules) gets turned off in config with a written reason — not obeyed by contorting code, and not left failing. Say so plainly rather than quietly complying.
 
+## Breakdown tooltips — one line per source (Angel, 2026-09-27)
+Every "where does this number come from" tooltip (Defenses today, any future ones) lists:
+1. **Base** — only the book formula, with its maths explained. Never fold a bonus into Base's text.
+2. **Item bonuses** (weapon, armor).
+3. **Every other source on its own line** (e.g. "Ox Body +1"), whenever a new charm/merit/effect adds to the number.
+4. **Manual bonus** — always last, labelled exactly "Manual bonus".
+
 ## Git workflow — do not ask
 - **Always `git commit` and `git push` immediately after every code change.** Do not ask for confirmation first. This is a standing, pre-authorized exception to the general "confirm before pushing" default.
 - Never prompt for permission for anything **except**: permanently deleting DB data, or changing a user's admin access. Everything else — commits, pushes, edits, non-destructive migrations — just do it.

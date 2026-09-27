@@ -17,9 +17,15 @@ const item = (over: Partial<InventoryItem> & Pick<InventoryItem, 'kind'>): Inven
 })
 
 describe('Ox Body Technique — "increases her base Soak by one ... only applies once"', () => {
-  it('adds 1 to base Soak', () => {
-    expect(calculateDefenses(inputs({ physique: 5, oxBody: true })).soakBase).toBe(3)
-    expect(calculateDefenses(inputs({ physique: 5, oxBody: true })).soak).toBe(3)
+  it('adds 1 to Soak, reported on its own line, leaving the Physique base untouched', () => {
+    const r = calculateDefenses(inputs({ physique: 5, oxBody: true }))
+    expect(r.soak).toBe(3)
+    expect(r.oxBodySoak).toBe(1)
+    expect(r.soakBase).toBe(2)
+  })
+
+  it('reports 0 without the charm', () => {
+    expect(calculateDefenses(inputs({ physique: 5 })).oxBodySoak).toBe(0)
   })
 
   it('works below Physique 3 too', () => {
@@ -35,7 +41,7 @@ describe('Ox Body Technique — "increases her base Soak by one ... only applies
   it('touches nothing but Soak', () => {
     const off = calculateDefenses(inputs({ stamina: 3, closeCombat: 3, integrity: 3, oxBody: false }))
     const on = calculateDefenses(inputs({ stamina: 3, closeCombat: 3, integrity: 3, oxBody: true }))
-    expect({ ...on, soak: 0, soakBase: 0 }).toEqual({ ...off, soak: 0, soakBase: 0 })
+    expect({ ...on, soak: 0, oxBodySoak: 0 }).toEqual({ ...off, soak: 0, oxBodySoak: 0 })
   })
 })
 
