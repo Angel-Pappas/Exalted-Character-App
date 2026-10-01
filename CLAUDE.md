@@ -29,15 +29,15 @@ passwords — `App\Support\SupabasePassword` relabels Supabase's `$2a$` bcrypt h
 both characters and all game data were copied from Supabase and verified identical
 (row counts, password-hash and sheet fingerprints). Work is on `main`.
 
-The old app is retired but not deleted — Angel decides what happens to it:
-- **Vercel** project `exalted-character-app` is frozen (Ignored Build Step `exit 0`), still
-  serving the last old version at https://exalted-character-app.vercel.app.
-- **Supabase** project `Exalted-Character-App` still holds the original data. Its
-  `user_profiles` update policy lets any signed-in player make themselves admin; Angel
-  chose not to patch it since nobody uses it. The new app closes this by design
-  (`AdminTest`: "gives a player no way to make themselves admin").
-- The raw Supabase export (including password hashes) is in
-  `~/backups/exalted/supabase-export/` (mode 700). Delete it once the old app is gone.
+The old app is gone: Angel deleted the Vercel project `exalted-character-app` and the
+Supabase project `Exalted-Character-App` on 2026-10-01. There is nothing left to fall back
+to — the VM and its MySQL backups (`~/backups/exalted/`) are the only copies. The
+Supabase admin-escalation hole went with it; the new app closes it by design
+(`AdminTest`: "gives a player no way to make themselves admin").
+- The raw Supabase export (including password hashes) is still in
+  `~/backups/exalted/supabase-export/` (mode 700), awaiting Angel's go-ahead to delete.
+- `ImportSupabaseContent` / `ImportSupabaseUsers` can no longer reach a source; keep
+  `SupabasePassword` — the imported accounts still log in with `$2a$` hashes.
 
 ## Workflow on the VM — two folders, never mix them up
 - **`/home/ploi/exalted-dev`** — the **dev checkout**. All editing, building and testing
