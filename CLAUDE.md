@@ -51,7 +51,8 @@ the old app; whatever remains is to be fixed in the new setup.
   the live MySQL.
 - **`/home/ploi/exalted.pappas.yoltobots.click`** — the **live app** nginx serves. Never
   edit, build or run tests there. It changes **only** through `./deploy.sh`, which backs
-  up MySQL first (`backup-db.sh` → `~/backups/exalted/`, aborts the deploy if the backup
+  up MySQL first (`backup-db.sh` → `~/backups/exalted/`, also run nightly at 03:45 from
+  the `ploi` crontab; it aborts the deploy if the backup
   fails), then pulls, installs, builds, migrates and reloads php-fpm. `deploy.sh` refuses
   to run unless `backend/.env` is the production config.
 - A change goes: edit in dev → `npm run check` → commit + push → `./deploy.sh` in the
