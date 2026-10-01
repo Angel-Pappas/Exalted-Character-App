@@ -34,10 +34,12 @@ Angel's plan, in order. **Do not skip ahead of a checkpoint.**
 4. Then Angel decides what happens to the old Vercel + Supabase app.
 
 Until the cutover the work lives on the **`laravel` branch**; `main` is still the old
-Vercel app, which auto-deploys from `main`. **Before merging `laravel` into `main`,
-the Vercel project must be frozen** (Ignored Build Step = "don't build", or disconnect
-its Git repo) — Claude was not permitted to change it, so ask Angel to do it or to
-approve it. After the merge, work moves to `main` and this section can be trimmed.
+Vercel app, which auto-deploys from `main`. Merging `laravel` into `main` will make
+Vercel rebuild the old site from the new code, which breaks the old Vercel address.
+Angel confirmed (2026-10-01) that nobody uses the old app, so that is acceptable and no
+Vercel freeze is needed; the Supabase data is unaffected, and Vercel keeps old
+deployments for rollback. After the merge, work moves to `main` (the live folder
+switches to `main` too) and this section can be trimmed.
 
 **Report to Angel once the move is done (he asked):** the old Supabase database lets any
 signed-in player promote themselves to admin (its `user_profiles` update policy has no
