@@ -34,8 +34,7 @@ Supabase project `Exalted-Character-App` on 2026-10-01. There is nothing left to
 to — the VM and its MySQL backups (`~/backups/exalted/`) are the only copies. The
 Supabase admin-escalation hole went with it; the new app closes it by design
 (`AdminTest`: "gives a player no way to make themselves admin").
-- The raw Supabase export (including password hashes) is still in
-  `~/backups/exalted/supabase-export/` (mode 700), awaiting Angel's go-ahead to delete.
+- The raw Supabase export was deleted on 2026-10-01, with Angel's go-ahead.
 - `ImportSupabaseContent` / `ImportSupabaseUsers` can no longer reach a source; keep
   `SupabasePassword` — the imported accounts still log in with `$2a$` hashes.
 
