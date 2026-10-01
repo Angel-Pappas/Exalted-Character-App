@@ -17,12 +17,8 @@ import {
 } from '../lib/health'
 import type { CharmLibraryRow } from '../components/CharmLibraryTab'
 import ModalPortal from '../components/ModalPortal'
+import { api } from '../lib/api'
 import { Tooltip, TooltipLayer } from '../components/Tooltip'
-
-// The sheet's charm query selects every join except the charm-level prerequisite
-// tables, so those keys are absent at runtime — omit them rather than let the type
-// claim they exist.
-type SheetCharmRow = Omit<CharmLibraryRow, 'charm_prerequisite_abilities' | 'charm_prerequisite_charms'>
 
 const ATTRIBUTE_GROUPS = [
   { label: 'Physical', attrs: ['Strength', 'Dexterity', 'Stamina'] },
@@ -375,34 +371,30 @@ function CharmBrowseModal({ existing, exaltType, caste, abilities, attributes, e
   }
 
   useEffect(() => {
-    import('../lib/supabase').then(({ supabase }) =>
-      supabase.from('charm_library')
-        .select('*, charm_abilities(ability), charm_modes(label, mode_text, prerequisite_essence, charm_mode_prerequisite_abilities(text)), charm_choice_options(option, sort_order), charm_target_options(option, sort_order)')
-        .order('type').order('page').order('name')
-        .then(({ data }) => {
-          if (data) setLibrary((data as unknown as SheetCharmRow[]).map(r => ({
-            id: r.id, type: r.type ?? 'Universal',
-            abilities: (r.charm_abilities ?? []).map(a => a.ability),
-            name: r.name, page: r.page, description: r.description,
-            mechanicalKey: r.mechanical_key ?? null, mechanicalDescription: r.mechanical_description ?? null,
-            // Charm-level prerequisites aren't selected above; the sheet only reads
-            // the per-mode ones. Keep them empty rather than pretending to load them.
-            prerequisiteAbilities: [], prerequisiteEssence: r.prerequisite_essence ?? null,
-            prerequisiteCharms: [],
-            modes: (r.charm_modes ?? []).map(m => ({
-              label: m.label, text: m.mode_text, prerequisiteEssence: m.prerequisite_essence,
-              prerequisiteAbilities: (m.charm_mode_prerequisite_abilities ?? []).map(p => p.text),
-            })),
-            choiceType: r.choice_type ?? null,
-            choiceOptions: (r.charm_choice_options ?? []).sort((a, b) => a.sort_order - b.sort_order).map(o => o.option),
-            targetChoiceType: r.target_choice_type ?? null,
-            targetOptions: (r.charm_target_options ?? []).sort((a, b) => a.sort_order - b.sort_order).map(o => o.option),
-            multiselectCapBasis: r.multiselect_cap_basis ?? null,
-            pickCounts: r.pick_counts ?? null,
-          })))
-          setLoading(false)
-        })
-    )
+    api<CharmLibraryRow[]>('GET', 'charms')
+      .then(({ data }) => {
+        if (data) setLibrary(data.map(r => ({
+          id: r.id, type: r.type ?? 'Universal',
+          abilities: (r.charm_abilities ?? []).map(a => a.ability),
+          name: r.name, page: r.page, description: r.description,
+          mechanicalKey: r.mechanical_key ?? null, mechanicalDescription: r.mechanical_description ?? null,
+          // The sheet only reads the per-mode prerequisites; the charm-level
+          // ones are for the admin library, so they stay empty here.
+          prerequisiteAbilities: [], prerequisiteEssence: r.prerequisite_essence ?? null,
+          prerequisiteCharms: [],
+          modes: (r.charm_modes ?? []).map(m => ({
+            label: m.label, text: m.mode_text, prerequisiteEssence: m.prerequisite_essence,
+            prerequisiteAbilities: (m.charm_mode_prerequisite_abilities ?? []).map(p => p.text),
+          })),
+          choiceType: r.choice_type ?? null,
+          choiceOptions: (r.charm_choice_options ?? []).sort((a, b) => a.sort_order - b.sort_order).map(o => o.option),
+          targetChoiceType: r.target_choice_type ?? null,
+          targetOptions: (r.charm_target_options ?? []).sort((a, b) => a.sort_order - b.sort_order).map(o => o.option),
+          multiselectCapBasis: r.multiselect_cap_basis ?? null,
+          pickCounts: r.pick_counts ?? null,
+        })))
+        setLoading(false)
+      })
   }, [])
 
   const inScope = library.filter(c => isTypeInScope(c.type || 'Universal', exaltType, showAll))

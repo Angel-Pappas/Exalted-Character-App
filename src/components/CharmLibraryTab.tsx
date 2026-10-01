@@ -1,5 +1,6 @@
 import { Fragment, useEffect, useState } from 'react'
-import { supabase } from '../lib/supabase'
+import { api } from '../lib/api'
+import { charmPayload, supportsPickSchedule, usesOptionList } from '../lib/charmPayload'
 import type { CharmChoiceType, CharmMode, LibraryCharm, MultiselectCapBasis, MultiselectTargetType } from '../types/character'
 import { baseAbility, abilityRank, modeIcon, sortAbilities, sortModes, typeRank } from '../lib/charmRules'
 import AbilityChipInput from './AbilityChipInput'
@@ -43,6 +44,9 @@ export interface CharmLibraryRow {
   charm_target_options: CharmTargetOptionRow[]
 }
 
+// What creating a charm returns: the charm's own columns, without the lists.
+type CharmFieldsRow = Omit<CharmLibraryRow, 'charm_abilities' | 'charm_modes' | 'charm_prerequisite_abilities' | 'charm_prerequisite_charms' | 'charm_choice_options' | 'charm_target_options'>
+
 // Temporary review workflow (not part of the app's real data model): flags a
 // charm as possibly needing a purchase choice, and records what to do about
 // it. Remove needs_review/review_action from the DB and this UI once the
@@ -68,19 +72,6 @@ const TARGET_TYPE_LABELS: Record<MultiselectTargetType, string> = {
 const CAP_BASIS_LABELS: Record<MultiselectCapBasis, string> = {
   essence: "Character's Essence",
   target_rating: "Target's rating (Ability/Attribute target only)",
-}
-
-// 'custom' and 'multiselect' both draw from an admin-authored option list
-// (charm_choice_options); the others don't need one.
-function usesOptionList(choiceType: CharmChoiceType | null): boolean {
-  return choiceType === 'custom' || choiceType === 'multiselect'
-}
-
-// A pick schedule only makes sense for the list-based choice types (you pick
-// N of a fixed list); ability/attribute/custom all qualify, freetext doesn't
-// (nothing to count out of), multiselect has its own per-target cap system.
-function supportsPickSchedule(choiceType: CharmChoiceType | null): boolean {
-  return choiceType === 'ability' || choiceType === 'attribute' || choiceType === 'custom'
 }
 
 function parsePickCounts(text: string): number[] | null {
@@ -248,11 +239,9 @@ export default function CharmLibraryTab({ isOwner, textInput }: { isOwner: boole
   const [newCharm, setNewCharm] = useState<LibraryCharm>(blankCharm())
 
   useEffect(() => {
-    supabase.from('charm_library')
-      .select('*, charm_abilities(ability), charm_modes(label, mode_text, prerequisite_essence, charm_mode_prerequisite_abilities(text)), charm_prerequisite_abilities(text), charm_prerequisite_charms(charm_name), charm_choice_options(option, sort_order), charm_target_options(option, sort_order)')
-      .order('type').order('page').order('name')
+    api<CharmLibraryRow[]>('GET', 'charms')
       .then(({ data: rows }) => {
-        if (rows) setCharms((rows as unknown as CharmLibraryRow[]).map(r => ({
+        if (rows) setCharms(rows.map(r => ({
           id: r.id,
           type: r.type ?? 'Universal',
           abilities: (r.charm_abilities ?? []).map(a => a.ability),
@@ -285,42 +274,16 @@ export default function CharmLibraryTab({ isOwner, textInput }: { isOwner: boole
 
   async function setReviewAction(id: string, action: ReviewAction) {
     const next = charms.find(c => c.id === id)?.reviewAction === action ? null : action
-    await supabase.from('charm_library').update({ review_action: next }).eq('id', id)
+    const { error } = await api('PUT', `charms/${id}/review-action`, { review_action: next })
+    if (error) return
     setCharms(prev => prev.map(c => c.id === id ? { ...c, reviewAction: next } : c))
   }
 
   async function addCharm() {
     if (!newCharm.name.trim()) return
     setSaving(true)
-    const { data: row } = await supabase.from('charm_library').insert({
-      type: newCharm.type.trim() || 'Universal',
-      name: newCharm.name.trim(),
-      page: newCharm.page,
-      description: newCharm.description.trim(),
-      mechanical_key: newCharm.mechanicalKey || null,
-      mechanical_description: newCharm.mechanicalDescription || null,
-      prerequisite_essence: newCharm.prerequisiteEssence,
-      choice_type: newCharm.choiceType,
-      target_choice_type: newCharm.choiceType === 'multiselect' ? newCharm.targetChoiceType : null,
-      multiselect_cap_basis: newCharm.choiceType === 'multiselect' ? newCharm.multiselectCapBasis : null,
-      pick_counts: supportsPickSchedule(newCharm.choiceType) ? newCharm.pickCounts : null,
-    }).select().single()
+    const { data: row } = await api<CharmFieldsRow>('POST', 'charms', charmPayload(newCharm))
     if (row) {
-      if (newCharm.abilities.length) {
-        await supabase.from('charm_abilities').insert(newCharm.abilities.map(a => ({ charm_id: row.id, ability: a })))
-      }
-      if (newCharm.prerequisiteAbilities.length) {
-        await supabase.from('charm_prerequisite_abilities').insert(newCharm.prerequisiteAbilities.map(text => ({ charm_id: row.id, text })))
-      }
-      if (newCharm.prerequisiteCharms.length) {
-        await supabase.from('charm_prerequisite_charms').insert(newCharm.prerequisiteCharms.map(charm_name => ({ charm_id: row.id, charm_name })))
-      }
-      if (usesOptionList(newCharm.choiceType) && newCharm.choiceOptions.length) {
-        await supabase.from('charm_choice_options').insert(newCharm.choiceOptions.map((option, i) => ({ charm_id: row.id, option, sort_order: i })))
-      }
-      if (newCharm.choiceType === 'multiselect' && newCharm.targetChoiceType === 'custom' && newCharm.targetOptions.length) {
-        await supabase.from('charm_target_options').insert(newCharm.targetOptions.map((option, i) => ({ charm_id: row.id, option, sort_order: i })))
-      }
       setCharms(prev => [...prev, {
         id: row.id, type: row.type ?? 'Universal', abilities: newCharm.abilities, name: row.name,
         page: row.page, description: row.description, mechanicalKey: row.mechanical_key ?? null,
@@ -346,35 +309,8 @@ export default function CharmLibraryTab({ isOwner, textInput }: { isOwner: boole
 
   async function saveCharm(charm: LibraryCharm) {
     setSaving(true)
-    await supabase.from('charm_library').update({
-      type: charm.type, name: charm.name, page: charm.page, description: charm.description,
-      mechanical_key: charm.mechanicalKey || null, mechanical_description: charm.mechanicalDescription || null,
-      prerequisite_essence: charm.prerequisiteEssence,
-      choice_type: charm.choiceType,
-      target_choice_type: charm.choiceType === 'multiselect' ? charm.targetChoiceType : null,
-      multiselect_cap_basis: charm.choiceType === 'multiselect' ? charm.multiselectCapBasis : null,
-      pick_counts: supportsPickSchedule(charm.choiceType) ? charm.pickCounts : null,
-    }).eq('id', charm.id)
-    await supabase.from('charm_abilities').delete().eq('charm_id', charm.id)
-    if (charm.abilities.length) {
-      await supabase.from('charm_abilities').insert(charm.abilities.map(a => ({ charm_id: charm.id, ability: a })))
-    }
-    await supabase.from('charm_prerequisite_abilities').delete().eq('charm_id', charm.id)
-    if (charm.prerequisiteAbilities.length) {
-      await supabase.from('charm_prerequisite_abilities').insert(charm.prerequisiteAbilities.map(text => ({ charm_id: charm.id, text })))
-    }
-    await supabase.from('charm_prerequisite_charms').delete().eq('charm_id', charm.id)
-    if (charm.prerequisiteCharms.length) {
-      await supabase.from('charm_prerequisite_charms').insert(charm.prerequisiteCharms.map(charm_name => ({ charm_id: charm.id, charm_name })))
-    }
-    await supabase.from('charm_choice_options').delete().eq('charm_id', charm.id)
-    if (usesOptionList(charm.choiceType) && charm.choiceOptions.length) {
-      await supabase.from('charm_choice_options').insert(charm.choiceOptions.map((option, i) => ({ charm_id: charm.id, option, sort_order: i })))
-    }
-    await supabase.from('charm_target_options').delete().eq('charm_id', charm.id)
-    if (charm.choiceType === 'multiselect' && charm.targetChoiceType === 'custom' && charm.targetOptions.length) {
-      await supabase.from('charm_target_options').insert(charm.targetOptions.map((option, i) => ({ charm_id: charm.id, option, sort_order: i })))
-    }
+    const { error } = await api('PUT', `charms/${charm.id}`, charmPayload(charm))
+    if (error) { setSaving(false); return }
     setCharms(prev => prev.map(c => c.id === charm.id ? { ...charm, needsReview: c.needsReview, reviewAction: c.reviewAction } : c))
     setEditingId(null)
     setSaving(false)
@@ -382,8 +318,8 @@ export default function CharmLibraryTab({ isOwner, textInput }: { isOwner: boole
 
   async function deleteCharm(id: string) {
     setSaving(true)
-    await supabase.from('charm_library').delete().eq('id', id)
-    setCharms(prev => prev.filter(c => c.id !== id))
+    const { error } = await api('DELETE', `charms/${id}`)
+    if (!error) setCharms(prev => prev.filter(c => c.id !== id))
     setSaving(false)
   }
 

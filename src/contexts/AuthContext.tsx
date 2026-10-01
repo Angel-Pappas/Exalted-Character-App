@@ -1,87 +1,79 @@
 import { createContext, useContext, useEffect, useState } from 'react'
-import type { Session, User } from '@supabase/supabase-js'
-import { supabase } from '../lib/supabase'
+import { api } from '../lib/api'
 
 export type UserRole = 'admin' | 'player'
 
-const DOMAIN = '@exalted.local'
-
-export function usernameToEmail(username: string) {
-  return `${username.trim().toLowerCase()}${DOMAIN}`
-}
-
-export function emailToUsername(email: string) {
-  return email.endsWith(DOMAIN) ? email.slice(0, -DOMAIN.length) : email
+export interface AuthUser {
+  id: string
+  username: string
+  role: UserRole
 }
 
 interface AuthContextType {
-  session: Session | null
-  user: User | null
+  user: AuthUser | null
   username: string
   role: UserRole | null
   loading: boolean
   signIn: (username: string, password: string) => Promise<{ error: string | null }>
   signUp: (username: string, password: string) => Promise<{ error: string | null }>
   signOut: () => Promise<void>
+  changeUsername: (username: string) => Promise<{ error: string | null }>
+  changePassword: (currentPassword: string, password: string) => Promise<{ error: string | null }>
 }
 
 const AuthContext = createContext<AuthContextType | null>(null)
 
 export function AuthProvider({ children }: { children: React.ReactNode }) {
-  const [session, setSession] = useState<Session | null>(null)
-  const [role, setRole] = useState<UserRole | null>(null)
+  const [user, setUser] = useState<AuthUser | null>(null)
   const [loading, setLoading] = useState(true)
 
-  async function fetchRole(userId: string) {
-    const { data } = await supabase
-      .from('user_profiles')
-      .select('role')
-      .eq('user_id', userId)
-      .single()
-    setRole((data?.role as UserRole) ?? 'player')
-  }
-
   useEffect(() => {
-    supabase.auth.getSession().then(({ data: { session } }) => {
-      setSession(session)
-      if (session?.user) fetchRole(session.user.id).finally(() => setLoading(false))
-      else setLoading(false)
+    api<{ user: AuthUser | null }>('GET', 'me').then(({ data }) => {
+      setUser(data?.user ?? null)
+      setLoading(false)
     })
-
-    const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
-      setSession(session)
-      if (session?.user) fetchRole(session.user.id)
-      else setRole(null)
-    })
-
-    return () => subscription.unsubscribe()
   }, [])
 
   async function signIn(username: string, password: string) {
-    // Support existing accounts with real emails, and new username-only accounts
-    const email = username.includes('@') ? username : usernameToEmail(username)
-    const { error } = await supabase.auth.signInWithPassword({ email, password })
-    return { error: error?.message ?? null }
+    const { data, error } = await api<{ user: AuthUser }>('POST', 'login', { username, password })
+    if (data) setUser(data.user)
+    return { error }
   }
 
   async function signUp(username: string, password: string) {
-    const { error } = await supabase.auth.signUp({
-      email: usernameToEmail(username),
-      password,
-    })
-    return { error: error?.message ?? null }
+    const { data, error } = await api<{ user: AuthUser }>('POST', 'register', { username, password })
+    if (data) setUser(data.user)
+    return { error }
   }
 
   async function signOut() {
-    await supabase.auth.signOut()
-    setRole(null)
+    await api('POST', 'logout')
+    setUser(null)
   }
 
-  const user = session?.user ?? null
-  const username = user ? emailToUsername(user.email ?? '') : ''
+  async function changeUsername(username: string) {
+    const { data, error } = await api<{ user: AuthUser }>('PUT', 'me/username', { username })
+    if (data) setUser(data.user)
+    return { error }
+  }
+
+  async function changePassword(currentPassword: string, password: string) {
+    const { error } = await api('PUT', 'me/password', { current_password: currentPassword, password })
+    return { error }
+  }
 
   return (
-    <AuthContext.Provider value={{ session, user, username, role, loading, signIn, signUp, signOut }}>
+    <AuthContext.Provider value={{
+      user,
+      username: user?.username ?? '',
+      role: user?.role ?? null,
+      loading,
+      signIn,
+      signUp,
+      signOut,
+      changeUsername,
+      changePassword,
+    }}>
       {children}
     </AuthContext.Provider>
   )

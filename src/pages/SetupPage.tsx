@@ -1,9 +1,9 @@
 import { useEffect, useState, useCallback } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { supabase } from '../lib/supabase'
+import { api } from '../lib/api'
 import { useAuth } from '../contexts/AuthContext'
-import type { GameData, WeaponTableRow, ArmorTableRow, TagEntry, EssenceMoteRow, AnimaStateRow, ExaltType } from '../types/character'
-import { DEFAULT_GAME_DATA, CHARM_TYPE_OPTIONS } from '../types/character'
+import type { GameData, WeaponTableRow, ArmorTableRow, TagEntry, EssenceMoteRow, AnimaStateRow, ExaltType, ExaltTypeRow } from '../types/character'
+import { DEFAULT_GAME_DATA, CHARM_TYPE_OPTIONS, exaltTypeFromRow } from '../types/character'
 import CharmLibraryTab from '../components/CharmLibraryTab'
 import ModalPortal from '../components/ModalPortal'
 
@@ -112,37 +112,39 @@ export default function SetupPage() {
 
   async function loadUsers() {
     const [{ data: profiles }, { data: chars }] = await Promise.all([
-      supabase.from('user_profiles').select('user_id, username, display_name, role'),
-      supabase.from('characters').select('id, name, user_id, data'),
+      api<UserProfile[]>('GET', 'admin/users'),
+      api<CharacterRow[]>('GET', 'admin/characters'),
     ])
-    setUsers((profiles ?? []) as UserProfile[])
-    setUserChars((chars ?? []) as CharacterRow[])
+    setUsers(profiles ?? [])
+    setUserChars(chars ?? [])
     setUsersLoaded(true)
   }
 
   async function deleteUser(userId: string) {
-    await supabase.rpc('delete_user', { target_user_id: userId })
+    const { error } = await api('DELETE', `admin/users/${userId}`)
+    if (error) return
     setUsers(us => us.filter(u => u.user_id !== userId))
     setUserChars(cs => cs.filter(c => c.user_id !== userId))
   }
 
   async function changeRole(userId: string, newRole: 'admin' | 'player') {
     setRoleChanging(userId)
-    await supabase.from('user_profiles').update({ role: newRole }).eq('user_id', userId)
-    setUsers(us => us.map(u => u.user_id === userId ? { ...u, role: newRole } : u))
+    const { error } = await api('PUT', `admin/users/${userId}/role`, { role: newRole })
+    if (!error) setUsers(us => us.map(u => u.user_id === userId ? { ...u, role: newRole } : u))
     setRoleChanging(null)
   }
 
   async function deleteAdminChar(id: string) {
-    await supabase.from('characters').delete().eq('id', id)
+    const { error } = await api('DELETE', `characters/${id}`)
+    if (error) return
     setUserChars(cs => cs.filter(c => c.id !== id))
   }
 
   async function moveCharacter() {
     if (!moveTarget || !moveToUserId) return
     setMoving(true)
-    await supabase.from('characters').update({ user_id: moveToUserId }).eq('id', moveTarget.id)
-    setUserChars(cs => cs.map(c => c.id === moveTarget.id ? { ...c, user_id: moveToUserId } : c))
+    const { error } = await api('PUT', `admin/characters/${moveTarget.id}/owner`, { user_id: moveToUserId })
+    if (!error) setUserChars(cs => cs.map(c => c.id === moveTarget.id ? { ...c, user_id: moveToUserId } : c))
     setMoving(false)
     setMoveTarget(null)
     setMoveToUserId('')
@@ -160,11 +162,7 @@ export default function SetupPage() {
 
   useEffect(() => {
     if (!user) return
-    supabase
-      .from('game_data')
-      .select('data')
-      .eq('user_id', user.id)
-      .maybeSingle()
+    api<{ data: Partial<GameData> | null }>('GET', 'game-data')
       .then(({ data: row }) => {
         if (row?.data) {
           setData({
@@ -182,7 +180,7 @@ export default function SetupPage() {
   const save = useCallback(async (next: GameData) => {
     if (!user) return
     setSaving(true)
-    await supabase.from('game_data').upsert({ user_id: user.id, data: next }, { onConflict: 'user_id' })
+    await api('PUT', 'game-data', { data: next })
     setSaving(false)
   }, [user])
 
@@ -266,27 +264,23 @@ export default function SetupPage() {
   const [newExaltCastesText, setNewExaltCastesText] = useState('')
 
   useEffect(() => {
-    supabase.from('exalt_types').select('*').order('sort_order').order('name')
-      .then(({ data: rows }) => {
-        if (rows) setExaltTypes(rows.map(r => ({
-          id: r.id, name: r.name, casteLabel: r.caste_label as 'Caste' | 'Aspect',
-          castes: r.castes ?? [], sort_order: r.sort_order,
-        })))
-        setExaltTypesLoaded(true)
-      })
+    api<ExaltTypeRow[]>('GET', 'exalt-types').then(({ data: rows }) => {
+      if (rows) setExaltTypes(rows.map(exaltTypeFromRow))
+      setExaltTypesLoaded(true)
+    })
   }, [])
 
   async function addExaltType() {
     if (!newExalt.name.trim()) return
     setExaltSaving(true)
     const castesArr = newExaltCastesText.split(',').map(s => s.trim()).filter(Boolean)
-    const { data: row } = await supabase.from('exalt_types').insert({
+    const { data: row } = await api<ExaltTypeRow>('POST', 'exalt-types', {
       name: newExalt.name.trim(),
       caste_label: newExalt.casteLabel,
       castes: castesArr,
       sort_order: exaltTypes.length,
-    }).select().single()
-    if (row) setExaltTypes(prev => [...prev, { id: row.id, name: row.name, casteLabel: row.caste_label, castes: row.castes, sort_order: row.sort_order }])
+    })
+    if (row) setExaltTypes(prev => [...prev, exaltTypeFromRow(row)])
     setNewExalt({ name: '', casteLabel: 'Caste', castes: [] })
     setNewExaltCastesText('')
     setAddingExalt(false)
@@ -296,18 +290,18 @@ export default function SetupPage() {
   async function saveExaltType(et: ExaltType, castesText: string) {
     setExaltSaving(true)
     const castesArr = castesText.split(',').map(s => s.trim()).filter(Boolean)
-    await supabase.from('exalt_types').update({
+    const { error } = await api('PUT', `exalt-types/${et.id}`, {
       name: et.name, caste_label: et.casteLabel, castes: castesArr,
-    }).eq('id', et.id)
-    setExaltTypes(prev => prev.map(e => e.id === et.id ? { ...et, castes: castesArr } : e))
+    })
+    if (!error) setExaltTypes(prev => prev.map(e => e.id === et.id ? { ...et, castes: castesArr } : e))
     setEditingExaltId(null)
     setExaltSaving(false)
   }
 
   async function deleteExaltType(id: string) {
     setExaltSaving(true)
-    await supabase.from('exalt_types').delete().eq('id', id)
-    setExaltTypes(prev => prev.filter(e => e.id !== id))
+    const { error } = await api('DELETE', `exalt-types/${id}`)
+    if (!error) setExaltTypes(prev => prev.filter(e => e.id !== id))
     setExaltSaving(false)
   }
 

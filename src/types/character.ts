@@ -275,6 +275,19 @@ export interface ExaltType {
   sort_order: number
 }
 
+/** An exalt_types row as the API returns it. */
+export interface ExaltTypeRow {
+  id: string
+  name: string
+  caste_label: 'Caste' | 'Aspect'
+  castes: string[]
+  sort_order: number
+}
+
+export function exaltTypeFromRow(r: ExaltTypeRow): ExaltType {
+  return { id: r.id, name: r.name, casteLabel: r.caste_label, castes: r.castes ?? [], sort_order: r.sort_order }
+}
+
 export interface GameData {
   weapons: WeaponTableRow[]
   armor: ArmorTableRow[]

@@ -1,6 +1,6 @@
 import { useEffect, useState, useCallback } from 'react'
 import { useParams, useNavigate } from 'react-router-dom'
-import { supabase } from '../lib/supabase'
+import { api } from '../lib/api'
 import { useAuth } from '../contexts/AuthContext'
 import type { Character, CharacterData, GameData } from '../types/character'
 import { DEFAULT_GAME_DATA } from '../types/character'
@@ -31,11 +31,7 @@ export default function CharacterPage() {
 
   useEffect(() => {
     if (!id) return
-    supabase
-      .from('characters')
-      .select('*')
-      .eq('id', id)
-      .single()
+    api<Character>('GET', `characters/${id}`)
       .then(({ data: char, error }) => {
         if (error || !char) { navigate('/'); return }
         setCharacter(char)
@@ -45,11 +41,7 @@ export default function CharacterPage() {
 
   useEffect(() => {
     if (!user) return
-    supabase
-      .from('game_data')
-      .select('data')
-      .eq('user_id', user.id)
-      .maybeSingle()
+    api<{ data: Partial<GameData> | null }>('GET', 'game-data')
       .then(({ data: row }) => {
         if (row?.data) {
           setGameData({
@@ -66,7 +58,7 @@ export default function CharacterPage() {
   const save = useCallback(async (newData: CharacterData) => {
     if (!id) return
     setSaving(true)
-    await supabase.from('characters').update({ data: newData }).eq('id', id)
+    await api('PUT', `characters/${id}`, { data: newData })
     setSaving(false)
   }, [id])
 

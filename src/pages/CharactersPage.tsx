@@ -1,8 +1,9 @@
 import { useEffect, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { supabase } from '../lib/supabase'
+import { api } from '../lib/api'
 import { useAuth } from '../contexts/AuthContext'
-import type { Character, ExaltType } from '../types/character'
+import { exaltTypeFromRow } from '../types/character'
+import type { Character, ExaltType, ExaltTypeRow } from '../types/character'
 import ModalPortal from '../components/ModalPortal'
 
 export default function CharactersPage() {
@@ -19,30 +20,22 @@ export default function CharactersPage() {
   const [creating, setCreating] = useState(false)
   const [exaltTypes, setExaltTypes] = useState<ExaltType[]>([])
 
-  // Keyed on the id rather than the user object: Supabase hands back a fresh object
-  // on every token refresh, which would refetch the list for no reason.
+  // Keyed on the id rather than the user object, so a re-fetched but
+  // unchanged user doesn't refetch the list. The API returns only your own
+  // characters, newest first.
   const userId = user?.id
   useEffect(() => {
     if (!userId) return
-    supabase
-      .from('characters')
-      .select('*')
-      .eq('user_id', userId)
-      .order('created_at', { ascending: false })
-      .then(({ data }) => {
-        setCharacters(data ?? [])
-        setLoading(false)
-      })
+    api<Character[]>('GET', 'characters').then(({ data }) => {
+      setCharacters(data ?? [])
+      setLoading(false)
+    })
   }, [userId])
 
   useEffect(() => {
-    supabase.from('exalt_types').select('*').order('sort_order').order('name')
-      .then(({ data: rows }) => {
-        if (rows) setExaltTypes(rows.map(r => ({
-          id: r.id, name: r.name, casteLabel: r.caste_label as 'Caste' | 'Aspect',
-          castes: r.castes ?? [], sort_order: r.sort_order,
-        })))
-      })
+    api<ExaltTypeRow[]>('GET', 'exalt-types').then(({ data: rows }) => {
+      if (rows) setExaltTypes(rows.map(exaltTypeFromRow))
+    })
   }, [])
 
   const selectedExalt = exaltTypes.find(e => e.name === newExaltType) ?? null
@@ -63,17 +56,13 @@ export default function CharactersPage() {
       exaltType: newExaltType,
       caste: newCaste,
     }
-    const { data } = await supabase
-      .from('characters')
-      .insert({ name: newName.trim(), user_id: user!.id, data: { sheet: initialSheet } })
-      .select()
-      .single()
+    const { data } = await api<Character>('POST', 'characters', { name: newName.trim(), data: { sheet: initialSheet } })
     setCreating(false)
     if (data) navigate(`/character/${data.id}`)
   }
 
   async function deleteCharacter(id: string) {
-    await supabase.from('characters').delete().eq('id', id)
+    await api('DELETE', `characters/${id}`)
     setCharacters(cs => cs.filter(c => c.id !== id))
   }
 

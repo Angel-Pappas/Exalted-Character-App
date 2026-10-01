@@ -1,8 +1,7 @@
 import { useState } from 'react'
 import { useNavigate, useLocation } from 'react-router-dom'
 import { useTheme } from '../contexts/ThemeContext'
-import { useAuth, usernameToEmail } from '../contexts/AuthContext'
-import { supabase } from '../lib/supabase'
+import { useAuth } from '../contexts/AuthContext'
 import ModalPortal from '../components/ModalPortal'
 
 const SECTIONS = ['Account', 'Appearance'] as const
@@ -55,7 +54,7 @@ function PasswordInput({
 export default function SettingsPage() {
   const navigate = useNavigate()
   const location = useLocation()
-  const { role, username } = useAuth()
+  const { role, username, changeUsername, changePassword } = useAuth()
   const { theme, setTheme } = useTheme()
   const [active, setActive] = useState<Section>(
     (location.state as { section?: Section } | null)?.section ?? 'Account'
@@ -85,11 +84,10 @@ export default function SettingsPage() {
     if (trimmed.includes(' ')) { setUsernameMsg({ text: 'No spaces allowed.', error: true }); return }
     setUsernameSaving(true)
     setUsernameMsg(null)
-    const newEmail = trimmed.includes('@') ? trimmed : usernameToEmail(trimmed)
-    const { error } = await supabase.auth.updateUser({ email: newEmail })
+    const { error } = await changeUsername(trimmed)
     setUsernameSaving(false)
     if (error) {
-      setUsernameMsg({ text: error.message, error: true })
+      setUsernameMsg({ text: error, error: true })
     } else {
       setUsernameMsg({ text: 'Username updated.', error: false })
       setTimeout(() => closeUsernameModal(), 1500)
@@ -119,21 +117,10 @@ export default function SettingsPage() {
     }
     setPasswordSaving(true)
     setPasswordMsg(null)
-    // Re-authenticate first — support both real emails and @exalted.local usernames
-    const loginEmail = username.includes('@') ? username : usernameToEmail(username)
-    const { error: signInError } = await supabase.auth.signInWithPassword({
-      email: loginEmail,
-      password: currentPassword,
-    })
-    if (signInError) {
-      setPasswordSaving(false)
-      setPasswordMsg({ text: 'Current password is incorrect.', error: true })
-      return
-    }
-    const { error } = await supabase.auth.updateUser({ password: newPassword })
+    const { error } = await changePassword(currentPassword, newPassword)
     setPasswordSaving(false)
     if (error) {
-      setPasswordMsg({ text: error.message, error: true })
+      setPasswordMsg({ text: error, error: true })
     } else {
       setPasswordMsg({ text: 'Password updated.', error: false })
       setTimeout(() => closeModal(), 1500)
