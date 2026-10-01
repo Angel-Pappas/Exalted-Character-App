@@ -183,11 +183,9 @@ supabase/                   # old Postgres schema — historical record only
 ---
 
 ## Current State
-**Mid-move from Vercel + Supabase to our VM (started 2026-10-01).** The Laravel + MySQL
-rebuild is live at https://exalted.pappas.yoltobots.click with the game content
-(charm library, exalt types) copied in, but **not yet the users, passwords and
-characters** — that copy is step 2, after Angel checks the new site. Until cutover
-the old app still runs on Vercel + Supabase, and the work lives on the `laravel`
-branch (see `CLAUDE.md`). Admin panel covers Tables, Charms, and Users management.
+Running on our VM since 2026-10-01 (Laravel + MySQL), with all data moved over from
+Supabase: accounts `angel` (admin) and `angeltest` (player), with their passwords, and
+their characters. The old Vercel + Supabase app is frozen and unused (see `CLAUDE.md`).
+Admin panel covers Tables, Charms, and Users management.
 
-Next up after the move: light mode CSS theming pass, charm-by-charm mechanical implementations as needed.
+Next up: light mode CSS theming pass, charm-by-charm mechanical implementations as needed.

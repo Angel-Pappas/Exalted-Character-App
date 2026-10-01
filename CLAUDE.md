@@ -22,28 +22,22 @@ Every "where does this number come from" tooltip (Defenses today, any future one
 3. **Every other source on its own line** (e.g. "Ox Body +1"), whenever a new charm/merit/effect adds to the number.
 4. **Manual bonus** — always last, labelled exactly "Manual bonus".
 
-## Moving off Vercel + Supabase — status (started 2026-10-01)
-Angel's plan, in order. **Do not skip ahead of a checkpoint.**
-1. ✅ Rebuild on the VM: Laravel 13 API (`backend/`) + MySQL, React front end unchanged
-   apart from the API calls. Game content (charm library, exalt types) copied in.
-2. ⏸ **Checkpoint — Angel checks https://exalted.pappas.yoltobots.click** (no users or
-   characters yet; he signs up a throwaway account to try it).
-3. Copy users (with their existing passwords), characters and game data from Supabase
-   into MySQL. Needs Angel's go-ahead: reading password hashes from Supabase is gated.
-   `App\Support\SupabasePassword` relabels Supabase's `$2a$` bcrypt hashes for Laravel.
-4. Then Angel decides what happens to the old Vercel + Supabase app.
+## The move off Vercel + Supabase (done 2026-10-01)
+The app now runs only on our VM: Laravel 13 API (`backend/`) + MySQL, React front end
+unchanged apart from its API calls. Game content, both accounts (with their existing
+passwords — `App\Support\SupabasePassword` relabels Supabase's `$2a$` bcrypt hashes),
+both characters and all game data were copied from Supabase and verified identical
+(row counts, password-hash and sheet fingerprints). Work is on `main`.
 
-Until the cutover the work lives on the **`laravel` branch**. The old Vercel project is
-**frozen** (2026-10-01, with Angel's permission): its Ignored Build Step is `exit 0`, so
-Vercel skips every build and keeps serving the last old version, whatever lands on
-`main`. Merging `laravel` into `main` is therefore safe; after the merge, work moves to
-`main` (the live folder switches to `main` too) and this section can be trimmed.
-
-**Report to Angel once the move is done (he asked):** the old Supabase database lets any
-signed-in player promote themselves to admin (its `user_profiles` update policy has no
-check on `role`). The new Laravel app closes this by design and has a test for it
-(`AdminTest`: "gives a player no way to make themselves admin"). Angel chose not to patch
-the old app; whatever remains is to be fixed in the new setup.
+The old app is retired but not deleted — Angel decides what happens to it:
+- **Vercel** project `exalted-character-app` is frozen (Ignored Build Step `exit 0`), still
+  serving the last old version at https://exalted-character-app.vercel.app.
+- **Supabase** project `Exalted-Character-App` still holds the original data. Its
+  `user_profiles` update policy lets any signed-in player make themselves admin; Angel
+  chose not to patch it since nobody uses it. The new app closes this by design
+  (`AdminTest`: "gives a player no way to make themselves admin").
+- The raw Supabase export (including password hashes) is in
+  `~/backups/exalted/supabase-export/` (mode 700). Delete it once the old app is gone.
 
 ## Workflow on the VM — two folders, never mix them up
 - **`/home/ploi/exalted-dev`** — the **dev checkout**. All editing, building and testing
