@@ -1,0 +1,41 @@
+name: checks
+
+on:
+  push:
+  pull_request:
+
+permissions:
+  contents: read
+
+jobs:
+  check:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      - name: Setup PHP
+        uses: shivammathur/setup-php@f3e473d116dcccaddc5834248c87452386958240 # v2
+        with:
+          php-version: '8.5'
+          tools: composer:v2
+          coverage: none
+
+      - name: Setup Node
+        uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
+        with:
+          node-version: '22'
+
+      - name: Install
+        run: |
+          npm ci
+          composer install --working-dir=backend --no-interaction --prefer-dist
+          cp backend/.env.example backend/.env
+          php backend/artisan key:generate
+
+      # tsc, eslint, vitest, then the backend's Pint, Larastan and Pest.
+      - name: npm run check
+        run: npm run check
