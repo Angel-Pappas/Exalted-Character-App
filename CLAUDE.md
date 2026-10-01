@@ -22,24 +22,66 @@ Every "where does this number come from" tooltip (Defenses today, any future one
 3. **Every other source on its own line** (e.g. "Ox Body +1"), whenever a new charm/merit/effect adds to the number.
 4. **Manual bonus** — always last, labelled exactly "Manual bonus".
 
+## Moving off Vercel + Supabase — status (started 2026-10-01)
+Angel's plan, in order. **Do not skip ahead of a checkpoint.**
+1. ✅ Rebuild on the VM: Laravel 13 API (`backend/`) + MySQL, React front end unchanged
+   apart from the API calls. Game content (charm library, exalt types) copied in.
+2. ⏸ **Checkpoint — Angel checks https://exalted.pappas.yoltobots.click** (no users or
+   characters yet; he signs up a throwaway account to try it).
+3. Copy users (with their existing passwords), characters and game data from Supabase
+   into MySQL. Needs Angel's go-ahead: reading password hashes from Supabase is gated.
+   `App\Support\SupabasePassword` relabels Supabase's `$2a$` bcrypt hashes for Laravel.
+4. Then Angel decides what happens to the old Vercel + Supabase app.
+
+Until the cutover the work lives on the **`laravel` branch**; `main` is still the old
+Vercel app, which auto-deploys from `main`. **Before merging `laravel` into `main`,
+the Vercel project must be frozen** (Ignored Build Step = "don't build", or disconnect
+its Git repo) — Claude was not permitted to change it, so ask Angel to do it or to
+approve it. After the merge, work moves to `main` and this section can be trimmed.
+
+**Report to Angel once the move is done (he asked):** the old Supabase database lets any
+signed-in player promote themselves to admin (its `user_profiles` update policy has no
+check on `role`). The new Laravel app closes this by design and has a test for it
+(`AdminTest`: "gives a player no way to make themselves admin"). Angel chose not to patch
+the old app; whatever remains is to be fixed in the new setup.
+
+## Workflow on the VM — two folders, never mix them up
+- **`/home/ploi/exalted-dev`** — the **dev checkout**. All editing, building and testing
+  happens here, on SQLite (`backend/database/database.sqlite`). Its `.env` cannot reach
+  the live MySQL.
+- **`/home/ploi/exalted.pappas.yoltobots.click`** — the **live app** nginx serves. Never
+  edit, build or run tests there. It changes **only** through `./deploy.sh`, which backs
+  up MySQL first (`backup-db.sh` → `~/backups/exalted/`, aborts the deploy if the backup
+  fails), then pulls, installs, builds, migrates and reloads php-fpm. `deploy.sh` refuses
+  to run unless `backend/.env` is the production config.
+- A change goes: edit in dev → `npm run check` → commit + push → `./deploy.sh` in the
+  live folder. Nothing deploys on push by itself. GitHub Actions (`checks.yml`) runs the
+  same `npm run check` on every push — keep it green.
+- **The live database holds everyone's characters and must never be lost.** Never run
+  tests, `migrate:fresh`/`db:wipe`/`migrate:rollback`, or ad-hoc writes against it.
+  `backend/tests/TestCase.php` refuses to boot tests on anything but in-memory SQLite —
+  keep that guard. Production `APP_ENV` also blocks Laravel's destructive commands.
+  Any migration that drops or rewrites data is raised with Angel before it ships.
+
 ## Git workflow — do not ask
-- **Always `git commit` and `git push` immediately after every code change.** Do not ask for confirmation first. This is a standing, pre-authorized exception to the general "confirm before pushing" default.
-- Never prompt for permission for anything **except**: permanently deleting DB data, or changing a user's admin access. Everything else — commits, pushes, edits, non-destructive migrations — just do it.
+- **Always commit, push and deploy immediately after every code change.** Do not ask for confirmation first. This is a standing, pre-authorized exception to the general "confirm before pushing" default.
+- Never prompt for permission for anything **except**: permanently deleting DB data, or changing a user's admin access. Everything else — commits, pushes, deploys, edits, non-destructive migrations — just do it.
 
 ## Verification — do not spin up a local dev server
-- Angel does not run a local dev server. He reviews every change on the live Vercel URL (auto-deploys on push to `main`).
-- Verify changes via `npx tsc -b` and by reading the code path, not by launching `npm run dev` or creating throwaway test accounts. If something genuinely can't be trusted without running it, say so plainly instead of defaulting to local browser testing.
+- Angel does not run a local dev server. He reviews every change on the live site, https://exalted.pappas.yoltobots.click, after `./deploy.sh`.
+- Verify changes with `npm run check` and by reading the code path, not by launching `npm run dev` or creating throwaway accounts in the live database. Backend behaviour is verified with Pest feature tests. If something genuinely can't be trusted without running it, say so plainly instead of defaulting to local browser testing.
 
 ## Lint must stay at zero — check before every push
-- **`npm run check` (tsc + lint + tests) must be clean before any push.** It is cheap; it is not optional.
+- **`npm run check` must be clean before any push.** It runs `tsc -b`, `eslint .`, `vitest run`, then the backend's `composer test` (Pint formatting, Larastan level 7, Pest). It is cheap; it is not optional.
 - The baseline was cleaned to zero on 2026-07-15. **Never let problems accumulate again.** A nonzero baseline is not a cosmetic debt — it destroys the ability to tell whether *this* change added anything, which is the whole point of running the tool. Do not report "N pre-existing problems, none of them mine" as if that were verification; it isn't, and counting totals hides an added error that coincides with a removed one.
-- If a rule genuinely doesn't fit this project, **turn it off in `eslint.config.js` with a written reason** — a deliberate, documented decision. Do not leave it failing, and do not contort working code to satisfy a rule whose benefit this project never consumes (e.g. `react-refresh/only-export-components`, which only pays off in a dev server that isn't used here).
-- Inline `eslint-disable` is allowed **only** with a comment saying why the rule is wrong in that spot (e.g. a ref-guarded once-only effect that exhaustive-deps can't see through). Never a bare suppression.
-- A green result proves nothing if the tool isn't running. If lint suddenly goes quiet after config changes, confirm it still catches a planted violation.
-- Not wired into the Vercel build on purpose: a style nit should never block a deploy Angel needs live. Enforcement is this rule, not CI.
+- If a rule genuinely doesn't fit this project, **turn it off in config (`eslint.config.js`, `backend/phpstan.neon`, `backend/pint.json`) with a written reason** — a deliberate, documented decision. Do not leave it failing, and do not contort working code to satisfy a rule whose benefit this project never consumes (e.g. `react-refresh/only-export-components`, which only pays off in a dev server that isn't used here).
+- Inline `eslint-disable` (or `@phpstan-ignore`) is allowed **only** with a comment saying why the rule is wrong in that spot (e.g. a ref-guarded once-only effect that exhaustive-deps can't see through). Never a bare suppression.
+- A green result proves nothing if the tool isn't running. If a check suddenly goes quiet after config changes, confirm it still catches a planted violation.
+- Not wired into `deploy.sh` on purpose: a style nit should never block a deploy Angel needs live. Enforcement is this rule plus CI.
 
 ## Repo facts
-- Working dir: `C:\Users\AngeP\Exalted-Character-App`
-- GitHub repo must stay **public** (Vercel free-tier requirement)
-- Git identity must be `ange.pap@hotmail.com` / `Angel-Pappas` to match Vercel's linked account
-- Live app: https://exalted-character-app.vercel.app
+- Dev checkout `/home/ploi/exalted-dev`; live folder `/home/ploi/exalted.pappas.yoltobots.click` (VM user `ploi`).
+- Live app: https://exalted.pappas.yoltobots.click (nginx site `exalted.pappas.yoltobots.click`; `/api/*` → `backend/public/index.php` on php8.5-fpm, everything else → `dist/`).
+- MySQL 8.4 on the VM: database `exalted`, user `exalted`; credentials only in the live `backend/.env`.
+- The VM pushes to GitHub over HTTPS through the `gh` CLI's token — don't switch the remote to `git@github.com:`.
+- Git identity: `ange.pap@hotmail.com`. The repo is public; that was a Vercel free-tier requirement, so it may go private once Vercel is retired (Angel's call).

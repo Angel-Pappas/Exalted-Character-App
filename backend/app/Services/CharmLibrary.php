@@ -15,7 +15,8 @@ use Illuminate\Support\Facades\DB;
 class CharmLibrary
 {
     /**
-     * Every charm, ordered by type, page (charms without a page last), then name.
+     * Every charm, ordered by type, page (charms without a page last), then
+     * name, with the id as a tie-breaker so identical entries keep a stable order.
      *
      * @return list<array<string, mixed>>
      */
@@ -26,6 +27,7 @@ class CharmLibrary
             ->orderByRaw('page is null')
             ->orderBy('page')
             ->orderBy('name')
+            ->orderBy('id')
             ->get();
 
         $lists = [

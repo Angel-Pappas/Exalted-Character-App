@@ -5,25 +5,24 @@ Read this file at the start of every session to restore context. For full detail
 ---
 
 ## What This App Is
-A cloud-based interactive character sheet for a **custom version of the Exalted tabletop RPG**. Built for Angel and his co-players. Live at https://exalted-character-app.vercel.app.
+A web-based interactive character sheet for a **custom version of the Exalted tabletop RPG**. Built for Angel and his co-players. Live at https://exalted.pappas.yoltobots.click.
 
-- Stack: React 19 + Vite 8 + TypeScript + Tailwind CSS v4 + Supabase + Vercel
-- Repo: https://github.com/Angel-Pappas/Exalted-Character-App (must stay **public**)
-- Working dir: `C:\Users\AngeP\Exalted-Character-App`
-- Angel reviews on the live Vercel URL — does not run a local dev server
-- **Always push immediately after every code change** — no need to ask
+- Stack: React 19 + Vite 8 + TypeScript + Tailwind CSS v4 front end; Laravel 13 API (`backend/`) + MySQL 8.4; all on our own VM (nginx + php8.5-fpm). Moved off Vercel + Supabase in October 2026.
+- Repo: https://github.com/Angel-Pappas/Exalted-Character-App
+- Dev checkout: `/home/ploi/exalted-dev`. Live folder: `/home/ploi/exalted.pappas.yoltobots.click` (changed only by `./deploy.sh`). See `CLAUDE.md` for the workflow.
+- Angel reviews on the live URL — does not run a local dev server
+- **Always commit, push and deploy after every code change** — no need to ask
 
 ---
 
 ## Users & Roles
-- Two roles: `admin` and `player`. Stored in `user_profiles` table. New signups auto-get `player`.
-- **Auth is username + password only — no real emails.** Supabase stores accounts as `username@exalted.local` internally. The login page shows only "Username" and "Password" fields.
+- Two roles: `admin` and `player`, in `users.role`. New signups always get `player`.
+- **Auth is username + password only — no emails.** Laravel cookie sessions. Usernames are stored lowercase; the old Supabase form `username@exalted.local` still signs in. The login page shows only "Username" and "Password" fields.
 - Angel's username: `angel`, UUID `c5d208d8-3d47-4dc3-b76b-c211d8486c3b`, role `admin`
-- `AuthContext` exposes `username` (derived from email by stripping `@exalted.local`) and `role: 'admin' | 'player' | null`
-- Helper functions: `usernameToEmail(u)` → `u@exalted.local`, `emailToUsername(e)` → strips domain
-- Email confirmation is **disabled** in Supabase — new accounts are active immediately
+- `AuthContext` exposes `user`, `username` and `role: 'admin' | 'player' | null`
+- New accounts are active immediately
 - Admin can manage users (role change, delete) via Admin → Users tab
-- **Failsafes:** can't change your own role; can't demote the last admin
+- **Failsafes (enforced by the server):** can't change your own role or delete yourself — so the last admin can never be removed
 
 ---
 
@@ -43,57 +42,32 @@ A cloud-based interactive character sheet for a **custom version of the Exalted 
 
 **SettingsPage** (`/options`): left sidebar → Account (username read-only with Change button, role read-only, Change Password modal with eye-icon fields + current-password re-auth) + Appearance (light/dark theme toggle).
 - Display name has been removed — username is the only identity.
-- Change Username updates auth email to `newname@exalted.local` via `supabase.auth.updateUser`.
+- Change Username saves through `PUT /api/me/username`.
 
 **SetupPage** (`/setup`, called "Admin" in UI): left sidebar tabs → Tables | Charms | Users.
 - **Tables**: editable Weapons/Armor/Tags/EssenceMotes/AnimaStates + Exalt Types
 - **Charms**: global charm library CRUD
-- **Users**: list of all users with username, role dropdown, character count, expandable character list. Per-character: Move (reassign to another user) and Delete (✕). Per-user: Delete button (hidden for self). Role dropdown locked for self and last admin.
+- **Users**: list of all users with username, role dropdown, character count, expandable character list. Per-character: Move (reassign to another user) and Delete (✕). Per-user: Delete button (hidden for self). Role dropdown locked for self.
 
 ---
 
-## Supabase Tables
+## Database (MySQL, via the Laravel API)
 | Table | Purpose |
 |---|---|
-| `characters` | Per-user characters; `data` JSONB holds all CharacterData |
+| `users` | username, password hash, `role` (`admin`/`player`) |
+| `characters` | Per-user characters; `data` JSON holds all CharacterData, stored verbatim |
 | `game_data` | Per-user reference tables (weapons, armor, tags, essence motes, anima states) |
-| `user_profiles` | `user_id`, `role`, `username`; auto-created on signup via trigger |
-| `charm_library` | Global charm list; public read, admin-only write |
-| `exalt_types` | Global exalt type definitions with caste labels and caste lists |
+| `charm_library` (+ child list tables) | Global charm list; everyone reads, admins write |
+| `exalt_types` | Global exalt types with caste label and castes (10 seeded) |
 
-### Key RLS Policies
-- `user_profiles`: users read/update own row; admins (via `is_admin()` function) read/update all
-- `characters`: users read/write own; admins read/update/delete all
-- `is_admin()` is a `SECURITY DEFINER` function to avoid recursive RLS
-- `delete_user(target_user_id)` is a `SECURITY DEFINER` RPC that deletes from `auth.users`
-
-### user_profiles schema
-```sql
-user_profiles (
-  user_id uuid primary key references auth.users(id) on delete cascade,
-  role text not null default 'player' check (role in ('admin', 'player')),
-  username text,   -- auto-populated from auth email (strips @exalted.local) on insert
-  created_at timestamptz
-)
-```
-Trigger `on_profile_created` (BEFORE INSERT, SECURITY DEFINER) sets `username` from auth email.
-
-### exalt_types schema
-```sql
-exalt_types (
-  id uuid primary key,
-  name text,
-  caste_label text check (caste_label in ('Caste', 'Aspect')),
-  castes text[],
-  sort_order integer
-)
-```
-Seeded with all 10 exalt types. Managed by admin in Admin → Tables → Exalt Types.
+The schema is `backend/database/migrations/`. Who may do what is enforced in Laravel
+(`CharacterPolicy`: owner or admin; `can:admin` routes for admin tools) and covered by
+Pest tests in `backend/tests/Feature/`.
 
 ---
 
 ## Character Sheet
-11 draggable/resizable panels on a 128-column grid. Layout saved per character to Supabase.
+11 draggable/resizable panels on a 128-column grid. Layout saved per character in the database.
 
 The **Essence** panel holds every pool in one box: an Essence | Anima row on top,
 then Motes (Current | Committed), then a Power | Will row. Power and Will are 0–10; Essence is 1–5 and has no reset
@@ -153,7 +127,7 @@ Only one armor can be equipped at a time (equipping one auto-unequips others).
 - FoI button only appears if a charm with effective key `'foi'` exists AND `mechanicalEnabled = true`
 - Opens modal: choose weight + tag + artifact toggle
 - Tag effects: Shield→−1 dmg, Balanced→+1 ovw, Improvised→−2 acc, Defensive→+1 def
-- FoI state (`foi` + `foiOriginals`) is **persisted in SheetData → Supabase** (survives refresh)
+- FoI state (`foi` + `foiOriginals`) is **persisted in SheetData** (survives refresh)
 
 ### Health track and Ox Body Technique
 - Damage is one number (`SheetData.damage`), filled left to right; the track itself is rebuilt each render from the starting seven plus Ox Body levels (`src/lib/health.ts`, tested)
@@ -168,8 +142,8 @@ Only one armor can be equipped at a time (equipping one auto-unequips others).
 ---
 
 ## Key Rules for Development
-1. **All state that should survive a refresh or session gap goes to Supabase** — never use local React state for persistent data
-2. **Always push after every code change** — no need to ask
+1. **All state that should survive a refresh or session gap goes to the database through the API** — never use local React state for persistent data
+2. **Always commit, push and deploy after every code change** — no need to ask
 3. Ignore "highest appropriate attribute" from book quotes — each stat has a fixed attribute mapping
 4. Light mode toggle exists in Settings but CSS is not wired up yet (all colors are hardcoded stone/amber)
 5. **Never prompt for permission** except before permanently deleting DB data or changing admin access
@@ -182,7 +156,7 @@ Only one armor can be equipped at a time (equipping one auto-unequips others).
 src/
   App.tsx                  # Router: / → HomePage, /characters → CharactersPage, /character/:id, /options, /setup
   contexts/
-    AuthContext.tsx         # session, user, username, role, signIn, signUp, signOut
+    AuthContext.tsx         # user, username, role, signIn/Up/Out, changeUsername/Password
     ThemeContext.tsx        # theme: 'dark'|'light', persisted to localStorage
   pages/
     HomePage.tsx            # Hub: Characters, Settings, Admin (admin only) cards
@@ -200,13 +174,20 @@ info/
   context.md                # Game rules, mechanics, full feature descriptions
   scope.md                  # Purpose, design philosophy, what's not in scope
   technical.md              # Stack, DB schemas, all types, file structure, code snippets
-supabase/
-  schema.sql                # Full DB schema
+  lib/api.ts                # the only HTTP client: /api on the same origin
+backend/                    # Laravel API — routes/api.php, app/, database/migrations/ (the schema)
+deploy.sh, backup-db.sh     # live-folder deploy (backs up MySQL first) and nightly backup
+supabase/                   # old Postgres schema — historical record only
 ```
 
 ---
 
 ## Current State
-Working and deployed. Angel is the only active user. Username-only auth is fully set up. Admin panel covers Tables, Charms, and Users management. The charm library needs to be populated via Admin → Charms before players can add charms to sheets.
+**Mid-move from Vercel + Supabase to our VM (started 2026-10-01).** The Laravel + MySQL
+rebuild is live at https://exalted.pappas.yoltobots.click with the game content
+(charm library, exalt types) copied in, but **not yet the users, passwords and
+characters** — that copy is step 2, after Angel checks the new site. Until cutover
+the old app still runs on Vercel + Supabase, and the work lives on the `laravel`
+branch (see `CLAUDE.md`). Admin panel covers Tables, Charms, and Users management.
 
-Next up: light mode CSS theming pass, charm-by-charm mechanical implementations as needed.
+Next up after the move: light mode CSS theming pass, charm-by-charm mechanical implementations as needed.

@@ -13,7 +13,7 @@ A personal interactive character sheet web app for the tabletop RPG **Exalted** 
 - **Admin page** (admin only) for configuring shared game reference tables, the charm library, and managing users
 
 ## How It Is Viewed
-- The app is accessed via browser at https://exalted-character-app.vercel.app
+- The app is accessed via browser at https://exalted.pappas.yoltobots.click
 - Login is required (username + password — no email involved)
 - After login the user lands on the **Home hub page** with cards for Characters, Settings, and Admin (admin only)
 - Selecting Characters opens the character list; selecting a character opens the character page with 4 tabs:
@@ -32,7 +32,7 @@ A personal interactive character sheet web app for the tabletop RPG **Exalted** 
 
 ## Auth System
 - Username + password only — no real emails, no email confirmation
-- Supabase stores accounts internally as `username@exalted.local`
+- Accounts are plain usernames (no email); the old Supabase form `username@exalted.local` still signs in
 - New accounts are created by admins or via the Create Account form on the login page
 - Admin can delete users and move characters between accounts via the Admin → Users tab
 
@@ -43,7 +43,7 @@ A personal interactive character sheet web app for the tabletop RPG **Exalted** 
 - The layout is user-configurable: panels can be dragged and resized in "Edit Layout" mode; layout is saved per character
 - No unnecessary chrome — clean, functional, no bloat
 - Game mechanics are assisted (auto-fill stats from reference tables, calculated defenses, tag effects applied automatically) but not enforced — the user can override anything
-- **All persistent state goes to Supabase** — never use local React state for anything that should survive a refresh or session gap
+- **All persistent state goes to the database through the API** — never use local React state for anything that should survive a refresh or session gap
 
 ## What Is NOT In Scope (Yet)
 - PWA / native mobile app

@@ -14,12 +14,12 @@ This is a custom/modified version of the Exalted tabletop RPG. Not all standard 
 - **Health track** has no damage types — boxes are simply checked/unchecked. Standard track: -0, -1, -1, -2, -2, -4, Incap
 - **Defenses**: Parry, Evasion, Soak, Hardness, Resolve — all **calculated** from attributes, abilities, and equipped items (not manually entered)
 - **Motes**: one pool with Current, Committed, Total — Total is looked up from the EssenceMotes GameData table by essence level
-- **Charms**: a global library in Supabase; players add charms from the library to their character sheet; some charms have mechanical implementations (e.g. FoI)
+- **Charms**: a global library in the database; players add charms from the library to their character sheet; some charms have mechanical implementations (e.g. FoI)
 
 > **Important:** The book refers to "highest appropriate attribute" for some calculations. This app uses 9 custom attributes (not 3), with each stat mapped to a specific fixed attribute. Ignore any "highest attribute" wording from book quotes — the mappings are hardcoded.
 
 ## Exalt Types
-Each character has an Exalt Type and a Caste (or Aspect, depending on the type). These are stored in the `exalt_types` Supabase table and managed by the admin in Admin → Tables → Exalt Types.
+Each character has an Exalt Type and a Caste (or Aspect, depending on the type). These are stored in the `exalt_types` table and managed by the admin in Admin → Tables → Exalt Types.
 
 The `caste_label` field is either `'Caste'` or `'Aspect'` — controls the label shown in the character creation modal and on the sheet.
 
@@ -134,14 +134,14 @@ When activated: writes the chosen weight's stats (+ item artifact bonus + FoI ar
 
 When deactivated: restores originals exactly. Removing the last Unarmed weapon auto-clears FoI.
 
-**FoI state is persisted to Supabase** (stored in `SheetData.foi` and `SheetData.foiOriginals`) — survives refresh and week-long gaps.
+**FoI state is persisted to the database** (stored in `SheetData.foi` and `SheetData.foiOriginals`) — survives refresh and week-long gaps.
 
 On unarmed weapon rows: tag chip (hover = description) + colored weight badge (L=blue, M=green, H=yellow) shown before stats.
 
 ## Charm System
 
 ### Global Charm Library (`charm_library` table)
-A shared Supabase table containing all available charms for the game. Readable by all users; writable only by admins.
+A shared table containing all available charms for the game. Readable by all users; writable only by admins.
 
 Each library charm has:
 - `id`, `ability` (which ability it belongs to), `name`, `description`
@@ -166,7 +166,7 @@ The **effective mechanical key** is: `mechanicalKeyOverride ?? libraryMechanical
 
 ### Charm UI (CharmPanel in SheetTab)
 - Flat list of `CharacterCharm[]` per character
-- "Browse" button opens `CharmBrowseModal` — fetches library from Supabase, grouped by ability, searchable, with "Add" button per charm
+- "Browse" button opens `CharmBrowseModal` — fetches the library from the API, grouped by ability, searchable, with "Add" button per charm
 - Each charm row: name, description (custom or library), edit/revert/toggle controls
 - Custom description overrides library text per character
 - Reverting restores library description
@@ -193,7 +193,7 @@ Left sidebar with sections:
 
 Password change uses a modal with Current Password / New Password / Confirm Password fields, each with an inline eye toggle. Re-authenticates with current password before applying the change.
 
-Change Username updates the auth email to `newusername@exalted.local` via `supabase.auth.updateUser`.
+Change Username saves the new username through the API (`PUT /api/me/username`).
 
 ### Admin Page (`/setup`) — admin only
 Left sidebar tabs:
@@ -203,16 +203,16 @@ Left sidebar tabs:
 
 ## Auth System
 - Username + password only — no real emails exposed to users
-- Supabase stores accounts as `username@exalted.local` internally
+- Accounts are plain usernames (accounts carried over from Supabase used `username@exalted.local`; that form still signs in)
 - `signIn`: if input contains `@` use as raw email (legacy support), otherwise append `@exalted.local`
 - `signUp`: always appends `@exalted.local`
-- Email confirmation is disabled in Supabase settings
+- There is no email at all — new accounts are active immediately
 - Login page shows eye-icon toggle on all password fields
 
 ## User & Role System
 
 ### Roles
-Two roles: `admin` and `player`. Stored in the `user_profiles` table. New users auto-get `player` role via a Supabase trigger on signup.
+Two roles: `admin` and `player`. Stored in the `user_profiles` table. New users always get the `player` role; only an admin can change it.
 
 - **Admin**: can write to `charm_library`, manage all users, access `/setup`
 - **Player**: read-only access to charm library, no access to `/setup`
@@ -227,17 +227,15 @@ Angel's account username: `angel`, UUID: `c5d208d8-3d47-4dc3-b76b-c211d8486c3b`,
 - Cannot delete yourself
 
 ## The User
-- **Angel** (GitHub/Vercel: ange.pap@hotmail.com)
+- **Angel** (GitHub: ange.pap@hotmail.com)
 - Building for himself and his co-players
 - Comfortable giving layout/design direction in grid-unit terms
 - Prefers to be walked through setup steps one at a time
 
 ## Workflow
-- Development happens locally on Angel's Windows 11 PC at `C:\Users\AngeP\Exalted-Character-App`
-- Changes are pushed to GitHub by Claude Code — always push immediately after every code change
-- Vercel auto-deploys on every push to `main`
-- **Important:** the GitHub repo must be **public** for Vercel free-tier auto-deploy to work
-- Angel reviews changes on the live Vercel URL — does not run a local dev server
+- Development happens on our VM in the dev checkout `/home/ploi/exalted-dev`
+- Claude Code commits and pushes every change, then deploys it with `./deploy.sh` in the live folder
+- Angel reviews changes on the live URL https://exalted.pappas.yoltobots.click — does not run a local dev server
 - **Never prompt for permission** except before permanently deleting DB data or changing admin access
 
 ## What's Been Built
@@ -262,7 +260,7 @@ Angel's account username: `angel`, UUID: `c5d208d8-3d47-4dc3-b76b-c211d8486c3b`,
 - Milestones: 4-type ledger mirroring Angel's spreadsheet — Income / Expense / Char. Creation rows (creation = free, not counted), optional dates, Remaining = income − expenses; logic + tests in `src/lib/milestones.ts`
 - Notes: free-form textarea
 - Characters tab: NPC list with per-NPC notes
-- Auto-save to Supabase (1 second debounce)
+- Auto-save to the API (1 second debounce)
 - **Drag-and-drop grid layout editor** (11 panels, 128-column grid, Edit Layout toggle)
 - **User role system**: admin/player, DB-enforced via RLS + SECURITY DEFINER functions
 

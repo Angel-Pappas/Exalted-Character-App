@@ -3,113 +3,44 @@
 ## Stack
 | Layer | Technology |
 |---|---|
-| Frontend | React 19 + Vite 8 + TypeScript |
+| Frontend | React 19 + Vite 8 + TypeScript (repo root, `src/`) |
 | Styling | Tailwind CSS v4 (via `@tailwindcss/vite` plugin) |
-| Auth + Database | Supabase (free tier) |
-| Hosting | Vercel (free tier, Hobby plan) |
-| Repo | GitHub — https://github.com/Angel-Pappas/Exalted-Character-App (must be **public**) |
+| Backend / API | Laravel 13 (PHP 8.5) in `backend/`, answering `/api/*` |
+| Database | MySQL 8.4 on our own VM (database `exalted`); SQLite in the dev checkout and tests |
+| Hosting | Our own VM, nginx + php8.5-fpm — https://exalted.pappas.yoltobots.click |
+| Repo | GitHub — https://github.com/Angel-Pappas/Exalted-Character-App |
 
-## Local Setup
-- Working directory: `C:\Users\AngeP\Exalted-Character-App`
-- Node: v24, npm: v11
-- Run dev server: `npm run dev` → http://localhost:5173
-- Build: `npm run build`
-- Git identity: `ange.pap@hotmail.com` / `Angel-Pappas` (must match GitHub account for Vercel deploys)
+Moved off Vercel + Supabase in October 2026. The `supabase/` folder holds the
+old Postgres schema and migrations, kept only as a historical record.
 
-## Environment Variables
-Stored in `.env.local` (gitignored) and in Vercel project settings:
-- `VITE_SUPABASE_URL` — Supabase project URL
-- `VITE_SUPABASE_ANON_KEY` — Supabase publishable/anon key
+## Folders on the VM
+- `/home/ploi/exalted-dev` — the **dev checkout**: all editing, building and testing (SQLite).
+- `/home/ploi/exalted.pappas.yoltobots.click` — the **live app**. Changed only by `./deploy.sh`.
+- Node 22 / npm 11, PHP 8.5, Composer 2. No dev server is run; Angel reviews on the live URL.
+- `npm run check` = `tsc -b`, `eslint`, `vitest`, then the backend's Pint, Larastan and Pest.
 
-## Supabase
-- Project URL: `https://dtuxmjiknsefowfdawim.supabase.co`
-- Auth: username + password only. Stored internally as `username@exalted.local`. Email confirmation is **disabled**.
-- Database tables: `characters`, `game_data`, `user_profiles`, `charm_library`, `exalt_types` — all with Row Level Security
+## Environment
+- The React app needs no environment variables: it calls `/api` on its own origin.
+- `backend/.env` (gitignored) holds the Laravel settings. Dev: SQLite. Live: MySQL
+  credentials, `APP_ENV=production`, `APP_DEBUG=false`, `SESSION_SECURE_COOKIE=true`.
 
-### Characters Table
-```sql
-characters (
-  id uuid primary key default gen_random_uuid(),
-  user_id uuid references auth.users(id) on delete cascade,
-  name text,
-  data jsonb,        -- all CharacterData stored here
-  created_at timestamptz,
-  updated_at timestamptz
-)
-```
-RLS: users can only read/write their own rows. Admins can read/update/delete all rows.
+## API and Database
+- Auth: username + password, Laravel cookie sessions (`remember` on) with CSRF via the
+  `XSRF-TOKEN` cookie / `X-XSRF-TOKEN` header. `src/lib/api.ts` is the only HTTP client.
+- Routes: `backend/routes/api.php`. Authorization lives in Laravel: `CharacterPolicy`
+  (owner or admin) and the `admin` gate (`can:admin` routes).
+- Schema: `backend/database/migrations/` is authoritative. Tables: `users` (username,
+  password, role), `characters`, `game_data`, `exalt_types`, `charm_library` plus its
+  child lists (`charm_abilities`, `charm_modes`, `charm_mode_prerequisite_abilities`,
+  `charm_prerequisite_abilities`, `charm_prerequisite_charms`, `charm_choice_options`,
+  `charm_target_options`, `charm_essence_tiers`). Lists carry an explicit
+  `position`/`sort_order`.
+- `GET /api/charms` returns each charm with its lists nested under the child table's
+  name — the same shape the app read from Supabase.
+- Character sheets (`characters.data`) and game data are stored verbatim as JSON; the
+  server never reinterprets them (`{}` and `[]` stay distinct).
 
-### Game Data Table
-```sql
-game_data (
-  id uuid primary key,
-  user_id uuid references auth.users(id) on delete cascade unique,
-  data jsonb   -- GameData: { weapons, armor, tagGroups, essenceMotes, animaStates }
-)
-```
-Upserted on conflict by `user_id`. Loaded in `CharacterPage` and `SetupPage` on mount. Falls back to `DEFAULT_GAME_DATA` if no row exists.
-
-### User Profiles Table
-```sql
-user_profiles (
-  user_id uuid primary key references auth.users(id) on delete cascade,
-  role text not null default 'player' check (role in ('admin', 'player')),
-  username text,       -- auto-set from auth email (strips @exalted.local) on insert
-  created_at timestamptz
-)
-```
-- Auto-created on signup via trigger `on_auth_user_created` → inserts `player` role
-- Trigger `on_profile_created` (BEFORE INSERT, SECURITY DEFINER) sets `username` from auth email
-- `is_admin()` SECURITY DEFINER function used in RLS policies to avoid recursion
-- Admins: can read/update all profiles; players: own row only
-- Angel's UUID: `c5d208d8-3d47-4dc3-b76b-c211d8486c3b`
-
-### Charm Library Table
-```sql
-charm_library (
-  id uuid primary key default gen_random_uuid(),
-  ability text not null default '',
-  name text not null default '',
-  description text not null default '',
-  mechanical_key text,    -- e.g. 'foi'; null for reference-only charms
-  sort_order integer not null default 0,
-  created_at timestamptz,
-  updated_at timestamptz
-)
-```
-RLS: everyone can read; only admins can insert/update/delete.
-
-### Exalt Types Table
-```sql
-exalt_types (
-  id uuid primary key default gen_random_uuid(),
-  name text,
-  caste_label text check (caste_label in ('Caste', 'Aspect')),
-  castes text[],
-  sort_order integer
-)
-```
-Seeded with 10 types. Admin CRUD in Admin → Tables → Exalt Types.
-
-### Key RLS / Security Functions
-```sql
--- Avoids recursive RLS when checking admin status
-CREATE OR REPLACE FUNCTION is_admin()
-RETURNS boolean LANGUAGE sql SECURITY DEFINER STABLE AS $$
-  SELECT EXISTS (SELECT 1 FROM user_profiles WHERE user_id = auth.uid() AND role = 'admin')
-$$;
-
--- Admin-only user deletion (called via supabase.rpc)
-CREATE OR REPLACE FUNCTION delete_user(target_user_id uuid)
-RETURNS void LANGUAGE plpgsql SECURITY DEFINER AS $$
-BEGIN
-  IF NOT is_admin() THEN RAISE EXCEPTION 'Not authorized'; END IF;
-  DELETE FROM auth.users WHERE id = target_user_id;
-END;
-$$;
-```
-
-### `data` JSONB Structure (CharacterData type)
+### `data` JSON Structure (CharacterData type)
 ```ts
 {
   sheet: {
@@ -241,21 +172,14 @@ interface GameData {
 ```ts
 // contexts/AuthContext.tsx
 export type UserRole = 'admin' | 'player'
-const DOMAIN = '@exalted.local'
-export function usernameToEmail(username: string) { return `${username.trim().toLowerCase()}${DOMAIN}` }
-export function emailToUsername(email: string) { return email.endsWith(DOMAIN) ? email.slice(0, -DOMAIN.length) : email }
-
 interface AuthContextType {
-  session: Session | null
-  user: User | null
-  username: string              // derived from email, @exalted.local stripped
+  user: { id: string; username: string; role: UserRole } | null
+  username: string
   role: UserRole | null
   loading: boolean
-  signIn: (username: string, password: string) => Promise<{ error: string | null }>
-  signUp: (username: string, password: string) => Promise<{ error: string | null }>
-  signOut: () => Promise<void>
+  signIn, signUp, signOut, changeUsername, changePassword  // each → /api, resolves { error }
 }
-// signIn: if input contains '@' use as raw email (legacy), else append @exalted.local
+// On load it asks GET /api/me who is signed in (the session cookie decides).
 ```
 
 ## File Structure
@@ -265,7 +189,8 @@ src/
   index.css                      # Global styles
   main.tsx
   lib/
-    supabase.ts                  # Supabase client
+    api.ts                       # fetch client for /api ({ data, error })
+    charmPayload.ts              # body sent when creating/saving a library charm
   contexts/
     AuthContext.tsx               # Auth state + role + username
     ThemeContext.tsx              # Light/dark theme, persisted to localStorage
@@ -291,9 +216,10 @@ info/
   context.md
   technical.md (this file)
   SESSION_SUMMARY.md
-supabase/
-  schema.sql                     # Full DB schema
-vercel.json                      # SPA rewrite rule
+backend/                         # Laravel API (routes/api.php, app/, database/migrations/)
+deploy.sh                        # live folder only: backup, pull, build, migrate, reload
+backup-db.sh                     # gzipped mysqldump to ~/backups/exalted (also run by cron)
+supabase/                        # old Postgres schema — historical record only
 ```
 
 ## Game Data Constants (in SheetTab.tsx)
@@ -347,15 +273,15 @@ const resolve  = Math.ceil((wits   + integ)  / 2) + (db.resolve ?? 0)
 ### SettingsPage (`/options`)
 All users. Left sidebar: Account | Appearance.
 - **Account**: username (read-only with Change button), role (read-only), Change Password button
-- **Change Username modal**: new username → `supabase.auth.updateUser({ email: newname@exalted.local })`
-- **Password modal**: Current / New / Confirm fields, each with inline eye-icon toggle; re-authenticates via `signInWithPassword` before calling `updateUser`
+- **Change Username modal**: `PUT /api/me/username` (lowercased, unique)
+- **Password modal**: Current / New / Confirm fields, each with inline eye-icon toggle; `PUT /api/me/password` checks the current password on the server
 - **Appearance**: light/dark toggle via `ThemeContext` (persisted to `localStorage`)
 
 ### SetupPage (`/setup`) — "Admin" in UI
 Admin only. Left sidebar tabs: Tables | Charms | Users.
 - **Tables**: Weapons, Armor, Equipment Tags, Essence Motes, Anima States, Exalt Types — all editable, saved to `game_data` (except Exalt Types which go to `exalt_types` table)
 - **Charms**: add/edit/delete `charm_library` rows; grouped by ability
-- **Users**: all `user_profiles` + characters; role dropdown (locked for self + last admin); Delete user (locked for self); per-character Move (reassign `characters.user_id`) and Delete
+- **Users**: all users + characters; role dropdown (locked for self); Delete user (locked for self); per-character Move and Delete. The server enforces the same locks.
 
 ### ThemeContext
 ```ts
@@ -371,13 +297,11 @@ type Theme = 'dark' | 'light'
 
 ## Auto-save
 - 1-second debounce after any data change
-- Character data: full `CharacterData` → `characters.data` JSONB
-- GameData: upsert → `game_data` per user
+- Character data: full `CharacterData` → `PUT /api/characters/{id}`
+- GameData: `PUT /api/game-data` (one row per user)
 - "Saving…" shown in header while in progress
 
 ## Known Quirks
-- GitHub repo must be **public** — Vercel free plan blocks deploys from private repos
-- Git user email must be `ange.pap@hotmail.com` to match the GitHub account linked to Vercel
 - `InventoryItem.tags` was `string` in older saved data — `normTags()` handles backward compat
 - Saved layouts missing entries for new panels are auto-merged from DEFAULT_LAYOUT on load
 - Light mode toggle exists but app colors are all hardcoded stone/amber — a CSS variable theming pass is needed to make it visually functional
