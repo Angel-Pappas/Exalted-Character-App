@@ -119,6 +119,26 @@ describe('modeLockReasons — what stops a mode being usable', () => {
     expect(modeLockReasons(m, [m], 1, 5, abilities)).toEqual([])
   })
 
+  // Every multi-ability requirement in the book reads "X or Y" (e.g. Motive-
+  // Discerning Technique's upgrade: "Embassy 4 or Integrity 4").
+  describe('several abilities are alternatives — any one is enough', () => {
+    const either = mode({ prerequisiteAbilities: ['Embassy 4', 'Integrity 4'] })
+
+    it('unlocks when one of them is met', () => {
+      expect(modeLockReasons(either, [either], 1, 5, { Embassy: ability(4), Integrity: ability(3) })).toEqual([])
+      expect(modeLockReasons(either, [either], 1, 5, { Embassy: ability(0), Integrity: ability(5) })).toEqual([])
+    })
+
+    it('locks only when none is met, naming the choice', () => {
+      expect(modeLockReasons(either, [either], 1, 5, { Embassy: ability(3), Integrity: ability(3) })).toEqual(['Embassy 4 or Integrity 4'])
+    })
+
+    it('does not lock when one alternative is an ability this app does not track', () => {
+      const m = mode({ prerequisiteAbilities: ['Force 4', 'Integrity 4'] })
+      expect(modeLockReasons(m, [m], 1, 5, abilities)).toEqual([])
+    })
+  })
+
   it('reports every unmet requirement at once', () => {
     const m = mode({ prerequisiteEssence: 5, prerequisiteAbilities: ['Integrity 3'] })
     expect(modeLockReasons(m, [m], 1, 1, abilities)).toEqual(['Essence 5', 'Integrity 3'])

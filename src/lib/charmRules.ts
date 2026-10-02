@@ -87,12 +87,18 @@ export function modeLockReasons(
   if (mode.prerequisiteEssence != null && essence < mode.prerequisiteEssence) {
     reasons.push(`Essence ${mode.prerequisiteEssence}`)
   }
-  for (const req of mode.prerequisiteAbilities) {
-    const parsed = parsePrereqAbility(req)
-    if (!parsed) continue
-    const key = baseAbility(parsed.name)
-    if (!(key in abilities)) continue // e.g. Alchemical Force/Finesse/Fortitude — not tracked, don't lock over it
-    if ((abilities[key]?.rating ?? 0) < parsed.min) reasons.push(`${parsed.name} ${parsed.min}`)
+  // Listed abilities are alternatives: in the book every multi-ability
+  // requirement reads "X or Y" (e.g. "Embassy 4 or Integrity 4"), so meeting any
+  // one is enough. One we can't check (unreadable text, or an ability this app
+  // doesn't track, like Alchemical Force/Finesse/Fortitude) never locks the mode.
+  const reqs = mode.prerequisiteAbilities.map(parsePrereqAbility)
+  const met = reqs.some(r => {
+    if (!r) return true
+    const key = baseAbility(r.name)
+    return !(key in abilities) || (abilities[key]?.rating ?? 0) >= r.min
+  })
+  if (reqs.length > 0 && !met) {
+    reasons.push(reqs.flatMap(r => r ? [`${r.name} ${r.min}`] : []).join(' or '))
   }
   if (mode.label.toLowerCase() === 'repurchase') {
     // Multiple same-charm "Repurchase" rows (e.g. Sorcerous Initiation's Essence 3
