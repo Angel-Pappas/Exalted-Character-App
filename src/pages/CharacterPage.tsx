@@ -106,6 +106,12 @@ export default function CharacterPage() {
         <div className="flex items-center gap-3 ml-auto py-3">
           {saving && <span className="text-xs text-stone-500">Saving…</span>}
           {readOnly && <span className="text-xs px-2 py-1 rounded border border-stone-600 text-stone-400">View only</span>}
+          {!readOnly && (
+            <button onClick={() => navigate(`/character/${character.id}/options`)}
+              className="flex items-center gap-1.5 px-3 py-1.5 rounded text-xs font-medium bg-stone-800 text-stone-400 hover:text-stone-200 border border-stone-600 transition-colors">
+              ⚙ Options
+            </button>
+          )}
           {activeTab === 'sheet' && !readOnly && (
             <button
               onClick={() => setSheetEditMode(v => !v)}

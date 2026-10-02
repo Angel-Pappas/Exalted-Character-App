@@ -3,27 +3,10 @@ import { useNavigate, useParams } from 'react-router-dom'
 import { api } from '../lib/api'
 import { useAuth } from '../contexts/AuthContext'
 import { TooltipLayer } from '../components/Tooltip'
+import ConfirmButton from '../components/ConfirmButton'
 import type { Character } from '../types/character'
 import { KIND_LABEL } from '../types/campaign'
 import type { CampaignCharacter, CampaignDetail, Person } from '../types/campaign'
-
-// A button that asks for a second click before doing something hard to undo,
-// instead of a browser confirm dialog.
-function ConfirmButton({ label, confirmLabel, onConfirm, className }: {
-  label: string
-  confirmLabel: string
-  onConfirm: () => void
-  className: string
-}) {
-  const [armed, setArmed] = useState(false)
-  return (
-    <button onClick={() => { if (armed) { setArmed(false); onConfirm() } else setArmed(true) }}
-      onBlur={() => setArmed(false)}
-      className={`${className} ${armed ? 'text-red-400 border-red-500/60' : ''}`}>
-      {armed ? confirmLabel : label}
-    </button>
-  )
-}
 
 const card = 'bg-stone-900 border border-stone-700 rounded-lg p-4'
 const heading = 'text-xs font-semibold text-stone-400 uppercase tracking-widest mb-3'
