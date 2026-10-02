@@ -605,7 +605,6 @@ function CharmPanel({ charms, groups, onChange, onGroupsChange, dragEnabled, exa
   essence: number
 }) {
   const [browsing, setBrowsing] = useState(false)
-  const [selectedId, setSelectedId] = useState<string | null>(null)
   const [editingId, setEditingId] = useState<string | null>(null)
   const [editDesc, setEditDesc] = useState('')
   const [query, setQuery] = useState('')
@@ -653,7 +652,7 @@ function CharmPanel({ charms, groups, onChange, onGroupsChange, dragEnabled, exa
 
   function removeCharm(id: string) {
     onChange(charms.filter(c => c.id !== id))
-    if (selectedId === id) setSelectedId(null)
+    if (editingId === id) setEditingId(null)
   }
 
   // Used by the browse modal's Remove: undo the most recent purchase (popping
@@ -754,54 +753,49 @@ function CharmPanel({ charms, groups, onChange, onGroupsChange, dragEnabled, exa
 
   const { grouped, ungrouped } = partitionCharms(charms, groups)
   const filtering = query.trim() !== ''
-  const looseShown = filterCharms(ungrouped, query)
-  const looseOpen = looseShown.find(c => c.id === selectedId)
 
+  // A card shows everything about the charm at once and grows downwards to fit;
+  // there is nothing to click open. Its corner holds edit, implementation and remove.
   function card(charm: CharacterCharm, group: CharmGroup | null) {
-    const text = charm.customDescription ?? charm.libraryDescription ?? ''
     const key = activeKey(charm)
-    const autoApplied = key !== null && AUTOMATED_KEYS.has(key) && charm.mechanicalEnabled
-    const selected = selectedId === charm.id
+    const implemented = key !== null && AUTOMATED_KEYS.has(key)
+    const lit = implemented && charm.mechanicalEnabled
+    const editing = editingId === charm.id
     const dropBefore = dropHint?.kind === 'card' && dropHint.id === charm.id
     return (
       <div key={charm.id}
-        role="button" tabIndex={0}
-        onClick={() => setSelectedId(selected ? null : charm.id)}
-        onKeyDown={e => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); setSelectedId(selected ? null : charm.id) } }}
-        draggable={dragEnabled}
-        onDragStart={e => dragEnabled && onDragStart(e, { kind: 'charm', id: charm.id })}
+        draggable={dragEnabled && !editing}
+        onDragStart={e => dragEnabled && !editing && onDragStart(e, { kind: 'charm', id: charm.id })}
         onDragEnd={onDragEnd}
         onDragOver={e => onCardDragOver(e, charm.id)}
         onDrop={e => onCardDrop(e, charm, group?.id ?? null)}
-        className={`rounded border border-t-[3px] bg-stone-800/60 px-1.5 py-1 text-left transition-colors focus:outline-none focus-visible:ring-1 focus-visible:ring-amber-500 ${dragEnabled ? 'cursor-grab active:cursor-grabbing' : 'cursor-pointer'}
+        className={`rounded border border-t-[3px] bg-stone-800/60 px-1.5 py-1 space-y-1.5 break-words transition-colors ${dragEnabled && !editing ? 'cursor-grab active:cursor-grabbing' : ''}
           ${group ? groupColor(group).bar : 'border-t-stone-600'}
-          ${selected ? 'border-amber-500' : dropBefore ? 'border-amber-400/80 border-l-2' : 'border-stone-700 hover:border-stone-500'}`}>
-        <p className="text-xs font-semibold text-stone-100 leading-snug">{charm.name}</p>
-        {text && <p className="text-[11px] text-stone-400 leading-snug line-clamp-2 mt-0.5">{text}</p>}
-        {((charm.count ?? 1) > 1 || charm.customDescription !== null || autoApplied) && (
-          <div className="flex flex-wrap gap-1 mt-1">
-            {(charm.count ?? 1) > 1 && <span data-tip={`Purchased ${charm.count}×`} className="text-[10px] px-1 rounded bg-stone-900 border border-stone-600 text-stone-300">×{charm.count}</span>}
-            {charm.customDescription !== null && <span data-tip="You edited this charm's text" className="text-[10px] px-1 rounded border border-amber-700/60 text-amber-400">Edited</span>}
-            {autoApplied && <span data-tip="The sheet works this charm's effect out for you" className="text-[10px] px-1 rounded border border-emerald-700/60 text-emerald-400">Auto</span>}
-          </div>
-        )}
-      </div>
-    )
-  }
-
-  function detail(charm: CharacterCharm) {
-    return (
-      <div className="col-span-full rounded border border-amber-500/60 bg-stone-950/40 px-1.5 pb-1.5 pt-1 space-y-1.5">
-        <div className="flex items-center gap-1.5">
-          <span className="text-xs font-semibold text-amber-300 flex-1 min-w-0">{charm.name}</span>
-          <button onClick={() => removeCharm(charm.id)} data-tip="Remove charm" aria-label="Remove charm" className="text-stone-600 hover:text-red-400 transition-colors text-xs">✕</button>
-          <button onClick={() => setSelectedId(null)} data-tip="Close" aria-label="Close" className="text-stone-500 hover:text-stone-300 transition-colors text-xs">▴</button>
+          ${dropBefore ? 'border-amber-400/80 border-l-2' : 'border-stone-700'}`}>
+        <div className="flex items-start gap-1">
+          <span className="text-xs font-semibold text-stone-100 leading-snug flex-1 min-w-0">{charm.name}</span>
+          {(charm.count ?? 1) > 1 && <span data-tip={`Purchased ${charm.count}×`} className="text-[10px] px-1 rounded bg-stone-900 border border-stone-600 text-stone-300 shrink-0">×{charm.count}</span>}
+          {charm.customDescription !== null && <span data-tip="You edited this charm's text" className="w-1.5 h-1.5 mt-1 rounded-full bg-amber-500 shrink-0" />}
+          <button onClick={() => startEdit(charm)} data-tip="Edit text" aria-label="Edit text" className="text-xs leading-none text-stone-500 hover:text-amber-400 transition-colors shrink-0">✎</button>
+          {implemented ? (
+            <button onClick={() => toggleMechanical(charm.id)}
+              data-tip={lit ? 'Implementation on — click to turn off' : 'Implementation off — click to turn on'}
+              aria-label={lit ? 'Turn implementation off' : 'Turn implementation on'} aria-pressed={lit}
+              className={`text-xs leading-none transition-colors shrink-0 ${lit ? 'text-amber-400 hover:text-amber-300' : 'text-stone-600 hover:text-stone-400'}`}>⚙</button>
+          ) : (
+            <span data-tip="No implementation — the sheet doesn't calculate this charm" className="text-xs leading-none text-stone-700 shrink-0">⚙</span>
+          )}
+          <button onClick={() => removeCharm(charm.id)} data-tip="Remove charm" aria-label="Remove charm" className="text-xs leading-none text-stone-600 hover:text-red-400 transition-colors shrink-0">✕</button>
         </div>
-        {editingId === charm.id ? (
+        {editing ? (
           <>
-            <textarea value={editDesc} onChange={e => setEditDesc(e.target.value)} rows={4}
-              className="w-full bg-stone-800 border border-stone-600 text-stone-100 rounded px-2 py-1 text-xs focus:outline-none focus:border-amber-500 resize-none" />
-            <div className="flex gap-1 justify-end">
+            <textarea value={editDesc} onChange={e => setEditDesc(e.target.value)} rows={6}
+              className="w-full bg-stone-800 border border-stone-600 text-stone-100 rounded px-2 py-1 text-xs focus:outline-none focus:border-amber-500 resize-y" />
+            <div className="flex items-center gap-1">
+              {charm.customDescription !== null && (
+                <button onClick={() => { revert(charm.id); setEditingId(null) }} className="text-xs text-stone-500 hover:text-amber-400 transition-colors">revert to original</button>
+              )}
+              <span className="flex-1" />
               <button onClick={() => saveEdit(charm)} className="bg-amber-600 hover:bg-amber-500 text-white rounded px-2 py-0.5 text-xs">Save</button>
               <button onClick={() => setEditingId(null)} className="text-stone-500 hover:text-stone-300 text-xs px-1">Cancel</button>
             </div>
@@ -822,9 +816,7 @@ function CharmPanel({ charms, groups, onChange, onGroupsChange, dragEnabled, exa
                 ))}
               </div>
             )}
-            <p className="text-xs text-stone-400 leading-relaxed whitespace-pre-wrap">
-              {charm.customDescription ?? charm.libraryDescription ?? <em className="text-stone-600">No description loaded — library text shown in browse.</em>}
-            </p>
+            <p className="text-xs text-stone-400 leading-relaxed whitespace-pre-wrap">{charm.customDescription ?? charm.libraryDescription}</p>
             {charm.libraryModes && charm.libraryModes.length > 0 && (
               <div className="space-y-1">
                 {sortModes(charm.libraryModes.filter(m => isModeInScope(m.label, exaltType, caste, false))).map((m, i) => {
@@ -873,18 +865,6 @@ function CharmPanel({ charms, groups, onChange, onGroupsChange, dragEnabled, exa
                 <p className="text-[10px] text-stone-500">Plus 1 base Soak, counted once.</p>
               </div>
             )}
-            <div className="flex items-center gap-2 flex-wrap">
-              <button onClick={() => startEdit(charm)} data-tip="Edit" aria-label="Edit" className="text-xs text-stone-500 hover:text-amber-400 transition-colors">✎</button>
-              {charm.customDescription !== null && (
-                <button onClick={() => revert(charm.id)} className="text-xs text-stone-500 hover:text-amber-400 transition-colors">revert to original</button>
-              )}
-              {(charm.mechanicalKeyOverride ?? null) !== null || charm.mechanicalEnabled !== undefined ? (
-                <button onClick={() => toggleMechanical(charm.id)}
-                  className={`text-xs transition-colors ${charm.mechanicalEnabled ? 'text-amber-500 hover:text-stone-400' : 'text-stone-600 hover:text-amber-400'}`}>
-                  {charm.mechanicalEnabled ? 'implementation on' : 'implementation off'}
-                </button>
-              ) : null}
-            </div>
           </>
         )}
       </div>
@@ -897,14 +877,15 @@ function CharmPanel({ charms, groups, onChange, onGroupsChange, dragEnabled, exa
     const shown = filterCharms(members, query)
     if (filtering && shown.length === 0) return null
     const isCollapsed = collapsed.has(id) && !filtering
-    const open = shown.find(c => c.id === selectedId)
     const hinted = dropHint?.kind === 'group' && dropHint.id === id
     if (group && editingGroupId === group.id) {
       return (
-        <CharmGroupForm key={id} submitLabel="Save"
-          initial={{ name: group.name, color: isGroupColor(group.color) ? group.color : DEFAULT_GROUP_COLOR }}
-          onSubmit={v => { onGroupsChange(editGroup(groups, group.id, v)); setEditingGroupId(null) }}
-          onCancel={() => setEditingGroupId(null)} />
+        <div key={id} className="box-content w-[30.5rem] shrink-0">
+          <CharmGroupForm submitLabel="Save"
+            initial={{ name: group.name, color: isGroupColor(group.color) ? group.color : DEFAULT_GROUP_COLOR }}
+            onSubmit={v => { onGroupsChange(editGroup(groups, group.id, v)); setEditingGroupId(null) }}
+            onCancel={() => setEditingGroupId(null)} />
+        </div>
       )
     }
     return (
@@ -912,7 +893,7 @@ function CharmPanel({ charms, groups, onChange, onGroupsChange, dragEnabled, exa
         onDragOver={e => onBoxDragOver(e, group?.id ?? null)}
         onDragLeave={e => { if (!e.currentTarget.contains(e.relatedTarget as Node)) setDropHint(null) }}
         onDrop={e => onBoxDrop(e, group?.id ?? null)}
-        className={`rounded border p-1 transition-colors ${hinted ? 'border-amber-500/70 bg-amber-500/5' : 'border-stone-700/60'}`}>
+        className={`box-content w-[30.5rem] shrink-0 rounded border p-1 transition-colors ${hinted ? 'border-amber-500/70 bg-amber-500/5' : 'border-stone-700/60'}`}>
         <div className={`flex items-center gap-1.5 ${group && dragEnabled ? 'cursor-grab active:cursor-grabbing' : ''}`}
           draggable={!!group && dragEnabled}
           onDragStart={e => group && dragEnabled && onDragStart(e, { kind: 'group', id: group.id })}
@@ -931,9 +912,8 @@ function CharmPanel({ charms, groups, onChange, onGroupsChange, dragEnabled, exa
             {shown.length === 0
               ? <p className="text-[11px] text-stone-600 ml-[1.375rem] mt-1">Empty — drag a charm here.</p>
               : (
-                <div className="grid grid-cols-[repeat(auto-fill,minmax(9rem,1fr))] gap-1 mt-1">
+                <div className="grid grid-cols-[repeat(3,10rem)] gap-1 mt-1 items-start">
                   {shown.map(c => card(c, group))}
-                  {open && detail(open)}
                 </div>
               )}
           </>
@@ -969,7 +949,7 @@ function CharmPanel({ charms, groups, onChange, onGroupsChange, dragEnabled, exa
         <button onClick={() => setBrowsing(true)} data-tip="Add charm" aria-label="Add charm" className="text-stone-500 hover:text-amber-400 transition-colors text-base font-bold leading-none">+</button>
       </div>
 
-      <div className="space-y-1.5 overflow-y-auto no-scrollbar flex-1">
+      <div className="overflow-auto no-scrollbar flex-1 space-y-1.5">
         {addingGroup && (
           <CharmGroupForm submitLabel="Create group"
             initial={{ name: '', color: DEFAULT_GROUP_COLOR }}
@@ -981,14 +961,11 @@ function CharmPanel({ charms, groups, onChange, onGroupsChange, dragEnabled, exa
             onCancel={() => setAddingGroup(false)} />
         )}
         {charms.length === 0 && <p className="text-xs text-stone-500">No charms. Click + to browse the library.</p>}
-        {grouped.map(({ group, charms: members }) => box(group, members))}
-        {/* Ungrouped is only a box of its own once there are groups to sort into. */}
-        {groups.length > 0 ? box(null, ungrouped) : ungrouped.length > 0 && (
-          <div className="grid grid-cols-[repeat(auto-fill,minmax(9rem,1fr))] gap-1">
-            {looseShown.map(c => card(c, null))}
-            {looseOpen && detail(looseOpen)}
-          </div>
-        )}
+        {/* Groups sit side by side and wrap onto the next row when the panel runs out of width. */}
+        <div className="flex flex-wrap items-start gap-1.5">
+          {grouped.map(({ group, charms: members }) => box(group, members))}
+          {(groups.length > 0 || ungrouped.length > 0) && box(null, ungrouped)}
+        </div>
       </div>
     </div>
   )
