@@ -8,7 +8,7 @@ const charm = (id: string, groupId?: string): CharacterCharm => ({
   id, libraryId: `lib-${id}`, name: `Charm ${id}`, libraryDescription: '', libraryModes: [], libraryMechanicalKey: null,
   customDescription: null, mechanicalKeyOverride: null, mechanicalEnabled: true, ...(groupId ? { groupId } : {}),
 })
-const group = (id: string): CharmGroup => ({ id, name: `Group ${id}`, description: '', color: 'amber' })
+const group = (id: string): CharmGroup => ({ id, name: `Group ${id}`, color: 'amber' })
 
 const ids = (cs: CharacterCharm[]) => cs.map(c => c.id)
 const layout = (cs: CharacterCharm[]) => cs.map(c => `${c.id}:${c.groupId ?? '-'}`)
@@ -43,16 +43,16 @@ describe('filterCharms', () => {
 })
 
 describe('newGroup / editGroup', () => {
-  it('trims the name and description', () => {
-    expect(newGroup('g', '  Social ', ' People stuff ', 'violet')).toEqual({ id: 'g', name: 'Social', description: 'People stuff', color: 'violet' })
+  it('trims the name', () => {
+    expect(newGroup('g', '  Social ', 'violet')).toEqual({ id: 'g', name: 'Social', color: 'violet' })
   })
 
-  it('refuses a blank name', () => expect(newGroup('g', '   ', 'x', 'amber')).toBeNull())
+  it('refuses a blank name', () => expect(newGroup('g', '   ', 'amber')).toBeNull())
 
   it('edits only the named group, and a blank name keeps the old one', () => {
     const groups = [group('a'), group('b')]
-    expect(editGroup(groups, 'a', { name: ' ', description: ' New ', color: 'sky' })).toEqual([
-      { id: 'a', name: 'Group a', description: 'New', color: 'sky' }, group('b'),
+    expect(editGroup(groups, 'a', { name: ' ', color: 'sky' })).toEqual([
+      { id: 'a', name: 'Group a', color: 'sky' }, group('b'),
     ])
   })
 })

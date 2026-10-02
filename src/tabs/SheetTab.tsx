@@ -554,21 +554,20 @@ type CharmDrag = { kind: 'charm' | 'group'; id: string }
 // Where a drop would land, for highlighting: a group's box ('' = Ungrouped) or a card.
 type CharmDropHint = { kind: 'group' | 'card'; id: string } | null
 
-// Name, description and colour fields shared by "New group" and editing a group.
+// Name and colour fields shared by "New group" and editing a group.
 function CharmGroupForm({ initial, submitLabel, onSubmit, onCancel }: {
-  initial: { name: string; description: string; color: GroupColor }
+  initial: { name: string; color: GroupColor }
   submitLabel: string
-  onSubmit: (values: { name: string; description: string; color: GroupColor }) => void
+  onSubmit: (values: { name: string; color: GroupColor }) => void
   onCancel: () => void
 }) {
   const [name, setName] = useState(initial.name)
-  const [description, setDescription] = useState(initial.description)
   const [color, setColor] = useState<GroupColor>(initial.color)
   const [error, setError] = useState(false)
 
   function submit() {
     if (!name.trim()) { setError(true); return }
-    onSubmit({ name, description, color })
+    onSubmit({ name, color })
   }
 
   return (
@@ -578,10 +577,6 @@ function CharmGroupForm({ initial, submitLabel, onSubmit, onCancel }: {
         onKeyDown={e => { if (e.key === 'Enter') submit(); if (e.key === 'Escape') onCancel() }}
         className={inputCls} />
       {error && <p className="text-xs text-red-400">Give the group a name first.</p>}
-      <input type="text" value={description} placeholder="What goes here, e.g. charms for talking people round"
-        onChange={e => setDescription(e.target.value)}
-        onKeyDown={e => { if (e.key === 'Enter') submit(); if (e.key === 'Escape') onCancel() }}
-        className={inputCls} />
       <div className="flex items-center gap-1.5 flex-wrap">
         {(Object.keys(GROUP_COLORS) as GroupColor[]).map(c => (
           <button key={c} type="button" onClick={() => setColor(c)} data-tip={GROUP_COLORS[c].label} aria-label={GROUP_COLORS[c].label}
@@ -799,13 +794,6 @@ function CharmPanel({ charms, groups, onChange, onGroupsChange, dragEnabled, exa
       <div className="col-span-full rounded border border-amber-500/60 bg-stone-950/40 px-1.5 pb-1.5 pt-1 space-y-1.5">
         <div className="flex items-center gap-1.5">
           <span className="text-xs font-semibold text-amber-300 flex-1 min-w-0">{charm.name}</span>
-          <label className="text-[11px] text-stone-500" htmlFor={`move-${charm.id}`}>Move to</label>
-          <select id={`move-${charm.id}`} value={charm.groupId && groups.some(g => g.id === charm.groupId) ? charm.groupId : ''}
-            onChange={e => onChange(moveCharm(charms, charm.id, e.target.value || null))}
-            className="bg-stone-800 border border-stone-600 text-stone-100 rounded px-1 py-0.5 text-[11px] focus:outline-none focus:border-amber-500">
-            {groups.map(g => <option key={g.id} value={g.id}>{g.name}</option>)}
-            <option value="">Ungrouped</option>
-          </select>
           <button onClick={() => removeCharm(charm.id)} data-tip="Remove charm" aria-label="Remove charm" className="text-stone-600 hover:text-red-400 transition-colors text-xs">✕</button>
           <button onClick={() => setSelectedId(null)} data-tip="Close" aria-label="Close" className="text-stone-500 hover:text-stone-300 transition-colors text-xs">▴</button>
         </div>
@@ -903,7 +891,7 @@ function CharmPanel({ charms, groups, onChange, onGroupsChange, dragEnabled, exa
     )
   }
 
-  // One group's box: header, description, then its cards. `group` null = Ungrouped.
+  // One group's box: header, then its cards. `group` null = Ungrouped.
   function box(group: CharmGroup | null, members: CharacterCharm[]) {
     const id = group?.id ?? ''
     const shown = filterCharms(members, query)
@@ -914,7 +902,7 @@ function CharmPanel({ charms, groups, onChange, onGroupsChange, dragEnabled, exa
     if (group && editingGroupId === group.id) {
       return (
         <CharmGroupForm key={id} submitLabel="Save"
-          initial={{ name: group.name, description: group.description, color: isGroupColor(group.color) ? group.color : DEFAULT_GROUP_COLOR }}
+          initial={{ name: group.name, color: isGroupColor(group.color) ? group.color : DEFAULT_GROUP_COLOR }}
           onSubmit={v => { onGroupsChange(editGroup(groups, group.id, v)); setEditingGroupId(null) }}
           onCancel={() => setEditingGroupId(null)} />
       )
@@ -940,13 +928,10 @@ function CharmPanel({ charms, groups, onChange, onGroupsChange, dragEnabled, exa
         </div>
         {!isCollapsed && (
           <>
-            <p className="text-[11px] text-stone-500 ml-[1.375rem] mb-1">
-              {group ? (group.description || <em className="text-stone-600">No description</em>) : 'New charms land here until you drag them into a group.'}
-            </p>
             {shown.length === 0
-              ? <p className="text-[11px] text-stone-600 ml-[1.375rem]">Empty — drag a charm here.</p>
+              ? <p className="text-[11px] text-stone-600 ml-[1.375rem] mt-1">Empty — drag a charm here.</p>
               : (
-                <div className="grid grid-cols-[repeat(auto-fill,minmax(9rem,1fr))] gap-1">
+                <div className="grid grid-cols-[repeat(auto-fill,minmax(9rem,1fr))] gap-1 mt-1">
                   {shown.map(c => card(c, group))}
                   {open && detail(open)}
                 </div>
@@ -987,9 +972,9 @@ function CharmPanel({ charms, groups, onChange, onGroupsChange, dragEnabled, exa
       <div className="space-y-1.5 overflow-y-auto no-scrollbar flex-1">
         {addingGroup && (
           <CharmGroupForm submitLabel="Create group"
-            initial={{ name: '', description: '', color: DEFAULT_GROUP_COLOR }}
+            initial={{ name: '', color: DEFAULT_GROUP_COLOR }}
             onSubmit={v => {
-              const group = newGroup(crypto.randomUUID(), v.name, v.description, v.color)
+              const group = newGroup(crypto.randomUUID(), v.name, v.color)
               if (group) onGroupsChange([...groups, group])
               setAddingGroup(false)
             }}

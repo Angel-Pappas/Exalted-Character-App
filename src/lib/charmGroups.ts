@@ -50,15 +50,15 @@ export function filterCharms(charms: CharacterCharm[], query: string): Character
 }
 
 // A new group, or null when the name is blank.
-export function newGroup(id: string, name: string, description: string, color: GroupColor): CharmGroup | null {
+export function newGroup(id: string, name: string, color: GroupColor): CharmGroup | null {
   const trimmed = name.trim()
-  return trimmed ? { id, name: trimmed, description: description.trim(), color } : null
+  return trimmed ? { id, name: trimmed, color } : null
 }
 
 // Applies an edit to one group. A blank name keeps the old one.
-export function editGroup(groups: CharmGroup[], id: string, changes: { name: string; description: string; color: GroupColor }): CharmGroup[] {
+export function editGroup(groups: CharmGroup[], id: string, changes: { name: string; color: GroupColor }): CharmGroup[] {
   return groups.map(g => g.id === id
-    ? { ...g, name: changes.name.trim() || g.name, description: changes.description.trim(), color: changes.color }
+    ? { ...g, name: changes.name.trim() || g.name, color: changes.color }
     : g)
 }
 

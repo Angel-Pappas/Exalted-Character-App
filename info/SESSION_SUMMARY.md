@@ -118,7 +118,7 @@ Only one armor can be equipped at a time (equipping one auto-unequips others).
 ### Charms
 - Global library in `charm_library` (admin manages via Admin → Charms)
 - Players browse the library and add charms to their sheet as `CharacterCharm[]`
-- The Charms panel shows charms as cards in player-made groups (`SheetData.charmGroups`, per character, never premade). A charm sits in at most one group (`CharacterCharm.groupId`; absent = Ungrouped). Deleting a group ungroups its charms, never deletes them. Cards and groups reorder by drag and drop (off in layout-edit mode); the open card's "Move to" menu does the same without dragging. Logic in `src/lib/charmGroups.ts` (tested).
+- The Charms panel shows charms as cards in player-made groups (`SheetData.charmGroups`, per character, never premade). A charm sits in at most one group (`CharacterCharm.groupId`; absent = Ungrouped). Deleting a group ungroups its charms, never deletes them. Groups have a name and colour only. Cards and groups move and reorder by drag and drop only (off in layout-edit mode). Logic in `src/lib/charmGroups.ts` (tested).
 - Each CharacterCharm: `libraryId`, `name`, `libraryMechanicalKey` (denormalized), `customDescription` (player override), `mechanicalKeyOverride`, `mechanicalEnabled`
 - Effective mechanical key = `mechanicalKeyOverride ?? libraryMechanicalKey`
 - `mechanicalEnabled` gates whether coded features are active

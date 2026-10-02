@@ -82,7 +82,6 @@ export interface CharacterCharm {
 export interface CharmGroup {
   id: string
   name: string
-  description: string      // "what goes here", shown under the group's name
   color: string            // a key of GROUP_COLORS (src/lib/charmGroups.ts)
 }
 
