@@ -15,6 +15,7 @@ import {
   shorterColumn, splitColumns,
 } from '../lib/charmGroups'
 import type { GroupColor } from '../lib/charmGroups'
+import { ROW_HEIGHT, fitPanelHeight, rowsToFit } from '../lib/panelLayout'
 import { bestEquipped, calculateDefenses, STATIC_BONUS_CAP } from '../lib/defenses'
 import {
   DEFAULT_OX_BODY_PICK, LEVEL_NAMES, buildHealthTrack, clampDamage, currentWound, damageAfterClick,
@@ -51,6 +52,11 @@ const findOxBody = (charms: CharacterCharm[]) => charms.find(c => activeKey(c) =
 // Motes and Anima in, back when the panel still carried the Identity rows.
 const ESSENCE_H = 24
 const LEGACY_ESSENCE_H = 34
+
+// Around the Charms panel's measured content: the grid cell's 2px padding, the
+// panel's 8px padding and 1px border, each top and bottom.
+const CHARMS_CHROME_PX = 2 * (2 + 8 + 1)
+const CHARMS_MIN_ROWS = 8
 
 const DEFAULT_LAYOUT: PanelLayout[] = [
   { i: 'attributes', x: 0,  y: 0,  w: 16, h: 22, minW: 4, minH: 8 },
@@ -592,9 +598,12 @@ function CharmGroupForm({ initial, submitLabel, onSubmit, onCancel }: {
   )
 }
 
-function CharmPanel({ charms, groups, onChange, onGroupsChange, dragEnabled, exaltType, caste, abilities, attributes, essence }: {
+function CharmPanel({ charms, groups, onChange, onGroupsChange, onContentHeight, dragEnabled, exaltType, caste, abilities, attributes, essence }: {
   charms: CharacterCharm[]
   groups: CharmGroup[]
+  // Reports the natural height (px) of everything inside the panel, so the sheet
+  // can size the panel to fit it and the panel never scrolls.
+  onContentHeight: (px: number) => void
   onChange: (c: CharacterCharm[]) => void
   // Group edits that also touch charms (deleting a group ungroups its charms)
   // pass both, so they land in one save.
@@ -615,6 +624,22 @@ function CharmPanel({ charms, groups, onChange, onGroupsChange, dragEnabled, exa
   const [collapsed, setCollapsed] = useState<Set<string>>(new Set())
   const [dropHint, setDropHint] = useState<CharmDropHint>(null)
   const [dragging, setDragging] = useState<CharmDrag | null>(null)
+  const contentRef = useRef<HTMLDivElement>(null)
+  const [contentHeight, setContentHeight] = useState(0)
+
+  // Watch the content's natural height; it changes with charms, edits, filtering,
+  // and with the panel's width (groups wrap onto more rows when it is narrower).
+  useEffect(() => {
+    const el = contentRef.current
+    if (!el) return
+    const observer = new ResizeObserver(() => setContentHeight(el.getBoundingClientRect().height))
+    observer.observe(el)
+    return () => observer.disconnect()
+  }, [])
+
+  useEffect(() => {
+    if (contentHeight > 0) onContentHeight(contentHeight)
+  }, [contentHeight, onContentHeight])
 
   // First purchase adds a new entry; buying an already-owned charm again
   // (Repurchase) just bumps its count. `pick` is the choice made this purchase
@@ -954,7 +979,7 @@ function CharmPanel({ charms, groups, onChange, onGroupsChange, dragEnabled, exa
   }
 
   return (
-    <div className="bg-stone-900 border border-stone-700 rounded-lg p-2 overflow-hidden h-full flex flex-col">
+    <div className="bg-stone-900 border border-stone-700 rounded-lg p-2 overflow-hidden h-full">
       {browsing && (
         <CharmBrowseModal
           existing={charms}
@@ -969,7 +994,9 @@ function CharmPanel({ charms, groups, onChange, onGroupsChange, dragEnabled, exa
         />
       )}
 
-      <div className="flex items-center gap-2 mb-2 shrink-0">
+      {/* Everything measured for the panel's height lives in this wrapper. */}
+      <div ref={contentRef} className="flow-root">
+      <div className="flex items-center gap-2 mb-2">
         <SectionHeader title="Charms" />
         <span className="flex-1" />
         {charms.length > 0 && (
@@ -980,7 +1007,7 @@ function CharmPanel({ charms, groups, onChange, onGroupsChange, dragEnabled, exa
         <button onClick={() => setBrowsing(true)} data-tip="Add charm" aria-label="Add charm" className="text-stone-500 hover:text-amber-400 transition-colors text-base font-bold leading-none">+</button>
       </div>
 
-      <div className="overflow-auto no-scrollbar flex-1 space-y-1.5">
+      <div className="overflow-x-auto no-scrollbar space-y-1.5">
         {addingGroup && (
           <CharmGroupForm submitLabel="Create group"
             initial={{ name: '', color: DEFAULT_GROUP_COLOR }}
@@ -997,6 +1024,7 @@ function CharmPanel({ charms, groups, onChange, onGroupsChange, dragEnabled, exa
           {grouped.map(({ group, charms: members }) => box(group, members))}
           {(groups.length > 0 || ungrouped.length > 0) && box(null, ungrouped)}
         </div>
+      </div>
       </div>
     </div>
   )
@@ -2119,6 +2147,14 @@ export default function SheetTab({ sheet, onChange, editMode, gameData: gd }: Pr
 
   const panelBase = "bg-stone-900 border border-stone-700 rounded-lg p-2 overflow-y-auto no-scrollbar h-full"
 
+  // The Charms panel is always exactly as tall as its content and never scrolls;
+  // panels below it in the same columns move with it.
+  function fitCharmsPanel(contentPx: number) {
+    const h = rowsToFit(contentPx, CHARMS_CHROME_PX, CHARMS_MIN_ROWS)
+    const next = fitPanelHeight(data.layout, 'charms', h)
+    if (next !== data.layout) update({ layout: next })
+  }
+
   const panels: Record<string, React.ReactNode> = {
     attributes: (
       <div className={panelBase}>
@@ -2596,6 +2632,7 @@ export default function SheetTab({ sheet, onChange, editMode, gameData: gd }: Pr
       <CharmPanel
         charms={data.charms}
         groups={data.charmGroups}
+        onContentHeight={fitCharmsPanel}
         onChange={c => update({ charms: c })}
         onGroupsChange={(charmGroups, charms) => update(charms ? { charmGroups, charms } : { charmGroups })}
         dragEnabled={!editMode}
@@ -2638,18 +2675,19 @@ export default function SheetTab({ sheet, onChange, editMode, gameData: gd }: Pr
       {mounted && (
         <GridLayout
           width={width}
-          gridConfig={{ cols: 128, rowHeight: 10, margin: [0, 0], containerPadding: [0, 0] }}
+          gridConfig={{ cols: 128, rowHeight: ROW_HEIGHT, margin: [0, 0], containerPadding: [0, 0] }}
           dragConfig={{ enabled: editMode, handle: '.drag-handle' }}
           resizeConfig={{ enabled: editMode }}
           compactor={freeCompactor}
-          layout={data.layout}
+          // The Charms panel's height follows its content, so it only resizes sideways.
+          layout={data.layout.map(l => l.i === 'charms' ? { ...l, resizeHandles: ['e' as const] } : l)}
           onLayoutChange={(newLayout) => update({ layout: newLayout.map(({ i, x, y, w, h }) => ({ i, x, y, w, h })) })}
           autoSize={false}
           style={{
             minHeight: '2000px',
             ...(editMode ? {
               backgroundImage: 'linear-gradient(rgba(251,191,36,0.08) 1px, transparent 1px), linear-gradient(90deg, rgba(251,191,36,0.08) 1px, transparent 1px)',
-              backgroundSize: `${width / 128}px 10px`,
+              backgroundSize: `${width / 128}px ${ROW_HEIGHT}px`,
             } : {}),
           }}
         >
