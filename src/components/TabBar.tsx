@@ -13,14 +13,16 @@ const TABS: Tab[] = [
 interface TabBarProps {
   active: string
   onChange: (id: string) => void
+  // Only these tabs are offered (e.g. just the sheet when viewing someone else's character).
+  only?: string[]
 }
 
 // Sits inside the page header: it stretches to the header's full height so the
 // active tab's underline lands on the header's bottom border.
-export default function TabBar({ active, onChange }: TabBarProps) {
+export default function TabBar({ active, onChange, only }: TabBarProps) {
   return (
     <nav className="flex self-stretch shrink-0">
-      {TABS.map(tab => (
+      {TABS.filter(tab => !only || only.includes(tab.id)).map(tab => (
         <button
           key={tab.id}
           onClick={() => onChange(tab.id)}

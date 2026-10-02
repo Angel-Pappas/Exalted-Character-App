@@ -5,6 +5,8 @@ import { useAuth } from '../contexts/AuthContext'
 import { exaltTypeFromRow } from '../types/character'
 import type { Character, ExaltType, ExaltTypeRow } from '../types/character'
 import ModalPortal from '../components/ModalPortal'
+import { KIND_LABEL } from '../types/campaign'
+import type { CharacterKind } from '../types/campaign'
 
 export default function CharactersPage() {
   const { user } = useAuth()
@@ -17,6 +19,7 @@ export default function CharactersPage() {
   const [newName, setNewName] = useState('')
   const [newExaltType, setNewExaltType] = useState('')
   const [newCaste, setNewCaste] = useState('')
+  const [newKind, setNewKind] = useState<CharacterKind>('pc')
   const [creating, setCreating] = useState(false)
   const [exaltTypes, setExaltTypes] = useState<ExaltType[]>([])
 
@@ -43,7 +46,7 @@ export default function CharactersPage() {
   const castes = selectedExalt?.castes ?? []
 
   function openModal() {
-    setNewName(''); setNewExaltType(''); setNewCaste('')
+    setNewName(''); setNewExaltType(''); setNewCaste(''); setNewKind('pc')
     setModalOpen(true)
   }
 
@@ -56,7 +59,7 @@ export default function CharactersPage() {
       exaltType: newExaltType,
       caste: newCaste,
     }
-    const { data } = await api<Character>('POST', 'characters', { name: newName.trim(), data: { sheet: initialSheet } })
+    const { data } = await api<Character>('POST', 'characters', { name: newName.trim(), kind: newKind, data: { sheet: initialSheet } })
     setCreating(false)
     if (data) navigate(`/character/${data.id}`)
   }
@@ -100,7 +103,10 @@ export default function CharactersPage() {
                     onClick={() => navigate(`/character/${c.id}`)}
                     className="text-left flex-1 min-w-0"
                   >
-                    <div className="text-stone-100 hover:text-amber-400 font-medium transition-colors">{c.name}</div>
+                    <div className="flex items-center gap-2">
+                      <span className="text-stone-100 hover:text-amber-400 font-medium transition-colors">{c.name}</span>
+                      <span className={`text-[10px] px-1.5 rounded border ${c.kind === 'npc' ? 'border-sky-700/60 text-sky-400' : 'border-amber-700/60 text-amber-400'}`}>{KIND_LABEL[c.kind ?? 'pc']}</span>
+                    </div>
                     {(exaltType || caste) && (
                       <div className="text-xs text-stone-500 mt-0.5">
                         {[exaltType, caste].filter(Boolean).join(' · ')}
@@ -138,6 +144,18 @@ export default function CharactersPage() {
                   autoFocus
                   className="w-full bg-stone-800 border border-stone-600 text-stone-100 rounded px-3 py-1.5 text-sm focus:outline-none focus:border-amber-500 placeholder-stone-500"
                 />
+              </div>
+
+              <div className="space-y-1">
+                <span className="text-xs text-stone-400">Player character or NPC</span>
+                <div className="grid grid-cols-2 gap-2">
+                  {(['pc', 'npc'] as const).map(k => (
+                    <button key={k} type="button" onClick={() => setNewKind(k)} aria-pressed={newKind === k}
+                      className={`py-1.5 rounded border text-sm transition-colors ${newKind === k ? 'bg-amber-600 border-amber-500 text-white' : 'border-stone-600 text-stone-400 hover:border-amber-500 hover:text-amber-300'}`}>
+                      {k === 'pc' ? 'PC' : 'NPC'}
+                    </button>
+                  ))}
+                </div>
               </div>
 
               <div className="space-y-1">

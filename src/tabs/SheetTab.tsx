@@ -107,6 +107,9 @@ function defaultSheet(): SheetData {
 interface Props {
   sheet: SheetData
   editMode: boolean
+  // Someone else's character: nothing can be dragged or changed (the page also
+  // disables every control and never saves).
+  readOnly?: boolean
   onChange: (sheet: SheetData) => void
   gameData?: GameData
 }
@@ -2028,8 +2031,9 @@ function Counter({ value, onStep, size = 'lg', valueCls = 'text-stone-100' }: {
   )
 }
 
-export default function SheetTab({ sheet, onChange, editMode, gameData: gd }: Props) {
+export default function SheetTab({ sheet, onChange, editMode, readOnly = false, gameData: gd }: Props) {
   const gameData = gd ?? DEFAULT_GAME_DATA
+  const dragEnabled = !editMode && !readOnly
   const def = defaultSheet()
   const data: SheetData = {
     attributes: { ...def.attributes, ...sheet.attributes },
@@ -2640,7 +2644,7 @@ export default function SheetTab({ sheet, onChange, editMode, gameData: gd }: Pr
         onContentHeight={fitCharmsPanel}
         onChange={c => update({ charms: c })}
         onGroupsChange={(charmGroups, charms) => update(charms ? { charmGroups, charms } : { charmGroups })}
-        dragEnabled={!editMode}
+        dragEnabled={dragEnabled}
         exaltType={data.exaltType}
         caste={data.caste}
         abilities={data.abilities}
@@ -2653,7 +2657,7 @@ export default function SheetTab({ sheet, onChange, editMode, gameData: gd }: Pr
       <EffectPanel
         categories={data.effects}
         onChange={c => update({ effects: c })}
-        dragEnabled={!editMode}
+        dragEnabled={dragEnabled}
         anima={data.anima}
       />
     ),
@@ -2665,7 +2669,7 @@ export default function SheetTab({ sheet, onChange, editMode, gameData: gd }: Pr
         foi={data.foi ?? { active: false, weight: null, tag: null, artifact: false }}
         foiOriginals={data.foiOriginals ?? {}}
         onFoiChange={(foi, foiOriginals, inventory) => update({ foi, foiOriginals, inventory })}
-        dragEnabled={!editMode}
+        dragEnabled={dragEnabled}
         gameData={gameData}
         charms={data.charms}
       />

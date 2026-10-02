@@ -2,6 +2,7 @@ import { useEffect, useState, useCallback } from 'react'
 import { useParams, useNavigate } from 'react-router-dom'
 import { api } from '../lib/api'
 import { useAuth } from '../contexts/AuthContext'
+import { canEditCharacter } from '../lib/characterAccess'
 import type { Character, CharacterData, GameData } from '../types/character'
 import { DEFAULT_GAME_DATA } from '../types/character'
 import TabBar from '../components/TabBar'
@@ -20,7 +21,7 @@ const defaultData: CharacterData = {
 export default function CharacterPage() {
   const { id } = useParams<{ id: string }>()
   const navigate = useNavigate()
-  const { user } = useAuth()
+  const { user, role } = useAuth()
   const [character, setCharacter] = useState<Character | null>(null)
   const [data, setData] = useState<CharacterData>(defaultData)
   const [gameData, setGameData] = useState<GameData>(DEFAULT_GAME_DATA)
@@ -62,7 +63,12 @@ export default function CharacterPage() {
     setSaving(false)
   }, [id])
 
+  // Someone else's character (a Storyteller's view, or a public one in a shared
+  // campaign) is shown read-only: only the sheet, nothing clickable, never saved.
+  const readOnly = character !== null && !canEditCharacter(character, user?.id, role)
+
   function updateData(partial: Partial<CharacterData>) {
+    if (readOnly) { setData(prev => ({ ...prev, ...partial })); return }
     setData(prev => {
       const next = { ...prev, ...partial }
       if (saveTimeout) clearTimeout(saveTimeout)
@@ -96,10 +102,11 @@ export default function CharacterPage() {
           )}
         </div>
         <span className="w-px h-5 bg-stone-700 self-center shrink-0" />
-        <TabBar active={activeTab} onChange={setActiveTab} />
+        <TabBar active={readOnly ? 'sheet' : activeTab} onChange={setActiveTab} only={readOnly ? ['sheet'] : undefined} />
         <div className="flex items-center gap-3 ml-auto py-3">
           {saving && <span className="text-xs text-stone-500">Saving…</span>}
-          {activeTab === 'sheet' && (
+          {readOnly && <span className="text-xs px-2 py-1 rounded border border-stone-600 text-stone-400">View only</span>}
+          {activeTab === 'sheet' && !readOnly && (
             <button
               onClick={() => setSheetEditMode(v => !v)}
               className={`flex items-center gap-1.5 px-3 py-1.5 rounded text-xs font-medium transition-colors ${
@@ -118,27 +125,31 @@ export default function CharacterPage() {
       </header>
 
       <div className="flex-1 overflow-auto">
-        {activeTab === 'sheet' && (
-          <SheetTab
-            sheet={data.sheet}
-            onChange={sheet => updateData({ sheet })}
-            editMode={sheetEditMode}
-            gameData={gameData}
-          />
+        {(activeTab === 'sheet' || readOnly) && (
+          // A disabled fieldset switches off every input and button inside the sheet at once.
+          <fieldset disabled={readOnly} className="contents">
+            <SheetTab
+              sheet={data.sheet}
+              onChange={sheet => updateData({ sheet })}
+              editMode={sheetEditMode && !readOnly}
+              readOnly={readOnly}
+              gameData={gameData}
+            />
+          </fieldset>
         )}
-        {activeTab === 'milestones' && (
+        {!readOnly && activeTab === 'milestones' && (
           <MilestonesTab
             milestones={data.milestones}
             onChange={milestones => updateData({ milestones })}
           />
         )}
-        {activeTab === 'notes' && (
+        {!readOnly && activeTab === 'notes' && (
           <NotesTab
             notes={data.notes}
             onChange={notes => updateData({ notes })}
           />
         )}
-        {activeTab === 'characters' && (
+        {!readOnly && activeTab === 'characters' && (
           <CharactersTab
             npcs={data.npcs}
             onChange={npcs => updateData({ npcs })}
