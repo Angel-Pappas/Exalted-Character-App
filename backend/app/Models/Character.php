@@ -2,24 +2,30 @@
 
 namespace App\Models;
 
+use App\Enums\CharacterKind;
 use Database\Factories\CharacterFactory;
 use Illuminate\Database\Eloquent\Attributes\Fillable;
 use Illuminate\Database\Eloquent\Concerns\HasUuids;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
+use Illuminate\Database\Eloquent\Relations\BelongsToMany;
 
 /**
  * @property string $id
  * @property string $user_id
  * @property string $name
+ * @property CharacterKind $kind
  * @property \stdClass $data
  */
-#[Fillable(['user_id', 'name', 'data'])]
+#[Fillable(['user_id', 'name', 'kind', 'data'])]
 class Character extends Model
 {
     /** @use HasFactory<CharacterFactory> */
     use HasFactory, HasUuids;
+
+    /** @var array<string, mixed> */
+    protected $attributes = ['kind' => 'pc'];
 
     /**
      * The sheet is opaque to the server. Decoding it as objects (not PHP arrays)
@@ -29,7 +35,7 @@ class Character extends Model
      */
     protected function casts(): array
     {
-        return ['data' => 'object'];
+        return ['data' => 'object', 'kind' => CharacterKind::class];
     }
 
     /**
@@ -38,5 +44,16 @@ class Character extends Model
     public function user(): BelongsTo
     {
         return $this->belongsTo(User::class);
+    }
+
+    /**
+     * @return BelongsToMany<Campaign, $this, CampaignCharacter>
+     */
+    public function campaigns(): BelongsToMany
+    {
+        return $this->belongsToMany(Campaign::class, 'campaign_characters')
+            ->using(CampaignCharacter::class)
+            ->withPivot('visibility')
+            ->withTimestamps();
     }
 }

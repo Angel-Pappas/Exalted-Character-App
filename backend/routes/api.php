@@ -2,8 +2,11 @@
 
 use App\Http\Controllers\Admin;
 use App\Http\Controllers\AuthController;
+use App\Http\Controllers\CampaignController;
+use App\Http\Controllers\CharacterCampaignController;
 use App\Http\Controllers\CharacterController;
 use App\Http\Controllers\CharmController;
+use App\Http\Controllers\CircleController;
 use App\Http\Controllers\ExaltTypeController;
 use App\Http\Controllers\GameDataController;
 use Illuminate\Support\Facades\Route;
@@ -25,6 +28,17 @@ Route::middleware('auth')->group(function () {
     Route::put('me/password', [AuthController::class, 'updatePassword'])->middleware('throttle:auth');
 
     Route::apiResource('characters', CharacterController::class);
+    Route::put('characters/{character}/settings', [CharacterCampaignController::class, 'settings']);
+    Route::get('characters/{character}/campaigns', [CharacterCampaignController::class, 'index']);
+    Route::put('characters/{character}/campaigns/{campaign}', [CharacterCampaignController::class, 'update']);
+    Route::delete('characters/{character}/campaigns/{campaign}', [CharacterCampaignController::class, 'destroy']);
+    Route::get('characters/{character}/circle', [CircleController::class, 'show']);
+    Route::put('characters/{character}/circle/{subject}', [CircleController::class, 'update']);
+
+    Route::apiResource('campaigns', CampaignController::class);
+    Route::post('campaigns/{campaign}/members', [CampaignController::class, 'addMember']);
+    Route::delete('campaigns/{campaign}/members/{user}', [CampaignController::class, 'removeMember']);
+    Route::put('campaigns/{campaign}/storyteller', [CampaignController::class, 'transfer']);
     Route::get('game-data', [GameDataController::class, 'show']);
     Route::put('game-data', [GameDataController::class, 'update']);
     Route::get('exalt-types', [ExaltTypeController::class, 'index']);

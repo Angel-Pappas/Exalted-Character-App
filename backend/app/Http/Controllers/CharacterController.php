@@ -8,6 +8,7 @@ use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Http\Response;
 use Illuminate\Support\Facades\Gate;
+use Illuminate\Validation\Rule;
 
 class CharacterController extends Controller
 {
@@ -24,6 +25,7 @@ class CharacterController extends Controller
     {
         $validated = $request->validate([
             'name' => ['required', 'string', 'max:255'],
+            'kind' => ['sometimes', Rule::in(['pc', 'npc'])],
             'data' => ['present', 'array'],
         ]);
 
@@ -32,6 +34,7 @@ class CharacterController extends Controller
 
         $character = $user->characters()->create([
             'name' => $validated['name'],
+            'kind' => $validated['kind'] ?? 'pc',
             'data' => $this->rawJsonField($request, 'data'),
         ]);
 
