@@ -979,7 +979,7 @@ function CharmPanel({ charms, groups, onChange, onGroupsChange, onContentHeight,
   }
 
   return (
-    <div className="bg-stone-900 border border-stone-700 rounded-lg p-2 overflow-hidden h-full">
+    <div className="bg-stone-900 border border-stone-700 rounded-lg p-2 overflow-clip h-full">
       {browsing && (
         <CharmBrowseModal
           existing={charms}
@@ -1007,7 +1007,10 @@ function CharmPanel({ charms, groups, onChange, onGroupsChange, onContentHeight,
         <button onClick={() => setBrowsing(true)} data-tip="Add charm" aria-label="Add charm" className="text-stone-500 hover:text-amber-400 transition-colors text-base font-bold leading-none">+</button>
       </div>
 
-      <div className="overflow-x-auto no-scrollbar space-y-1.5">
+      {/* No scroll area in here: the panel always fits its content, and an inner
+          scroller (even a sideways one, which Chrome also lets scroll a pixel or so
+          vertically) captures the mouse wheel and stalls the page's scrolling. */}
+      <div className="space-y-1.5">
         {addingGroup && (
           <CharmGroupForm submitLabel="Create group"
             initial={{ name: '', color: DEFAULT_GROUP_COLOR }}
