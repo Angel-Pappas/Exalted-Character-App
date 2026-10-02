@@ -75,6 +75,15 @@ export interface CharacterCharm {
   picks?: string[]         // one entry per purchase; only used when the library charm has a choiceType
   groupedPicks?: { target: string; selected: string[] }[]  // used instead of picks for choiceType === 'multiselect'; one entry per purchase/target
   oxBodyPicks?: OxBodyPick[]  // Ox Body Technique only: health levels chosen per purchase, where the Exalt type gets a choice
+  groupId?: string         // the player-made CharmGroup this charm sits in; absent = ungrouped
+}
+
+// A player-made group in the Charms panel (e.g. "Social"). Per character, never premade.
+export interface CharmGroup {
+  id: string
+  name: string
+  description: string      // "what goes here", shown under the group's name
+  color: string            // a key of GROUP_COLORS (src/lib/charmGroups.ts)
 }
 
 // Solar/Abyssal Ox Body: each purchase grants one 0 level or two −1 levels.
@@ -215,6 +224,7 @@ export interface SheetData {
   health?: HealthBox[]    // legacy: one checkbox per box, read once to seed `damage`
   layout: PanelLayout[]
   charms: CharacterCharm[]
+  charmGroups: CharmGroup[]
   effects: EffectCategory[]
   inventory: InventoryItem[]
   foi: FoiState
