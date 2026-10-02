@@ -1,9 +1,10 @@
-import type { CharacterCharm, CharmGroup } from '../types/character'
+import type { CharacterCharm, CharmColumn, CharmGroup } from '../types/character'
 
 // Player-made groups for the Charms panel. Groups belong to one character and
 // a charm sits in at most one group (CharacterCharm.groupId); a charm with no
 // groupId — or one pointing at a group that no longer exists — is ungrouped.
-// Order within a group is the charm's order in the character's charms array.
+// Each group stacks its cards in two columns (CharacterCharm.column); order
+// within a column is the charms' order in the character's charms array.
 
 // The colours a group can take, as Tailwind classes for its accent stripe and dot.
 export const GROUP_COLORS = {
@@ -80,26 +81,63 @@ export function moveGroup(groups: CharmGroup[], id: string, beforeId: string | n
   return rest
 }
 
-// Puts a charm into `groupId` (null = ungrouped), just before `beforeId` when
-// that charm is given, otherwise after the last charm already in the target.
-// Only the moved charm's position changes; everyone else keeps their order.
-export function moveCharm(charms: CharacterCharm[], charmId: string, groupId: string | null, beforeId: string | null = null): CharacterCharm[] {
-  const charm = charms.find(c => c.id === charmId)
-  if (!charm || charmId === beforeId) return charms
-  const moved = groupId === null ? withoutGroup(charm) : { ...charm, groupId }
-  const rest = charms.filter(c => c.id !== charmId)
-  let at = beforeId === null ? -1 : rest.findIndex(c => c.id === beforeId)
-  if (at < 0) {
-    const inTarget = (c: CharacterCharm) => (c.groupId ?? null) === groupId
-    const last = rest.findLastIndex(inTarget)
-    at = last < 0 ? rest.length : last + 1
+// Splits one group's charms into its two columns, keeping array order inside
+// each. A charm with no column yet (new, or never dragged) goes to whichever
+// column has fewer cards so far, ties to the left.
+export function splitColumns(members: CharacterCharm[]): [CharacterCharm[], CharacterCharm[]] {
+  const columns: [CharacterCharm[], CharacterCharm[]] = [[], []]
+  for (const c of members) {
+    const col: CharmColumn = c.column ?? (columns[1].length < columns[0].length ? 1 : 0)
+    columns[col].push(c)
   }
-  rest.splice(at, 0, moved)
+  return columns
+}
+
+// The column with fewer cards, where a charm dropped on a group's header goes.
+export function shorterColumn(members: CharacterCharm[]): CharmColumn {
+  const [left, right] = splitColumns(members)
+  return right.length < left.length ? 1 : 0
+}
+
+// Writes every charm's on-screen column into it, so moving one card can never
+// make an automatically placed card hop to the other column.
+export function pinColumns(charms: CharacterCharm[], groups: CharmGroup[]): CharacterCharm[] {
+  const { grouped, ungrouped } = partitionCharms(charms, groups)
+  const column = new Map<string, CharmColumn>()
+  for (const members of [...grouped.map(g => g.charms), ungrouped]) {
+    splitColumns(members).forEach((cards, col) => { for (const c of cards) column.set(c.id, col as CharmColumn) })
+  }
+  return charms.map(c => {
+    const col = column.get(c.id) ?? 0
+    return c.column === col ? c : { ...c, column: col }
+  })
+}
+
+// Puts a charm into a group's column (groupId null = Ungrouped): just above
+// `beforeId` when dropped on a card, otherwise at the bottom of that column.
+// A column's order is the charms' array order, so the end of the array is the
+// bottom of every column.
+export function moveCharm(
+  charms: CharacterCharm[],
+  groups: CharmGroup[],
+  charmId: string,
+  target: { groupId: string | null; column: CharmColumn; beforeId?: string | null },
+): CharacterCharm[] {
+  const charm = charms.find(c => c.id === charmId)
+  const beforeId = target.beforeId ?? null
+  if (!charm || charmId === beforeId) return charms
+  const base = target.groupId === null ? withoutGroup(charm) : { ...charm, groupId: target.groupId }
+  const moved = { ...base, column: target.column }
+  const rest = pinColumns(charms, groups).filter(c => c.id !== charmId)
+  const at = beforeId === null ? -1 : rest.findIndex(c => c.id === beforeId)
+  rest.splice(at < 0 ? rest.length : at, 0, moved)
   return rest
 }
 
+// Leaving a group also forgets the column, so the charm is placed afresh.
 function withoutGroup(charm: CharacterCharm): CharacterCharm {
   const copy = { ...charm }
   delete copy.groupId
+  delete copy.column
   return copy
 }

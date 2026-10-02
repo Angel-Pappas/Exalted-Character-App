@@ -76,7 +76,11 @@ export interface CharacterCharm {
   groupedPicks?: { target: string; selected: string[] }[]  // used instead of picks for choiceType === 'multiselect'; one entry per purchase/target
   oxBodyPicks?: OxBodyPick[]  // Ox Body Technique only: health levels chosen per purchase, where the Exalt type gets a choice
   groupId?: string         // the player-made CharmGroup this charm sits in; absent = ungrouped
+  column?: CharmColumn     // which of its group's two columns the card stacks in; absent = placed automatically
 }
+
+// Each group in the Charms panel stacks its cards in two columns: 0 = left, 1 = right.
+export type CharmColumn = 0 | 1
 
 // A player-made group in the Charms panel (e.g. "Social"). Per character, never premade.
 export interface CharmGroup {

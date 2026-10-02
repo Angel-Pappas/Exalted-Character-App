@@ -4,7 +4,7 @@ import { GridLayout, useContainerWidth, noCompactor } from 'react-grid-layout'
 // Override it so panels can freely overlap — no collision resolution, no compaction.
 const freeCompactor = { ...noCompactor, allowOverlap: true }
 import 'react-grid-layout/css/styles.css'
-import type { SheetData, FoiState, AbilityData, MeritEntry, IntimacyEntry, OxBodyPick, PanelLayout, CharacterCharm, CharmGroup, EffectCategory, EffectEntry, InventoryItem, InventoryItemKind, WeaponWeight, ArtifactColor, GameData } from '../types/character'
+import type { SheetData, FoiState, AbilityData, MeritEntry, IntimacyEntry, OxBodyPick, PanelLayout, CharacterCharm, CharmColumn, CharmGroup, EffectCategory, EffectEntry, InventoryItem, InventoryItemKind, WeaponWeight, ArtifactColor, GameData } from '../types/character'
 import { DEFAULT_GAME_DATA } from '../types/character'
 import {
   abilityRank, baseAbility, isModeInScope, isTypeInScope, modeIcon, modeLockReasons,
@@ -12,6 +12,7 @@ import {
 } from '../lib/charmRules'
 import {
   DEFAULT_GROUP_COLOR, GROUP_COLORS, deleteGroup, editGroup, filterCharms, groupColor, isGroupColor, moveCharm, moveGroup, newGroup, partitionCharms,
+  shorterColumn, splitColumns,
 } from '../lib/charmGroups'
 import type { GroupColor } from '../lib/charmGroups'
 import { bestEquipped, calculateDefenses, STATIC_BONUS_CAP } from '../lib/defenses'
@@ -551,8 +552,9 @@ function CharmBrowseModal({ existing, exaltType, caste, abilities, attributes, e
 
 // What is being dragged in the Charms panel: a charm card or a whole group.
 type CharmDrag = { kind: 'charm' | 'group'; id: string }
-// Where a drop would land, for highlighting: a group's box ('' = Ungrouped) or a card.
-type CharmDropHint = { kind: 'group' | 'card'; id: string } | null
+// Where a drop would land, for highlighting: a group's box or one of its two
+// columns ('' = Ungrouped), or just above a card.
+type CharmDropHint = { kind: 'group' | 'card'; id: string } | { kind: 'column'; id: string; column: CharmColumn } | null
 
 // Name and colour fields shared by "New group" and editing a group.
 function CharmGroupForm({ initial, submitLabel, onSubmit, onCancel }: {
@@ -720,34 +722,54 @@ function CharmPanel({ charms, groups, onChange, onGroupsChange, dragEnabled, exa
   }
   function onDragEnd() { setDragging(null); setDropHint(null) }
 
-  // Over a card: a charm lands just before it; a group is handled by the box.
+  // A drop that changes nothing (e.g. a card onto itself) skips the save.
+  function dropCharm(charmId: string, target: { groupId: string | null; column: CharmColumn; beforeId?: string }) {
+    const next = moveCharm(charms, groups, charmId, target)
+    if (next !== charms) onChange(next)
+    onDragEnd()
+  }
+
+  // Over a card: a charm lands just above it, in its column; a group is handled by the box.
   function onCardDragOver(e: React.DragEvent, cardId: string) {
     if (dragging?.kind !== 'charm') return
     e.preventDefault(); e.stopPropagation()
     setDropHint({ kind: 'card', id: cardId })
   }
-  function onCardDrop(e: React.DragEvent, card: CharacterCharm, groupId: string | null) {
+  function onCardDrop(e: React.DragEvent, card: CharacterCharm, groupId: string | null, column: CharmColumn) {
     if (dragging?.kind !== 'charm') return
     e.preventDefault(); e.stopPropagation()
-    const next = moveCharm(charms, dragging.id, groupId, card.id)
-    if (next !== charms) onChange(next)
-    onDragEnd()
+    dropCharm(dragging.id, { groupId, column, beforeId: card.id })
   }
 
-  // Over a group's box ('' = Ungrouped): a charm joins the end of it; a group
-  // moves before it (onto Ungrouped = to the end of the list).
+  // Over a column's free space below its cards: a charm goes to the bottom of it.
+  function onColumnDragOver(e: React.DragEvent, groupId: string | null, column: CharmColumn) {
+    if (dragging?.kind !== 'charm') return
+    e.preventDefault(); e.stopPropagation()
+    setDropHint({ kind: 'column', id: groupId ?? '', column })
+  }
+  function onColumnDrop(e: React.DragEvent, groupId: string | null, column: CharmColumn) {
+    if (dragging?.kind !== 'charm') return
+    e.preventDefault(); e.stopPropagation()
+    dropCharm(dragging.id, { groupId, column })
+  }
+
+  // Over a group's box elsewhere (its header; '' = Ungrouped): a charm joins the
+  // bottom of its shorter column; a group moves before it (onto Ungrouped = last).
   function onBoxDragOver(e: React.DragEvent, groupId: string | null) {
     if (!dragging) return
     e.preventDefault()
     setDropHint({ kind: 'group', id: groupId ?? '' })
   }
-  function onBoxDrop(e: React.DragEvent, groupId: string | null) {
+  function onBoxDrop(e: React.DragEvent, groupId: string | null, members: CharacterCharm[]) {
     const drag = dragging
     if (!drag) return
     e.preventDefault()
-    // A drop that changes nothing (e.g. a group onto itself) skips the save.
-    if (drag.kind === 'charm') { const next = moveCharm(charms, drag.id, groupId); if (next !== charms) onChange(next) }
-    else { const next = moveGroup(groups, drag.id, groupId); if (next !== groups) onGroupsChange(next) }
+    if (drag.kind === 'charm') {
+      dropCharm(drag.id, { groupId, column: shorterColumn(members.filter(c => c.id !== drag.id)) })
+      return
+    }
+    const next = moveGroup(groups, drag.id, groupId)
+    if (next !== groups) onGroupsChange(next)
     onDragEnd()
   }
 
@@ -756,7 +778,7 @@ function CharmPanel({ charms, groups, onChange, onGroupsChange, dragEnabled, exa
 
   // A card shows everything about the charm at once and grows downwards to fit;
   // there is nothing to click open. Its corner holds edit, implementation and remove.
-  function card(charm: CharacterCharm, group: CharmGroup | null) {
+  function card(charm: CharacterCharm, group: CharmGroup | null, column: CharmColumn) {
     const key = activeKey(charm)
     const implemented = key !== null && AUTOMATED_KEYS.has(key)
     const lit = implemented && charm.mechanicalEnabled
@@ -768,7 +790,7 @@ function CharmPanel({ charms, groups, onChange, onGroupsChange, dragEnabled, exa
         onDragStart={e => dragEnabled && !editing && onDragStart(e, { kind: 'charm', id: charm.id })}
         onDragEnd={onDragEnd}
         onDragOver={e => onCardDragOver(e, charm.id)}
-        onDrop={e => onCardDrop(e, charm, group?.id ?? null)}
+        onDrop={e => onCardDrop(e, charm, group?.id ?? null, column)}
         className={`rounded border border-t-[3px] bg-stone-800/60 px-1.5 py-1 space-y-1.5 break-words transition-colors ${dragEnabled && !editing ? 'cursor-grab active:cursor-grabbing' : ''}
           ${group ? groupColor(group).bar : 'border-t-stone-600'}
           ${dropBefore ? 'border-amber-400/80 border-l-2' : 'border-stone-700'}`}>
@@ -874,13 +896,14 @@ function CharmPanel({ charms, groups, onChange, onGroupsChange, dragEnabled, exa
   // One group's box: header, then its cards. `group` null = Ungrouped.
   function box(group: CharmGroup | null, members: CharacterCharm[]) {
     const id = group?.id ?? ''
-    const shown = filterCharms(members, query)
-    if (filtering && shown.length === 0) return null
+    // Split before filtering so a filter never moves cards between columns.
+    const columns = splitColumns(members).map(col => filterCharms(col, query))
+    if (filtering && columns.every(col => col.length === 0)) return null
     const isCollapsed = collapsed.has(id) && !filtering
     const hinted = dropHint?.kind === 'group' && dropHint.id === id
     if (group && editingGroupId === group.id) {
       return (
-        <div key={id} className="box-content w-[30.5rem] shrink-0">
+        <div key={id} className="box-content w-[20.25rem] shrink-0">
           <CharmGroupForm submitLabel="Save"
             initial={{ name: group.name, color: isGroupColor(group.color) ? group.color : DEFAULT_GROUP_COLOR }}
             onSubmit={v => { onGroupsChange(editGroup(groups, group.id, v)); setEditingGroupId(null) }}
@@ -892,8 +915,8 @@ function CharmPanel({ charms, groups, onChange, onGroupsChange, dragEnabled, exa
       <div key={id}
         onDragOver={e => onBoxDragOver(e, group?.id ?? null)}
         onDragLeave={e => { if (!e.currentTarget.contains(e.relatedTarget as Node)) setDropHint(null) }}
-        onDrop={e => onBoxDrop(e, group?.id ?? null)}
-        className={`box-content w-[30.5rem] shrink-0 rounded border p-1 transition-colors ${hinted ? 'border-amber-500/70 bg-amber-500/5' : 'border-stone-700/60'}`}>
+        onDrop={e => onBoxDrop(e, group?.id ?? null, members)}
+        className={`box-content w-[20.25rem] shrink-0 rounded border p-1 transition-colors ${hinted ? 'border-amber-500/70 bg-amber-500/5' : 'border-stone-700/60'}`}>
         <div className={`flex items-center gap-1.5 ${group && dragEnabled ? 'cursor-grab active:cursor-grabbing' : ''}`}
           draggable={!!group && dragEnabled}
           onDragStart={e => group && dragEnabled && onDragStart(e, { kind: 'group', id: group.id })}
@@ -909,13 +932,21 @@ function CharmPanel({ charms, groups, onChange, onGroupsChange, dragEnabled, exa
         </div>
         {!isCollapsed && (
           <>
-            {shown.length === 0
-              ? <p className="text-[11px] text-stone-600 ml-[1.375rem] mt-1">Empty — drag a charm here.</p>
-              : (
-                <div className="grid grid-cols-[repeat(3,10rem)] gap-1 mt-1 items-start">
-                  {shown.map(c => card(c, group))}
-                </div>
-              )}
+            {/* Two independent stacks: each card sits right under the one above it in its column. */}
+            <div className="flex items-stretch gap-1 mt-1">
+              {columns.map((cards, i) => {
+                const column = i as CharmColumn
+                const hintedColumn = dropHint?.kind === 'column' && dropHint.id === id && dropHint.column === column
+                return (
+                  <div key={column}
+                    onDragOver={e => onColumnDragOver(e, group?.id ?? null, column)}
+                    onDrop={e => onColumnDrop(e, group?.id ?? null, column)}
+                    className={`w-[10rem] min-h-8 flex flex-col gap-1 pb-4 rounded transition-colors ${hintedColumn ? 'bg-amber-500/10' : ''} ${cards.length === 0 ? 'border border-dashed border-stone-700/60' : ''}`}>
+                    {cards.map(c => card(c, group, column))}
+                  </div>
+                )
+              })}
+            </div>
           </>
         )}
       </div>
