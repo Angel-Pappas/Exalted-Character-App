@@ -9,7 +9,7 @@ import TabBar from '../components/TabBar'
 import SheetTab from '../tabs/SheetTab'
 import MilestonesTab from '../tabs/MilestonesTab'
 import NotesTab from '../tabs/NotesTab'
-import CharactersTab from '../tabs/CharactersTab'
+import CircleTab from '../tabs/CircleTab'
 
 const defaultData: CharacterData = {
   sheet: { attributes: {}, abilities: {}, defenses: {}, defenseOther: false, fullDefense: false, essence: 1, anima: 0, power: 0, will: 0, defenseBonus: { parry: 0, evasion: 0, soak: 0, hardness: 0, resolve: 0 }, languages: [], merits: [], intimacies: [], motes: { current: 0, committed: 0, total: 0 }, damage: 0, layout: [], charms: [], charmGroups: [], effects: [], inventory: [], foi: { active: false, weight: null, tag: null, artifact: false }, foiOriginals: {}, exaltType: '', caste: '' },
@@ -155,12 +155,7 @@ export default function CharacterPage() {
             onChange={notes => updateData({ notes })}
           />
         )}
-        {!readOnly && activeTab === 'characters' && (
-          <CharactersTab
-            npcs={data.npcs}
-            onChange={npcs => updateData({ npcs })}
-          />
-        )}
+        {!readOnly && activeTab === 'circle' && <CircleTab characterId={character.id} />}
       </div>
     </div>
   )

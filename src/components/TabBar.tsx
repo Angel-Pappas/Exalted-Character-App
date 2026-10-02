@@ -7,7 +7,7 @@ const TABS: Tab[] = [
   { id: 'sheet', label: 'Character Sheet' },
   { id: 'milestones', label: 'Milestones' },
   { id: 'notes', label: 'Notes' },
-  { id: 'characters', label: 'Characters' },
+  { id: 'circle', label: 'Circle' },
 ]
 
 interface TabBarProps {

@@ -241,7 +241,7 @@ export interface CharacterData {
   sheet: SheetData
   milestones: MilestoneTransaction[]
   notes: string
-  npcs: NpcEntry[]
+  npcs: NpcEntry[]   // the retired "Characters" tab's notes; kept in saved data, no longer shown
 }
 
 // ── Game Data (character-independent reference tables) ──────────────────────

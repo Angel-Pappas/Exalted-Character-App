@@ -33,6 +33,9 @@ A web-based interactive character sheet for a **custom version of the Exalted ta
 | `/characters` | CharactersPage | all |
 | `/character/:id` | CharacterPage | all |
 | `/options` | SettingsPage | all |
+| `/character/:id/options` | CharacterOptionsPage | owner / admin |
+| `/campaigns` | CampaignsPage | all |
+| `/campaign/:id` | CampaignPage | campaign members |
 | `/setup` | SetupPage (Admin) | admin only |
 | `/login` | LoginPage | unauthenticated |
 
@@ -65,6 +68,15 @@ The schema is `backend/database/migrations/`. Who may do what is enforced in Lar
 Pest tests in `backend/tests/Feature/`.
 
 ---
+
+## Campaigns (added 2026-10-02)
+A campaign is one story a group plays. **Storyteller (ST) is a per-campaign role and has nothing to do with admin/player.**
+- Anyone creates a campaign and becomes its ST. Only the ST renames/deletes it, adds members by username, removes members and hands the ST role to another member (old ST stays a member). Members can leave; the ST can't until they hand the role on. A member leaving/removed takes their characters out of it. Deleting a campaign never deletes characters.
+- Characters have `kind` `pc`/`npc` (chosen at creation, switchable any time by the owner on the character's Options page). A character can be in many campaigns; its owner puts it into campaigns they're in. Public/private is **per campaign** (`campaign_characters.visibility`); joining defaults PCs public, NPCs private.
+- Seeing sheets: owner and admins (edit, as before). The campaign's ST opens every character in it; other members open the ones public there — **view only** (`canEditCharacter` on the page, `CharacterPolicy::view` on the server). Members see every PC's *name*; NPCs only if they may open them.
+- Someone else's character opens with only the Character Sheet tab, "View only": a disabled `<fieldset>` switches off every control and nothing is saved.
+- **Circle** tab (replaced the old "Characters" NPC-notes tab, whose saved `npcs` data is left untouched and unused): the other players' PCs in each of the character's campaigns, with notes only the character's owner can read (not the ST, not admins) — `circle_notes`.
+- Server: `CampaignController`, `CharacterCampaignController` (options + campaign membership), `CircleController`; rules covered by `tests/Feature/CampaignTest.php`.
 
 ## Character Sheet
 11 draggable/resizable panels on a 128-column grid. Layout saved per character in the database.
