@@ -1022,7 +1022,9 @@ function CharmPanel({ charms, groups, onChange, onGroupsChange, onContentHeight,
         {/* Groups sit side by side and wrap onto the next row when the panel runs out of width. */}
         <div className="flex flex-wrap items-start gap-1.5">
           {grouped.map(({ group, charms: members }) => box(group, members))}
-          {(groups.length > 0 || ungrouped.length > 0) && box(null, ungrouped)}
+          {/* Ungrouped only shows when it holds charms — or while a charm is being
+              dragged, so a charm can still be dropped out of its group. */}
+          {(ungrouped.length > 0 || dragging?.kind === 'charm') && box(null, ungrouped)}
         </div>
       </div>
       </div>
