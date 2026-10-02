@@ -83,8 +83,9 @@ export default function CharacterPage() {
 
   return (
     <div className="min-h-screen bg-stone-950 text-stone-100 flex flex-col">
-      <header className="flex items-center justify-between px-4 py-3 border-b border-stone-700 shrink-0">
-        <div className="flex items-center gap-3 min-w-0">
+      {/* One row: who this is, the tabs, then the page's own actions. */}
+      <header className="flex items-stretch gap-6 px-4 border-b border-stone-700 shrink-0">
+        <div className="flex items-center gap-3 min-w-0 py-3">
           <button onClick={() => navigate('/characters')} className="text-stone-400 hover:text-stone-200 text-sm shrink-0">← Back</button>
           <h1 className="text-amber-400 font-semibold shrink-0">{character.name}</h1>
           {identity && (
@@ -94,7 +95,9 @@ export default function CharacterPage() {
             </>
           )}
         </div>
-        <div className="flex items-center gap-3">
+        <span className="w-px h-5 bg-stone-700 self-center shrink-0" />
+        <TabBar active={activeTab} onChange={setActiveTab} />
+        <div className="flex items-center gap-3 ml-auto py-3">
           {saving && <span className="text-xs text-stone-500">Saving…</span>}
           {activeTab === 'sheet' && (
             <button
@@ -113,8 +116,6 @@ export default function CharacterPage() {
           )}
         </div>
       </header>
-
-      <TabBar active={activeTab} onChange={setActiveTab} />
 
       <div className="flex-1 overflow-auto">
         {activeTab === 'sheet' && (

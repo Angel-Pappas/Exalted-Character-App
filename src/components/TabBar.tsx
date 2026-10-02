@@ -15,14 +15,17 @@ interface TabBarProps {
   onChange: (id: string) => void
 }
 
+// Sits inside the page header: it stretches to the header's full height so the
+// active tab's underline lands on the header's bottom border.
 export default function TabBar({ active, onChange }: TabBarProps) {
   return (
-    <div className="flex border-b border-stone-700">
+    <nav className="flex self-stretch shrink-0">
       {TABS.map(tab => (
         <button
           key={tab.id}
           onClick={() => onChange(tab.id)}
-          className={`px-4 py-3 text-sm font-medium whitespace-nowrap transition-colors border-b-2 -mb-px ${
+          aria-current={active === tab.id ? 'page' : undefined}
+          className={`flex items-center px-3 text-sm font-medium whitespace-nowrap transition-colors border-b-2 -mb-px ${
             active === tab.id
               ? 'border-amber-400 text-amber-400'
               : 'border-transparent text-stone-400 hover:text-stone-200'
@@ -31,6 +34,6 @@ export default function TabBar({ active, onChange }: TabBarProps) {
           {tab.label}
         </button>
       ))}
-    </div>
+    </nav>
   )
 }
