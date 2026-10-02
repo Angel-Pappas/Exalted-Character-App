@@ -928,7 +928,7 @@ function CharmPanel({ charms, groups, onChange, onGroupsChange, onContentHeight,
     const hinted = dropHint?.kind === 'group' && dropHint.id === id
     if (group && editingGroupId === group.id) {
       return (
-        <div key={id} className="box-content w-[19.15rem] shrink-0">
+        <div key={id} className="box-content w-[19.25rem] shrink-0">
           <CharmGroupForm submitLabel="Save"
             initial={{ name: group.name, color: isGroupColor(group.color) ? group.color : DEFAULT_GROUP_COLOR }}
             onSubmit={v => { onGroupsChange(editGroup(groups, group.id, v)); setEditingGroupId(null) }}
@@ -941,7 +941,7 @@ function CharmPanel({ charms, groups, onChange, onGroupsChange, onContentHeight,
         onDragOver={e => onBoxDragOver(e, group?.id ?? null)}
         onDragLeave={e => { if (!e.currentTarget.contains(e.relatedTarget as Node)) setDropHint(null) }}
         onDrop={e => onBoxDrop(e, group?.id ?? null, members)}
-        className={`box-content w-[19.15rem] shrink-0 rounded border p-1 transition-colors ${hinted ? 'border-amber-500/70 bg-amber-500/5' : 'border-stone-700/60'}`}>
+        className={`box-content w-[19.25rem] shrink-0 rounded border p-1 transition-colors ${hinted ? 'border-amber-500/70 bg-amber-500/5' : 'border-stone-700/60'}`}>
         <div className={`flex items-center gap-1.5 ${group && dragEnabled ? 'cursor-grab active:cursor-grabbing' : ''}`}
           draggable={!!group && dragEnabled}
           onDragStart={e => group && dragEnabled && onDragStart(e, { kind: 'group', id: group.id })}
@@ -966,7 +966,7 @@ function CharmPanel({ charms, groups, onChange, onGroupsChange, onContentHeight,
                   <div key={column}
                     onDragOver={e => onColumnDragOver(e, group?.id ?? null, column)}
                     onDrop={e => onColumnDrop(e, group?.id ?? null, column)}
-                    className={`w-[9.45rem] min-h-8 flex flex-col gap-1 pb-4 rounded transition-colors ${hintedColumn ? 'bg-amber-500/10' : ''} ${cards.length === 0 ? 'border border-dashed border-stone-700/60' : ''}`}>
+                    className={`w-[9.5rem] min-h-8 flex flex-col gap-1 pb-4 rounded transition-colors ${hintedColumn ? 'bg-amber-500/10' : ''} ${cards.length === 0 ? 'border border-dashed border-stone-700/60' : ''}`}>
                     {cards.map(c => card(c, group, column))}
                   </div>
                 )
