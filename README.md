@@ -11,4 +11,5 @@ https://exalted.pappas.yoltobots.click.
   the database.
 
 Working rules for this repo are in `CLAUDE.md`; the full project background is in
-`info/` (start with `info/SESSION_SUMMARY.md`).
+`Summary.md` (how it works now), `History.md` (what changed and why),
+`ROADMAP.md` (what's next) and `info/` (deeper reference).

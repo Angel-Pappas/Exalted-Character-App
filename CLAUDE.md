@@ -1,19 +1,22 @@
 # Standing directions for this repo
 
-Read `info/SESSION_SUMMARY.md` first for full context (game rules, DB schema, file structure). This file is the short version that must never be missed.
+**The shared ways of working in `~/.claude/CLAUDE.md` apply here in full** (quality
+directive, design principles, screenshots, docs pattern, ship workflow, safety,
+efficiency). This file holds only what is specific to the Exalted app. How it works
+now: **`Summary.md`** (auto-loaded below); what changed and why: **`History.md`**;
+what's next: **`ROADMAP.md`**; deeper reference: `info/`.
 
-## Angel's standing quality directive — applies to every session, permanently
-Stated 2026-07-16, and it does not expire:
-> "I want the code pristine and proper as per the best practices of programming. Everything neat and tidy, run all proper checks, always, and make sure no errors are returned. Make sure the entire code is flawless but still works as intended."
+## Exalted-app rules
 
-**Angel is not a developer and cannot personally review the code.** That is the whole point of this directive — he is delegating judgement, not just typing. It raises the bar in both directions:
-
-- **`npm run check` must pass before every push. No exceptions.** It runs `tsc -b`, `eslint .`, and `vitest run`. Zero errors, zero lint problems, zero failing tests. Never push on the assumption that a change is "too small to break anything."
-- **Never report a check you did not run, and never trust a green result you did not sanity-check.** This has already gone wrong here: a lint "pass" once came from comparing two empty files, and a `tsc: 1` was really grep's exit code. If a suite goes quiet after a config change, plant a deliberate violation and confirm it still fails. A check that cannot fail is decoration.
-- **Because he cannot review the diff, "it compiles" is not evidence it is correct.** Behaviour-changing work needs a real argument for why it is safe, or a test that proves it. If something genuinely can't be verified without running it, say so plainly and name the risk — do not let it pass silently.
-- **Do not do sweeping rewrites.** The request for flawless code is not a licence for one giant refactor. There is no reviewer and no runtime verification, so a mass rewrite is unverifiable by construction. Work in slices small enough to reason about, each landing green.
-- **Tests come before the refactor they protect, not after.** Extract pure logic into `src/lib/*`, test it, then change it.
-- **"Best practice" is a means, not the goal.** Working software is the goal. A rule that buys this project nothing (e.g. dev-server-only lint rules) gets turned off in config with a written reason — not obeyed by contorting code, and not left failing. Say so plainly rather than quietly complying.
+- The full check is **`npm run check`**: `tsc -b`, `eslint .`, `vitest run`, then the
+  backend's `composer test` (Pint, Larastan level 7, Pest). Keep it at **zero**
+  problems — the baseline was cleaned on 2026-07-15; a nonzero baseline hides whether
+  _this_ change added anything.
+- A rule that doesn't fit is turned off in `eslint.config.js`, `backend/phpstan.neon`
+  or `backend/pint.json` with a written reason (e.g. `react-refresh/only-export-components`
+  only pays off in a dev server); an inline `eslint-disable`/`@phpstan-ignore` needs a
+  comment saying why.
+- Pure front-end logic lives in `src/lib/*` with a Vitest test beside it.
 
 ## Breakdown tooltips — one line per source (Angel, 2026-09-27)
 Every "where does this number come from" tooltip (Defenses today, any future ones) lists:
@@ -22,56 +25,37 @@ Every "where does this number come from" tooltip (Defenses today, any future one
 3. **Every other source on its own line** (e.g. "Ox Body +1"), whenever a new charm/merit/effect adds to the number.
 4. **Manual bonus** — always last, labelled exactly "Manual bonus".
 
-## The move off Vercel + Supabase (done 2026-10-01)
-The app now runs only on our VM: Laravel 13 API (`backend/`) + MySQL, React front end
-unchanged apart from its API calls. Game content, both accounts (with their existing
-passwords — `App\Support\SupabasePassword` relabels Supabase's `$2a$` bcrypt hashes),
-both characters and all game data were copied from Supabase and verified identical
-(row counts, password-hash and sheet fingerprints). Work is on `main`.
+## History of the stack (done 2026-10-01)
 
-The old app is gone: Angel deleted the Vercel project `exalted-character-app` and the
-Supabase project `Exalted-Character-App` on 2026-10-01. There is nothing left to fall back
-to — the VM and its MySQL backups (`~/backups/exalted/`) are the only copies. The
-Supabase admin-escalation hole went with it; the new app closes it by design
-(`AdminTest`: "gives a player no way to make themselves admin").
-- The raw Supabase export was deleted on 2026-10-01, with Angel's go-ahead.
-- `ImportSupabaseContent` / `ImportSupabaseUsers` can no longer reach a source; keep
-  `SupabasePassword` — the imported accounts still log in with `$2a$` hashes.
+The app runs only on our VM: Laravel 13 API (`backend/`) + MySQL, React front end. All
+accounts (with their passwords — `App\Support\SupabasePassword` relabels Supabase's
+`$2a$` bcrypt hashes), characters and game content were copied from Supabase and
+verified identical. Angel deleted the Vercel and Supabase projects on 2026-10-01 —
+the VM and its MySQL backups (`~/backups/exalted/`) are the only copies. Keep
+`SupabasePassword`; the import commands can no longer reach a source.
 
-## Workflow on the VM — two folders, never mix them up
-- **`/home/ploi/exalted-dev`** — the **dev checkout**. All editing, building and testing
-  happens here, on SQLite (`backend/database/database.sqlite`). Its `.env` cannot reach
-  the live MySQL.
-- **`/home/ploi/exalted.pappas.yoltobots.click`** — the **live app** nginx serves. Never
-  edit, build or run tests there. It changes **only** through `./deploy.sh`, which backs
-  up MySQL first (`backup-db.sh` → `~/backups/exalted/`, also run nightly at 03:45 from
-  the `ploi` crontab; it aborts the deploy if the backup
-  fails), then pulls, installs, builds, migrates and reloads php-fpm. `deploy.sh` refuses
-  to run unless `backend/.env` is the production config.
-- A change goes: edit in dev → `npm run check` → commit + push → `./deploy.sh` in the
-  live folder. Nothing deploys on push by itself. GitHub Actions (`checks.yml`) runs the
-  same `npm run check` on every push — keep it green.
-- **The live database holds everyone's characters and must never be lost.** Never run
-  tests, `migrate:fresh`/`db:wipe`/`migrate:rollback`, or ad-hoc writes against it.
-  `backend/tests/TestCase.php` refuses to boot tests on anything but in-memory SQLite —
-  keep that guard. Production `APP_ENV` also blocks Laravel's destructive commands.
-  Any migration that drops or rewrites data is raised with Angel before it ships.
+## Workflow — two folders, never mix them up
 
-## Git workflow — do not ask
-- **Always commit, push and deploy immediately after every code change.** Do not ask for confirmation first. This is a standing, pre-authorized exception to the general "confirm before pushing" default.
-- Never prompt for permission for anything **except**: permanently deleting DB data, or changing a user's admin access. Everything else — commits, pushes, deploys, edits, non-destructive migrations — just do it.
-
-## Verification — do not spin up a local dev server
-- Angel does not run a local dev server. He reviews every change on the live site, https://exalted.pappas.yoltobots.click, after `./deploy.sh`.
-- Verify changes with `npm run check` and by reading the code path, not by launching `npm run dev` or creating throwaway accounts in the live database. Backend behaviour is verified with Pest feature tests. If something genuinely can't be trusted without running it, say so plainly instead of defaulting to local browser testing.
-
-## Lint must stay at zero — check before every push
-- **`npm run check` must be clean before any push.** It runs `tsc -b`, `eslint .`, `vitest run`, then the backend's `composer test` (Pint formatting, Larastan level 7, Pest). It is cheap; it is not optional.
-- The baseline was cleaned to zero on 2026-07-15. **Never let problems accumulate again.** A nonzero baseline is not a cosmetic debt — it destroys the ability to tell whether *this* change added anything, which is the whole point of running the tool. Do not report "N pre-existing problems, none of them mine" as if that were verification; it isn't, and counting totals hides an added error that coincides with a removed one.
-- If a rule genuinely doesn't fit this project, **turn it off in config (`eslint.config.js`, `backend/phpstan.neon`, `backend/pint.json`) with a written reason** — a deliberate, documented decision. Do not leave it failing, and do not contort working code to satisfy a rule whose benefit this project never consumes (e.g. `react-refresh/only-export-components`, which only pays off in a dev server that isn't used here).
-- Inline `eslint-disable` (or `@phpstan-ignore`) is allowed **only** with a comment saying why the rule is wrong in that spot (e.g. a ref-guarded once-only effect that exhaustive-deps can't see through). Never a bare suppression.
-- A green result proves nothing if the tool isn't running. If a check suddenly goes quiet after config changes, confirm it still catches a planted violation.
-- Not wired into `deploy.sh` on purpose: a style nit should never block a deploy Angel needs live. Enforcement is this rule plus CI.
+- **`/home/ploi/exalted-dev`** — dev checkout. All editing, building and testing, on
+  SQLite (`backend/database/database.sqlite`, which holds a copy of the game content
+  — no migration recreates it, so **never `migrate:fresh` it**). Its `.env` cannot
+  reach the live MySQL.
+- **`/home/ploi/exalted.pappas.yoltobots.click`** — the live app nginx serves. Changes
+  **only** through `./deploy.sh` (refuses to run unless `backend/.env` is production;
+  backs up MySQL to `~/backups/exalted/` first, aborting if that fails; migrates
+  before building). Nightly backup at 03:45 from the `ploi` crontab.
+- **Ship** a finished change from the dev folder with `./ship.sh "Subject"` — Pint →
+  build → `npm run check` → commit + push → waits for CI (`checks.yml`) → deploy.
+- **Look before shipping:** `(cd backend && php artisan db:seed --class=DemoSeeder)`
+  adds a `demo` / `password` admin with a "Demo Solar" character (it only adds, never
+  wipes); `npm run build`; then `npm run shots / /characters "/character/<id>"`
+  (`--mobile`, `--dark`) → PNGs in `backend/storage/screenshots/`. The script serves
+  `dist/` and forwards `/api` to `php artisan serve`, like nginx does live.
+  `playwright-core` is pinned to 1.63.0 to use the Chromium already cached on the VM.
+- **The live database holds everyone's characters and must never be lost.**
+  `backend/tests/TestCase.php` refuses to boot on anything but in-memory SQLite — keep
+  that guard. Ask Angel before permanently deleting data or changing a user's admin
+  access.
 
 ## Repo facts
 - Dev checkout `/home/ploi/exalted-dev`; live folder `/home/ploi/exalted.pappas.yoltobots.click` (VM user `ploi`).
@@ -79,3 +63,7 @@ Supabase admin-escalation hole went with it; the new app closes it by design
 - MySQL 8.4 on the VM: database `exalted`, user `exalted`; credentials only in the live `backend/.env`.
 - The VM pushes to GitHub over HTTPS through the `gh` CLI's token — don't switch the remote to `git@github.com:`.
 - Git identity: `ange.pap@hotmail.com`. The repo is public; that was a Vercel free-tier requirement, so it may go private once Vercel is retired (Angel's call).
+
+## Current state (auto-loaded)
+
+@Summary.md

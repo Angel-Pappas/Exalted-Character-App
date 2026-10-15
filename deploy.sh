@@ -13,8 +13,11 @@ fi
 ./backup-db.sh
 git pull --ff-only
 (cd backend && composer install --no-interaction --prefer-dist --optimize-autoloader --no-dev)
+# Database next, so the new PHP code never runs against the old tables even if
+# the frontend build below fails.
+(cd backend && php artisan migrate --force)
 npm ci
 npm run build
-(cd backend && php artisan migrate --force && php artisan optimize)
+(cd backend && php artisan optimize)
 sudo systemctl reload php8.5-fpm
 echo "exalted deployed: $(git log -1 --format='%h %s')"

@@ -1,6 +1,9 @@
-# Session Summary — Exalted Character App
+# Summary — Exalted Character App
 
-Read this file at the start of every session to restore context. For full detail on any topic, read the corresponding file in this folder.
+**How the app works today** (auto-loaded every session via `CLAUDE.md`). Rewrite the
+relevant section in place when something changes; the dated what/why goes in
+`History.md`, plans in `ROADMAP.md`. Deeper reference: `info/` (context, scope,
+technical).
 
 ---
 
@@ -10,7 +13,7 @@ A web-based interactive character sheet for a **custom version of the Exalted ta
 - Stack: React 19 + Vite 8 + TypeScript + Tailwind CSS v4 front end; Laravel 13 API (`backend/`) + MySQL 8.4; all on our own VM (nginx + php8.5-fpm). Moved off Vercel + Supabase in October 2026.
 - Repo: https://github.com/Angel-Pappas/Exalted-Character-App
 - Dev checkout: `/home/ploi/exalted-dev`. Live folder: `/home/ploi/exalted.pappas.yoltobots.click` (changed only by `./deploy.sh`). See `CLAUDE.md` for the workflow.
-- Angel reviews on the live URL — does not run a local dev server
+- Changes are looked at first via screenshots of the dev app (`npm run shots`); Angel then checks the live site
 - **Always commit, push and deploy after every code change** — no need to ask
 
 ---
@@ -183,7 +186,7 @@ src/
   types/
     character.ts            # All interfaces + DEFAULT_GAME_DATA + ExaltType
 info/
-  SESSION_SUMMARY.md        # ← this file
+  (Summary.md is at the repo root)
   context.md                # Game rules, mechanics, full feature descriptions
   scope.md                  # Purpose, design philosophy, what's not in scope
   technical.md              # Stack, DB schemas, all types, file structure, code snippets
@@ -198,7 +201,7 @@ supabase/                   # old Postgres schema — historical record only
 ## Current State
 Running on our VM since 2026-10-01 (Laravel + MySQL), with all data moved over from
 Supabase: accounts `angel` (admin) and `angeltest` (player), with their passwords, and
-their characters. The old Vercel + Supabase app is frozen and unused (see `CLAUDE.md`).
+their characters. The old Vercel + Supabase app was deleted on 2026-10-01 (see `CLAUDE.md`).
 Admin panel covers Tables, Charms, and Users management.
 
-Next up: light mode CSS theming pass, charm-by-charm mechanical implementations as needed.
+What's next: `ROADMAP.md`.

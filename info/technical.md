@@ -215,7 +215,7 @@ info/
   scope.md
   context.md
   technical.md (this file)
-  SESSION_SUMMARY.md
+  (SESSION_SUMMARY.md moved to /Summary.md, 2026-10-15)
 backend/                         # Laravel API (routes/api.php, app/, database/migrations/)
 deploy.sh                        # live folder only: backup, pull, build, migrate, reload
 backup-db.sh                     # gzipped mysqldump to ~/backups/exalted (also run by cron)
