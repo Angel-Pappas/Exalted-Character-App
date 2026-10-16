@@ -40,7 +40,7 @@ give the green light (or change any numbered item).
 
 ## Still to confirm
 
-- **T1 — Arsenal's third purchase.** The sheet has no way to record the Dawn mode as a
+- **T1 — Arsenal's third purchase (approved).** The sheet has no way to record the Dawn mode as a
   purchase of this charm yet. My proposal is 8.1 + 8.2: add "Perfected Panoply Selection" as
   a third choice for the charm (limit 3), and I set Kaien's copy to ×3 with that choice
   myself (his ledger already has the line, so no new ledger line). OK?
@@ -286,7 +286,7 @@ give the green light (or change any numbered item).
 
 **Plan:** nothing to build.
 
-## 18. [Ability] Excellency ×8 — Universal, p. 185 — *partly implemented*
+## 18. [Ability] Excellency ×8 — Universal, p. 185 — *already implemented*
 
 > When purchasing this Charm, choose an Ability. Spend 1 mote. This applies on Step 1 during
 > combat. Add bonus dice equal to the Ability's rating to any applicable roll involving the
