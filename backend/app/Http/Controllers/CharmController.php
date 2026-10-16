@@ -64,6 +64,7 @@ class CharmController extends Controller
             'name' => ['required', 'string', 'max:255'],
             'page' => ['nullable', 'integer'],
             'description' => ['nullable', 'string', 'max:65000'],
+            'summary' => ['nullable', 'string', 'max:500'],
             'mechanical_key' => ['nullable', 'string', 'max:255'],
             'mechanical_description' => ['nullable', 'string', 'max:65000'],
             'prerequisite_essence' => ['nullable', 'integer'],
@@ -90,6 +91,7 @@ class CharmController extends Controller
             'page' => $validated['page'] ?? null,
             // The global middleware turns "" into null; the column is NOT NULL.
             'description' => $validated['description'] ?? '',
+            'summary' => $validated['summary'] ?? null,
             'mechanical_key' => $validated['mechanical_key'] ?? null,
             'mechanical_description' => $validated['mechanical_description'] ?? null,
             'prerequisite_essence' => $validated['prerequisite_essence'] ?? null,

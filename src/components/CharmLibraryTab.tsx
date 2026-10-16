@@ -27,6 +27,7 @@ export interface CharmLibraryRow {
   name: string
   page: number | null
   description: string
+  summary: string | null
   mechanical_key: string | null
   mechanical_description: string | null
   prerequisite_essence: number | null
@@ -81,7 +82,7 @@ function parsePickCounts(text: string): number[] | null {
 
 function blankCharm(): LibraryCharm {
   return {
-    id: '', type: 'Universal', abilities: [], name: '', page: null, description: '',
+    id: '', type: 'Universal', abilities: [], name: '', page: null, description: '', summary: null,
     mechanicalKey: null, mechanicalDescription: null, prerequisiteAbilities: [],
     prerequisiteEssence: null, prerequisiteCharms: [], modes: [],
     choiceType: null, choiceOptions: [],
@@ -181,6 +182,7 @@ function EditCharmRow({ charm, onSave, onCancel, saving, textInput, abilitySugge
       <input type="number" value={form.prerequisiteEssence ?? ''} onChange={e => set({ prerequisiteEssence: e.target.value ? parseInt(e.target.value) : null })} placeholder="Prerequisite Essence…" className={textInput} />
       <input type="number" value={form.page ?? ''} onChange={e => set({ page: e.target.value ? parseInt(e.target.value) : null })} placeholder="Page…" className={textInput} />
       <textarea value={form.description} onChange={e => set({ description: e.target.value })} placeholder="Description…" rows={3} className={`${textInput} resize-none`} />
+      <textarea value={form.summary ?? ''} onChange={e => set({ summary: e.target.value || null })} placeholder="Summary — one line shown on the character sheet's charm card…" rows={2} className={`${textInput} resize-none`} />
       <input value={form.mechanicalKey ?? ''} onChange={e => set({ mechanicalKey: e.target.value || null })} placeholder="Mechanical key (optional)…" className={textInput} />
       <textarea value={form.mechanicalDescription ?? ''} onChange={e => set({ mechanicalDescription: e.target.value || null })} placeholder="Mechanical implementation description (optional)…" rows={2} className={`${textInput} resize-none`} />
       <div>
@@ -248,6 +250,7 @@ export default function CharmLibraryTab({ isOwner, textInput }: { isOwner: boole
           name: r.name,
           page: r.page,
           description: r.description,
+          summary: r.summary ?? null,
           mechanicalKey: r.mechanical_key ?? null,
           mechanicalDescription: r.mechanical_description ?? null,
           prerequisiteAbilities: (r.charm_prerequisite_abilities ?? []).map(p => p.text),
@@ -286,7 +289,7 @@ export default function CharmLibraryTab({ isOwner, textInput }: { isOwner: boole
     if (row) {
       setCharms(prev => [...prev, {
         id: row.id, type: row.type ?? 'Universal', abilities: newCharm.abilities, name: row.name,
-        page: row.page, description: row.description, mechanicalKey: row.mechanical_key ?? null,
+        page: row.page, description: row.description, summary: row.summary ?? null, mechanicalKey: row.mechanical_key ?? null,
         mechanicalDescription: row.mechanical_description ?? null,
         prerequisiteAbilities: newCharm.prerequisiteAbilities,
         prerequisiteEssence: row.prerequisite_essence ?? null,
@@ -398,6 +401,7 @@ export default function CharmLibraryTab({ isOwner, textInput }: { isOwner: boole
                 <input type="number" value={newCharm.prerequisiteEssence ?? ''} onChange={e => setNewCharm(f => ({ ...f, prerequisiteEssence: e.target.value ? parseInt(e.target.value) : null }))} placeholder="Prerequisite Essence…" className={textInput} />
                 <input type="number" value={newCharm.page ?? ''} onChange={e => setNewCharm(f => ({ ...f, page: e.target.value ? parseInt(e.target.value) : null }))} placeholder="Page…" className={textInput} />
                 <textarea value={newCharm.description} onChange={e => setNewCharm(f => ({ ...f, description: e.target.value }))} placeholder="Description…" rows={3} className={`${textInput} resize-none`} />
+                <textarea value={newCharm.summary ?? ''} onChange={e => setNewCharm(f => ({ ...f, summary: e.target.value || null }))} placeholder="Summary — one line shown on the character sheet's charm card…" rows={2} className={`${textInput} resize-none`} />
                 <input value={newCharm.mechanicalKey ?? ''} onChange={e => setNewCharm(f => ({ ...f, mechanicalKey: e.target.value || null }))} placeholder="Mechanical key (optional, e.g. foi)…" className={textInput} />
                 <textarea value={newCharm.mechanicalDescription ?? ''} onChange={e => setNewCharm(f => ({ ...f, mechanicalDescription: e.target.value || null }))} placeholder="Mechanical implementation description (optional)…" rows={2} className={`${textInput} resize-none`} />
                 <div>
@@ -611,6 +615,10 @@ export default function CharmLibraryTab({ isOwner, textInput }: { isOwner: boole
                   {isExpanded && (
                     <tr className="border-b border-stone-800">
                       <td colSpan={COL_COUNT} className="px-3 pt-2 pb-3 w-px space-y-3">
+                        <p className="text-xs leading-relaxed">
+                          <span className="text-stone-500">Summary: </span>
+                          {charm.summary ? <span className="text-stone-200">{charm.summary}</span> : <em className="text-stone-600">none yet — the card shows the start of the description</em>}
+                        </p>
                         <p className="text-xs text-stone-400 leading-relaxed whitespace-normal">{charm.description}</p>
                         {charm.choiceType && (
                           <p className="text-xs text-stone-500">

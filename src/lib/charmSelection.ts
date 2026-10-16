@@ -1,20 +1,7 @@
 import type { CharacterCharm, CharmGroup } from '../types/character'
 
-// How the Charms panel presents charms. `boxes` is today's sheet (every group in a
-// box of two stacking columns); the others are the layouts on trial in the charm
-// layout preview page, which share a row of group buttons on top:
-//   click — compact cards (name + two lines); a click opens one full width
-//   hover — the same compact cards; resting the mouse on one shows it all
-//   open  — full cards packed in newspaper columns, one group at a time
-export type CharmView = 'boxes' | 'click' | 'hover' | 'open'
-
-export const CHARM_VIEWS: readonly CharmView[] = ['boxes', 'click', 'hover', 'open']
-
-export function isCharmView(value: string | null): value is CharmView {
-  return value !== null && (CHARM_VIEWS as readonly string[]).includes(value)
-}
-
-// Which group buttons is selected: every group, one group (by id), or Ungrouped.
+// Which of the Charms panel's group buttons is chosen: every group, one group
+// (by id), or Ungrouped. Kept per visit, not saved.
 export type CharmSelection = { kind: 'all' } | { kind: 'group'; id: string } | { kind: 'ungrouped' }
 
 export const ALL: CharmSelection = { kind: 'all' }
@@ -22,13 +9,6 @@ export const ALL: CharmSelection = { kind: 'all' }
 export function sameSelection(a: CharmSelection, b: CharmSelection): boolean {
   if (a.kind !== b.kind) return false
   return a.kind !== 'group' || a.id === (b as { id: string }).id
-}
-
-// Where a layout starts: "always open" shows one group at a time so the panel
-// stays short, so it opens on the first group (or All when there are none).
-export function initialSelection(view: CharmView, groups: CharmGroup[]): CharmSelection {
-  if (view === 'open' && groups.length > 0) return { kind: 'group', id: groups[0].id }
-  return ALL
 }
 
 export interface CharmSection {

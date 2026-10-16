@@ -109,22 +109,33 @@ export function TooltipLayer() {
   return active ? <Bubble anchor={active.el}>{active.content}</Bubble> : null
 }
 
-/** Wraps `children` in a div that shows `content` while hovered. Shows at once.
- *  `wide` gives long content (a charm's full text) more room per line. */
-export function Tooltip({ content, wide, className, children }: {
+/** Wraps `children` in a div that shows `content` while hovered. Shows at once,
+ *  or after the hint delay when `delayed` (so sweeping the mouse across a grid of
+ *  them doesn't flash one after another). `wide` gives long content (a charm's
+ *  full text) more room per line. */
+export function Tooltip({ content, wide, delayed, className, children }: {
   content: React.ReactNode
   wide?: boolean
+  delayed?: boolean
   className?: string
   children: React.ReactNode
 }) {
   const [anchor, setAnchor] = useState<Element | null>(null)
-  const hide = useCallback(() => setAnchor(null), [])
+  const timer = useRef<ReturnType<typeof setTimeout> | undefined>(undefined)
+  const hide = useCallback(() => { clearTimeout(timer.current); setAnchor(null) }, [])
   useHideOn(hide)
+  useEffect(() => () => clearTimeout(timer.current), [])
+
+  function show(el: Element) {
+    clearTimeout(timer.current)
+    if (delayed) timer.current = setTimeout(() => setAnchor(el), HINT_DELAY_MS)
+    else setAnchor(el)
+  }
 
   return (
     <div
       className={className}
-      onPointerEnter={e => setAnchor(e.currentTarget)}
+      onPointerEnter={e => show(e.currentTarget)}
       onPointerLeave={hide}
     >
       {children}

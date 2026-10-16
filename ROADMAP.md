@@ -13,15 +13,13 @@ the priorities — the order under **Next** is a suggestion until he does.
 - [x] Admin: tables, charms and users; username + password accounts.
 - [x] Moved to our VM (Laravel API + MySQL), 2026-10-01.
 - [x] Way of working: shared rules, demo login + screenshots, one-command ship.
+- [x] Charms panel: group buttons, compact cards with summaries, hover, charm window (2026-10-16).
 
 ## Next (suggested)
 
-- [ ] **Pick the Charms panel layout** — Angel tries A / B / C on
-      `/character/<Kaien>/charm-preview`. The chosen one replaces today's boxes on the
-      sheet; then delete the preview page, the `CharmView` values not picked, and
-      the two-column code (`splitColumns`, `pinColumns`, `CharacterCharm.column`) if
-      the winner doesn't use it.
-
+- [ ] **Charm summaries for the rest of the library** — only Kaien's 20 of 484 have
+      one; the others show the start of their text. Written in Admin → Charms (Angel
+      said he doesn't need them drafted for now).
 - [ ] **Cut-off headings on the character sheet** — "Essence", "Anima" and "Power"
       show as "ESSE…", "ANI…", "PO…" at desktop width (found in the first screenshot
       review, 2026-10-15).

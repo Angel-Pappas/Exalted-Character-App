@@ -4,6 +4,17 @@ One entry per shipped change, newest first: what changed and **why**. How things
 now is in `Summary.md`; plans in `ROADMAP.md`. Entries before 2026-10-15 were rebuilt
 from the git history (one per day, its commits listed).
 
+- **2026-10-16** — **New Charms panel: cards, hover, charm window, summaries.** After
+  trying the three layouts on the preview page, Angel chose a mix of A and B: compact
+  cards in a grid, filtered by a row of group buttons so he never scans past
+  defensive charms to find a social one; hover shows the whole charm (after a short
+  delay, which he may still change); a click opens a window over the sheet with the
+  details and every action (edit, revert, repurchase, undo a purchase, remove, group,
+  implementation), so the cards carry no buttons. Each card shows a one-line
+  summary: a new `charm_library.summary` column holds a suggested text (editable in
+  Admin), which a player can override per character. Summaries drafted for Kaien's 20
+  charms. The preview page and the old two-column boxes are gone; purchase rules
+  moved out of the Add Charm browser into `src/lib/charmPurchase.ts` with tests.
 - **2026-10-16** — **Charm layout preview page.** Angel still wasn't happy with the
   Charms panel: wide cards mean a lot of scrolling, narrow ones turn into tall
   columns, and with every group on screen at once he still scans past the defensive

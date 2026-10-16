@@ -11,6 +11,7 @@ function charmPayload(array $overrides = []): array
         'name' => 'Ox-Body Technique',
         'page' => 300,
         'description' => '',
+        'summary' => 'Extra health levels.',
         'mechanical_key' => 'ox_body',
         'mechanical_description' => null,
         'prerequisite_essence' => 1,
@@ -37,6 +38,7 @@ it('creates a charm with its lists and returns it in the shape the app reads', f
     expect($charm)
         ->name->toBe('Ox-Body Technique')
         ->description->toBe('')
+        ->summary->toBe('Extra health levels.')
         ->pick_counts->toBe([2, 1])
         ->needs_review->toBeFalse()
         ->charm_abilities->toBe([['ability' => 'Resistance'], ['ability' => 'Athletics']])
@@ -117,4 +119,22 @@ it('lets players read the library but not change it', function () {
     $this->actingAs($player)->putJson("/api/charms/{$id}", charmPayload())->assertForbidden();
     $this->actingAs($player)->putJson("/api/charms/{$id}/review-action", ['review_action' => null])->assertForbidden();
     $this->actingAs($player)->deleteJson("/api/charms/{$id}")->assertForbidden();
+});
+
+it('saves an emptied summary as none, so the card falls back to the description', function () {
+    $admin = User::factory()->admin()->create();
+    $id = $this->actingAs($admin)->postJson('/api/charms', charmPayload())->json('id');
+
+    $this->actingAs($admin)->putJson("/api/charms/{$id}", charmPayload(['summary' => '']))->assertNoContent();
+
+    expect(Charm::query()->findOrFail($id)->summary)->toBeNull();
+});
+
+it('lets only admins change a summary', function () {
+    $player = User::factory()->create();
+    $charm = Charm::query()->create(['name' => 'Iron Skin', 'description' => '']);
+
+    $this->actingAs($player)->putJson("/api/charms/{$charm->id}", charmPayload(['summary' => 'Hacked']))->assertForbidden();
+
+    expect($charm->refresh()->summary)->toBeNull();
 });

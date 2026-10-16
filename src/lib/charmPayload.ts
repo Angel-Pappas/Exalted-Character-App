@@ -25,6 +25,7 @@ export function charmPayload(charm: LibraryCharm) {
     name: charm.name.trim(),
     page: charm.page,
     description: charm.description.trim(),
+    summary: charm.summary?.trim() || null,
     mechanical_key: charm.mechanicalKey || null,
     mechanical_description: charm.mechanicalDescription || null,
     prerequisite_essence: charm.prerequisiteEssence,

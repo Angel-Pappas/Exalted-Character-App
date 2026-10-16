@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest'
-import { ALL, initialSelection, isCharmView, sameSelection, visibleSections } from './charmView'
+import { ALL, sameSelection, visibleSections } from './charmSelection'
 import { partitionCharms } from './charmGroups'
 import type { CharacterCharm, CharmGroup } from '../types/character'
 
@@ -39,25 +39,11 @@ describe('visibleSections — what the group buttons show', () => {
   })
 })
 
-describe('initialSelection', () => {
-  it('always-open starts on the first group, the compact layouts on All', () => {
-    expect(initialSelection('open', groups)).toEqual({ kind: 'group', id: 'social' })
-    expect(initialSelection('click', groups)).toEqual(ALL)
-    expect(initialSelection('open', [])).toEqual(ALL)
-  })
-})
-
-describe('sameSelection / isCharmView', () => {
+describe('sameSelection', () => {
   it('compares selections by kind and group id', () => {
     expect(sameSelection(ALL, { kind: 'all' })).toBe(true)
     expect(sameSelection({ kind: 'group', id: 'x' }, { kind: 'group', id: 'x' })).toBe(true)
     expect(sameSelection({ kind: 'group', id: 'x' }, { kind: 'group', id: 'y' })).toBe(false)
     expect(sameSelection(ALL, { kind: 'ungrouped' })).toBe(false)
-  })
-
-  it('accepts only the known layouts', () => {
-    expect(isCharmView('click')).toBe(true)
-    expect(isCharmView('wide')).toBe(false)
-    expect(isCharmView(null)).toBe(false)
   })
 })

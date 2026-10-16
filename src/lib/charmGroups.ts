@@ -1,10 +1,11 @@
-import type { CharacterCharm, CharmColumn, CharmGroup } from '../types/character'
+import type { CharacterCharm, CharmGroup } from '../types/character'
 
 // Player-made groups for the Charms panel. Groups belong to one character and
 // a charm sits in at most one group (CharacterCharm.groupId); a charm with no
 // groupId — or one pointing at a group that no longer exists — is ungrouped.
-// Each group stacks its cards in two columns (CharacterCharm.column); order
-// within a column is the charms' order in the character's charms array.
+// Order within a group is the charms' order in the character's charms array.
+// (Sheets saved before 2026-10-16 may still carry a `column` per charm, from the
+// old two-column boxes; it is ignored.)
 
 // The colours a group can take, as Tailwind classes for its accent stripe and dot.
 export const GROUP_COLORS = {
@@ -81,63 +82,31 @@ export function moveGroup(groups: CharmGroup[], id: string, beforeId: string | n
   return rest
 }
 
-// Splits one group's charms into its two columns, keeping array order inside
-// each. A charm with no column yet (new, or never dragged) goes to whichever
-// column has fewer cards so far, ties to the left.
-export function splitColumns(members: CharacterCharm[]): [CharacterCharm[], CharacterCharm[]] {
-  const columns: [CharacterCharm[], CharacterCharm[]] = [[], []]
-  for (const c of members) {
-    const col: CharmColumn = c.column ?? (columns[1].length < columns[0].length ? 1 : 0)
-    columns[col].push(c)
-  }
-  return columns
-}
-
-// The column with fewer cards, where a charm dropped on a group's header goes.
-export function shorterColumn(members: CharacterCharm[]): CharmColumn {
-  const [left, right] = splitColumns(members)
-  return right.length < left.length ? 1 : 0
-}
-
-// Writes every charm's on-screen column into it, so moving one card can never
-// make an automatically placed card hop to the other column.
-export function pinColumns(charms: CharacterCharm[], groups: CharmGroup[]): CharacterCharm[] {
-  const { grouped, ungrouped } = partitionCharms(charms, groups)
-  const column = new Map<string, CharmColumn>()
-  for (const members of [...grouped.map(g => g.charms), ungrouped]) {
-    splitColumns(members).forEach((cards, col) => { for (const c of cards) column.set(c.id, col as CharmColumn) })
-  }
-  return charms.map(c => {
-    const col = column.get(c.id) ?? 0
-    return c.column === col ? c : { ...c, column: col }
-  })
-}
-
-// Puts a charm into a group's column (groupId null = Ungrouped): just above
-// `beforeId` when dropped on a card, otherwise at the bottom of that column.
-// A column's order is the charms' array order, so the end of the array is the
-// bottom of every column.
+// Puts a charm into a group (groupId null = Ungrouped): just before `beforeId`
+// when dropped on a card, otherwise at the end of that group. A group's order is
+// the charms' array order, so the end of the array is the end of every group.
 export function moveCharm(
   charms: CharacterCharm[],
-  groups: CharmGroup[],
   charmId: string,
-  target: { groupId: string | null; column: CharmColumn; beforeId?: string | null },
+  target: { groupId: string | null; beforeId?: string | null },
 ): CharacterCharm[] {
   const charm = charms.find(c => c.id === charmId)
   const beforeId = target.beforeId ?? null
   if (!charm || charmId === beforeId) return charms
-  const base = target.groupId === null ? withoutGroup(charm) : { ...charm, groupId: target.groupId }
-  const moved = { ...base, column: target.column }
-  const rest = pinColumns(charms, groups).filter(c => c.id !== charmId)
+  const moved = target.groupId === null ? withoutGroup(charm) : { ...charm, groupId: target.groupId }
+  const rest = charms.filter(c => c.id !== charmId)
   const at = beforeId === null ? -1 : rest.findIndex(c => c.id === beforeId)
   rest.splice(at < 0 ? rest.length : at, 0, moved)
   return rest
 }
 
-// Leaving a group also forgets the column, so the charm is placed afresh.
+// The group a charm sits in, as moveCharm's target: null when ungrouped or its group is gone.
+export function groupOf(charm: CharacterCharm, groups: CharmGroup[]): string | null {
+  return charm.groupId && groups.some(g => g.id === charm.groupId) ? charm.groupId : null
+}
+
 function withoutGroup(charm: CharacterCharm): CharacterCharm {
   const copy = { ...charm }
   delete copy.groupId
-  delete copy.column
   return copy
 }

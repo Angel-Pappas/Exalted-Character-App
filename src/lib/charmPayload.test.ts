@@ -5,7 +5,7 @@ import { charmPayload } from './charmPayload'
 function charm(overrides: Partial<LibraryCharm> = {}): LibraryCharm {
   return {
     id: 'c1', type: ' Solar ', abilities: ['Melee'], name: '  Excellent Strike ', page: 255,
-    description: ' Text. ', mechanicalKey: null, mechanicalDescription: '', prerequisiteAbilities: ['Melee 1'],
+    description: ' Text. ', summary: ' One line. ', mechanicalKey: null, mechanicalDescription: '', prerequisiteAbilities: ['Melee 1'],
     prerequisiteEssence: 1, prerequisiteCharms: ['Other Charm'], modes: [],
     choiceType: 'custom', choiceOptions: ['A', 'B'], targetChoiceType: 'custom', targetOptions: ['T'],
     multiselectCapBasis: 'essence', pickCounts: [2, 1],
@@ -16,12 +16,17 @@ function charm(overrides: Partial<LibraryCharm> = {}): LibraryCharm {
 describe('charmPayload', () => {
   it('trims text, blanks empty optional fields and sends every list', () => {
     expect(charmPayload(charm())).toEqual({
-      type: 'Solar', name: 'Excellent Strike', page: 255, description: 'Text.',
+      type: 'Solar', name: 'Excellent Strike', page: 255, description: 'Text.', summary: 'One line.',
       mechanical_key: null, mechanical_description: null, prerequisite_essence: 1,
       choice_type: 'custom', target_choice_type: null, multiselect_cap_basis: null, pick_counts: [2, 1],
       abilities: ['Melee'], prerequisite_abilities: ['Melee 1'], prerequisite_charms: ['Other Charm'],
       choice_options: ['A', 'B'], target_options: [],
     })
+  })
+
+  it('sends a blank summary as none, so the card falls back to the description', () => {
+    expect(charmPayload(charm({ summary: '   ' })).summary).toBeNull()
+    expect(charmPayload(charm({ summary: null })).summary).toBeNull()
   })
 
   it('falls back to Universal for a blank type', () => {

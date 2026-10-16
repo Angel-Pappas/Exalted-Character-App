@@ -1,15 +1,13 @@
 import { describe, it, expect } from 'vitest'
 import {
-  DEFAULT_GROUP_COLOR, GROUP_COLORS, deleteGroup, editGroup, filterCharms, groupColor, isGroupColor, moveCharm, moveGroup, newGroup, partitionCharms,
-  pinColumns, shorterColumn, splitColumns,
+  DEFAULT_GROUP_COLOR, GROUP_COLORS, deleteGroup, editGroup, filterCharms, groupColor, groupOf, isGroupColor, moveCharm, moveGroup, newGroup, partitionCharms,
 } from './charmGroups'
-import type { CharacterCharm, CharmColumn, CharmGroup } from '../types/character'
+import type { CharacterCharm, CharmGroup } from '../types/character'
 
 const charm = (id: string, groupId?: string): CharacterCharm => ({
   id, libraryId: `lib-${id}`, name: `Charm ${id}`, libraryDescription: '', libraryModes: [], libraryMechanicalKey: null,
   customDescription: null, mechanicalKeyOverride: null, mechanicalEnabled: true, ...(groupId ? { groupId } : {}),
 })
-const col = (c: CharacterCharm, column: CharmColumn): CharacterCharm => ({ ...c, column })
 const group = (id: string): CharmGroup => ({ id, name: `Group ${id}`, color: 'amber' })
 
 const ids = (cs: CharacterCharm[]) => cs.map(c => c.id)
@@ -60,14 +58,13 @@ describe('newGroup / editGroup', () => {
 })
 
 describe('deleteGroup — never deletes charms', () => {
-  const result = deleteGroup([group('a'), group('b')], [col(charm('1', 'a'), 1), charm('2', 'b'), charm('3')], 'a')
+  const result = deleteGroup([group('a'), group('b')], [charm('1', 'a'), charm('2', 'b'), charm('3')], 'a')
 
   it('removes the group', () => expect(result.groups.map(g => g.id)).toEqual(['b']))
 
   it('makes its charms ungrouped and leaves the rest alone', () => {
     expect(layout(result.charms)).toEqual(['1:-', '2:b', '3:-'])
     expect('groupId' in result.charms[0]).toBe(false)
-    expect('column' in result.charms[0]).toBe(false)
   })
 })
 
@@ -83,81 +80,44 @@ describe('moveGroup', () => {
   })
 })
 
-describe('splitColumns — two stacks per group', () => {
-  const cols = (cs: CharacterCharm[]) => splitColumns(cs).map(ids)
-
-  it('places unplaced cards in whichever column is shorter, ties left', () => {
-    expect(cols([charm('1'), charm('2'), charm('3'), charm('4'), charm('5')])).toEqual([['1', '3', '5'], ['2', '4']])
-  })
-
-  it('respects a chosen column, so two short cards can stack beside a tall one', () => {
-    expect(cols([col(charm('tall'), 0), col(charm('s1'), 1), col(charm('s2'), 1)])).toEqual([['tall'], ['s1', 's2']])
-  })
-
-  it('fills around chosen columns', () => {
-    expect(cols([col(charm('a'), 1), charm('b'), charm('c'), charm('d')])).toEqual([['b', 'c'], ['a', 'd']])
-  })
-
-  it('shorterColumn picks the side with fewer cards', () => {
-    expect(shorterColumn([charm('1')])).toBe(1)
-    expect(shorterColumn([])).toBe(0)
-  })
-})
-
-describe('pinColumns', () => {
-  it('writes the on-screen column into every charm, per group', () => {
-    const pinned = pinColumns([charm('1', 'a'), charm('2', 'a'), charm('3'), col(charm('4', 'a'), 0)], [group('a')])
-    expect(pinned.map(c => `${c.id}:${c.column}`)).toEqual(['1:0', '2:1', '3:0', '4:0'])
-  })
-
-  it('leaves already-correct charms as the same objects', () => {
-    const placed = col(charm('1'), 0)
-    expect(pinColumns([placed], [])[0]).toBe(placed)
-  })
-})
-
-describe('moveCharm — drag a card into a group column', () => {
+describe('moveCharm — drag a card onto a card or a group button', () => {
   const groups = [group('a'), group('b')]
-  const at = (cs: CharacterCharm[]) => cs.map(c => `${c.id}:${c.groupId ?? '-'}:${c.column}`)
-  const charms = [col(charm('1', 'a'), 0), col(charm('2', 'b'), 0), col(charm('3', 'a'), 1), col(charm('4'), 0)]
+  const charms = [charm('1', 'a'), charm('2', 'b'), charm('3', 'a'), charm('4')]
 
-  it('drops at the bottom of the chosen column', () => {
-    expect(at(moveCharm(charms, groups, '2', { groupId: 'a', column: 0 }))).toEqual(['1:a:0', '3:a:1', '4:-:0', '2:a:0'])
+  it('drops at the end of the chosen group', () => {
+    expect(layout(moveCharm(charms, '2', { groupId: 'a' }))).toEqual(['1:a', '3:a', '4:-', '2:a'])
   })
 
-  it('drops just above another card, in that card\'s column', () => {
-    const moved = moveCharm(charms, groups, '4', { groupId: 'a', column: 1, beforeId: '3' })
-    expect(at(moved)).toEqual(['1:a:0', '2:b:0', '4:a:1', '3:a:1'])
-    expect(splitColumns(partitionCharms(moved, groups).grouped[0].charms).map(ids)).toEqual([['1'], ['4', '3']])
-  })
-
-  it('moves between the columns of the same group', () => {
-    expect(at(moveCharm(charms, groups, '1', { groupId: 'a', column: 1 }))).toEqual(['2:b:0', '3:a:1', '4:-:0', '1:a:1'])
-  })
-
-  it('pins the other cards so none of them hop columns', () => {
-    const loose = [charm('1', 'a'), charm('2', 'a'), charm('3', 'a'), charm('x')]
-    const before = splitColumns(loose.slice(0, 3)).map(ids)
-    const moved = moveCharm(loose, groups, 'x', { groupId: 'a', column: 0, beforeId: '1' })
-    const after = splitColumns(partitionCharms(moved, groups).grouped[0].charms).map(ids)
-    expect(after).toEqual([['x', ...before[0]], before[1]])
+  it("drops just before another card, joining that card's group", () => {
+    const moved = moveCharm(charms, '4', { groupId: 'a', beforeId: '3' })
+    expect(layout(moved)).toEqual(['1:a', '2:b', '4:a', '3:a'])
+    expect(ids(partitionCharms(moved, groups).grouped[0].charms)).toEqual(['1', '4', '3'])
   })
 
   it('ungroups with a null group', () => {
-    const moved = moveCharm(charms, groups, '1', { groupId: null, column: 1 })
-    expect(at(moved)).toEqual(['2:b:0', '3:a:1', '4:-:0', '1:-:1'])
+    const moved = moveCharm(charms, '1', { groupId: null })
+    expect(layout(moved)).toEqual(['2:b', '3:a', '4:-', '1:-'])
     expect('groupId' in moved[3]).toBe(false)
   })
 
   it('keeps the count unchanged and everything else intact', () => {
-    const moved = moveCharm(charms, groups, '2', { groupId: 'a', column: 1, beforeId: '3' })
+    const moved = moveCharm(charms, '2', { groupId: 'a', beforeId: '3' })
     expect(moved).toHaveLength(charms.length)
-    expect(moved.find(c => c.id === '2')).toEqual({ ...charms[1], groupId: 'a', column: 1 })
+    expect(moved.find(c => c.id === '2')).toEqual({ ...charms[1], groupId: 'a' })
   })
 
   it('does nothing for an unknown charm or a drop onto itself', () => {
-    expect(moveCharm(charms, groups, 'zzz', { groupId: 'a', column: 0 })).toBe(charms)
-    expect(moveCharm(charms, groups, '1', { groupId: 'a', column: 0, beforeId: '1' })).toBe(charms)
+    expect(moveCharm(charms, 'zzz', { groupId: 'a' })).toBe(charms)
+    expect(moveCharm(charms, '1', { groupId: 'a', beforeId: '1' })).toBe(charms)
+  })
+})
+
+describe('groupOf', () => {
+  it('is the charm\'s group, or null when it has none or the group is gone', () => {
+    const groups = [group('a')]
+    expect(groupOf(charm('1', 'a'), groups)).toBe('a')
+    expect(groupOf(charm('2'), groups)).toBeNull()
+    expect(groupOf(charm('3', 'gone'), groups)).toBeNull()
   })
 })
 

@@ -13,13 +13,14 @@ use Illuminate\Database\Eloquent\Model;
  * @property string $name
  * @property int|null $page
  * @property string $description
+ * @property string|null $summary
  * @property list<int>|null $pick_counts
  * @property bool $needs_review
  * @property string|null $review_action
  */
 #[Table('charm_library')]
 #[Fillable([
-    'type', 'name', 'page', 'description', 'mechanical_key', 'mechanical_description',
+    'type', 'name', 'page', 'description', 'summary', 'mechanical_key', 'mechanical_description',
     'prerequisite_essence', 'choice_type', 'target_choice_type', 'multiselect_cap_basis',
     'pick_counts', 'needs_review', 'review_action',
 ])]
