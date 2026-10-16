@@ -27,7 +27,7 @@ import {
 } from '../lib/health'
 import type { CharmLibraryRow } from '../components/CharmLibraryTab'
 import ModalPortal from '../components/ModalPortal'
-import ConfirmButton from '../components/ConfirmButton'
+import { FolderInput, Pencil, RefreshCw, RotateCcw, Settings, Trash2, Undo2, X } from 'lucide-react'
 import { api } from '../lib/api'
 import { Tooltip, TooltipLayer } from '../components/Tooltip'
 
@@ -653,8 +653,14 @@ function CharmWindow({ charm, lib, groups, exaltType, caste, essence, abilities,
     ...lib.prerequisiteCharms,
   ].filter(Boolean) : []
   const buyAgain = lib !== undefined && canBuyAgain(lib, charm, ABILITIES, Object.keys(attributes))
+  const [armedRemove, setArmedRemove] = useState(false)
   const sectionLabel = 'text-[10px] font-semibold uppercase tracking-wider text-stone-500'
-  const linkBtn = 'text-[11px] text-stone-500 hover:text-amber-400 transition-colors'
+  // Icon-only buttons; data-tip names them (and says why when one can't be used).
+  // An unavailable one stays in place, dimmed, so the icons never shift around.
+  const iconBtn = (available: boolean) => `w-7 h-7 shrink-0 inline-flex items-center justify-center rounded border transition-colors ${
+    available ? 'border-transparent text-stone-400 hover:border-stone-600 hover:text-stone-100' : 'border-transparent text-stone-700 cursor-default'}`
+  const smallIconBtn = 'w-5 h-5 inline-flex items-center justify-center rounded text-stone-500 hover:text-amber-400 transition-colors'
+  const divider = <span className="w-px h-5 bg-stone-700 mx-1 shrink-0" />
 
   function setOxBodyPick(index: number, pick: OxBodyPick) {
     const picks = Array.from({ length: count }, (_, i) => charm.oxBodyPicks?.[i] ?? DEFAULT_OX_BODY_PICK)
@@ -667,25 +673,63 @@ function CharmWindow({ charm, lib, groups, exaltType, caste, essence, abilities,
       <div className="fixed inset-0 z-50 flex items-start justify-center bg-black/70 pt-16" onClick={onClose}>
         <div role="dialog" aria-label={charm.name} onClick={e => e.stopPropagation()}
           className="bg-stone-900 border border-stone-700 rounded-xl w-[52rem] max-w-[95vw] max-h-[85vh] flex flex-col shadow-2xl">
+          {/* Header: who the charm is on the left (wraps as long as it needs), every
+              control for it on the right, which never wraps or squeezes the text. */}
           <div className="flex items-start gap-3 px-4 py-3 border-b border-stone-700 shrink-0">
             <div className="flex-1 min-w-0">
-              <div className="flex items-center gap-2">
-                <h2 className="text-base font-semibold text-amber-400">{charm.name}</h2>
-                {count > 1 && <span className="text-[11px] px-1.5 rounded bg-stone-800 border border-stone-600 text-stone-300">Purchased {count}×</span>}
-              </div>
+              <h2 className="text-base font-semibold text-amber-400 break-words">
+                {charm.name}
+                {count > 1 && <span className="ml-2 align-middle text-[11px] font-normal px-1.5 rounded bg-stone-800 border border-stone-600 text-stone-300">×{count}</span>}
+              </h2>
               {meta && <p className="text-xs text-stone-400 mt-0.5">{meta}</p>}
               {requires.length > 0 && <p className="text-xs text-stone-500 mt-0.5">Requires {requires.join(' · ')}</p>}
             </div>
-            <button onClick={onClose} aria-label="Close" className="text-stone-500 hover:text-stone-300 text-sm">✕</button>
+            <div className="flex items-center gap-0.5 shrink-0">
+              <span data-tip="Group" className="text-stone-500 mr-1"><FolderInput size={15} aria-hidden /></span>
+              <select value={groupOf(charm, groups) ?? ''} aria-label="Group" className={`${selectCls} !w-32 !py-1`}
+                onChange={e => onMoveToGroup(e.target.value || null)}>
+                <option value="">Ungrouped</option>
+                {groups.map(g => <option key={g.id} value={g.id}>{g.name}</option>)}
+              </select>
+              {divider}
+              <button aria-pressed={implemented ? charm.mechanicalEnabled : undefined}
+                onClick={() => implemented && onChange({ ...charm, mechanicalEnabled: !charm.mechanicalEnabled })}
+                data-tip={!implemented ? 'Not implemented — the sheet doesn\'t calculate this charm'
+                  : charm.mechanicalEnabled ? 'Implementation on — click to turn off' : 'Implementation off — click to turn on'}
+                aria-label={!implemented ? 'Not implemented' : charm.mechanicalEnabled ? 'Turn implementation off' : 'Turn implementation on'}
+                className={implemented && charm.mechanicalEnabled
+                  ? 'w-7 h-7 shrink-0 inline-flex items-center justify-center rounded border border-amber-500/60 bg-amber-500/10 text-amber-400 hover:text-amber-300 transition-colors'
+                  : iconBtn(implemented)}>
+                <Settings size={15} aria-hidden />
+              </button>
+              <button onClick={() => lib && buyAgain && onRepurchase(lib)} aria-label="Repurchase"
+                data-tip={buyAgain ? 'Repurchase (buy again)' : 'Repurchase — not available for this charm'}
+                className={iconBtn(buyAgain)}><RefreshCw size={15} aria-hidden /></button>
+              <button onClick={() => lib && count > 1 && onUndoPurchase(lib)} aria-label="Undo last purchase"
+                data-tip={count > 1 ? 'Undo last purchase' : 'Undo last purchase — bought only once'}
+                className={iconBtn(lib !== undefined && count > 1)}><Undo2 size={15} aria-hidden /></button>
+              <button onClick={() => { if (armedRemove) onRemove(); else setArmedRemove(true) }} onBlur={() => setArmedRemove(false)}
+                aria-label={armedRemove ? 'Click again to remove the charm' : 'Remove charm'}
+                data-tip={armedRemove ? 'Click again to remove' : 'Remove charm'}
+                className={armedRemove
+                  ? 'w-7 h-7 shrink-0 inline-flex items-center justify-center rounded border border-red-500/70 bg-red-950/50 text-red-400 transition-colors'
+                  : 'w-7 h-7 shrink-0 inline-flex items-center justify-center rounded border border-transparent text-stone-400 hover:border-red-900/70 hover:text-red-400 transition-colors'}>
+                <Trash2 size={15} aria-hidden />
+              </button>
+              {divider}
+              <button onClick={onClose} aria-label="Close" data-tip="Close" className={iconBtn(true)}><X size={16} aria-hidden /></button>
+            </div>
           </div>
 
           <div className="overflow-y-auto no-scrollbar px-4 py-3 space-y-4">
             <section className="space-y-1">
               <div className="flex items-center gap-2">
                 <span className={sectionLabel}>Summary</span>
-                {editing !== 'summary' && <button onClick={() => setEditing('summary')} className={linkBtn}>Edit</button>}
+                {editing !== 'summary' && (
+                  <button onClick={() => setEditing('summary')} data-tip="Edit summary" aria-label="Edit summary" className={smallIconBtn}><Pencil size={12} aria-hidden /></button>
+                )}
                 {editing !== 'summary' && charm.customSummary != null && (
-                  <button onClick={() => onChange({ ...charm, customSummary: null })} className={linkBtn}>Revert to suggested</button>
+                  <button onClick={() => onChange({ ...charm, customSummary: null })} data-tip="Revert to the suggested summary" aria-label="Revert to the suggested summary" className={smallIconBtn}><RotateCcw size={12} aria-hidden /></button>
                 )}
               </div>
               {editing === 'summary' ? (
@@ -702,9 +746,11 @@ function CharmWindow({ charm, lib, groups, exaltType, caste, essence, abilities,
             <section className="space-y-1">
               <div className="flex items-center gap-2">
                 <span className={sectionLabel}>Charm text</span>
-                {editing !== 'text' && <button onClick={() => setEditing('text')} className={linkBtn}>Edit</button>}
+                {editing !== 'text' && (
+                  <button onClick={() => setEditing('text')} data-tip="Edit charm text" aria-label="Edit charm text" className={smallIconBtn}><Pencil size={12} aria-hidden /></button>
+                )}
                 {editing !== 'text' && charm.customDescription !== null && (
-                  <button onClick={() => onChange({ ...charm, customDescription: null })} className={linkBtn}>Revert to original</button>
+                  <button onClick={() => onChange({ ...charm, customDescription: null })} data-tip="Revert to the original text" aria-label="Revert to the original text" className={smallIconBtn}><RotateCcw size={12} aria-hidden /></button>
                 )}
               </div>
               {editing === 'text' ? (
@@ -745,34 +791,6 @@ function CharmWindow({ charm, lib, groups, exaltType, caste, essence, abilities,
             )}
           </div>
 
-          <div className="flex flex-wrap items-center gap-2 px-4 py-2.5 border-t border-stone-700 shrink-0">
-            <label className="flex items-center gap-1.5 text-xs text-stone-400">
-              Group
-              <select value={groupOf(charm, groups) ?? ''} className={`${selectCls} !w-36`}
-                onChange={e => onMoveToGroup(e.target.value || null)}>
-                <option value="">Ungrouped</option>
-                {groups.map(g => <option key={g.id} value={g.id}>{g.name}</option>)}
-              </select>
-            </label>
-            {implemented ? (
-              <button onClick={() => onChange({ ...charm, mechanicalEnabled: !charm.mechanicalEnabled })} aria-pressed={charm.mechanicalEnabled}
-                data-tip="Whether the sheet calculates this charm's effect"
-                className={`text-xs px-2 py-1 rounded border transition-colors ${charm.mechanicalEnabled ? 'border-amber-500/70 bg-amber-500/10 text-amber-300' : 'border-stone-600 text-stone-400 hover:text-stone-200'}`}>
-                ⚙ Implementation {charm.mechanicalEnabled ? 'on' : 'off'}
-              </button>
-            ) : (
-              <span className="text-xs text-stone-600">⚙ Not implemented</span>
-            )}
-            <span className="flex-1" />
-            {lib && buyAgain && (
-              <button onClick={() => onRepurchase(lib)} className="text-xs px-2 py-1 rounded border border-stone-600 text-stone-300 hover:border-amber-500 hover:text-amber-300 transition-colors">↻ Repurchase</button>
-            )}
-            {lib && count > 1 && (
-              <button onClick={() => onUndoPurchase(lib)} className="text-xs px-2 py-1 rounded border border-stone-600 text-stone-300 hover:border-stone-400 transition-colors">Undo last purchase</button>
-            )}
-            <ConfirmButton label="Remove charm" confirmLabel="Click again to remove" onConfirm={onRemove}
-              className="text-xs px-2 py-1 rounded border border-red-900/60 text-red-400 hover:bg-red-950/40 transition-colors" />
-          </div>
         </div>
       </div>
     </ModalPortal>
