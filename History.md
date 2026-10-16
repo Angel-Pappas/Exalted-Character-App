@@ -4,6 +4,18 @@ One entry per shipped change, newest first: what changed and **why**. How things
 now is in `Summary.md`; plans in `ROADMAP.md`. Entries before 2026-10-15 were rebuilt
 from the git history (one per day, its commits listed).
 
+- **2026-10-16** — **Charm removal sticks, a steady Charms panel, and deleting ledger
+  lines.** Angel couldn't remove Integrity-Protecting Principle: the line went, the charm
+  came back. Cause: the sheet saved a whole copy of itself on every change, and the
+  Charms panel resizes itself from a screen update that can be one step behind, so its
+  resize overwrote the removal with the older copy. Saves now carry only the fields
+  they change (`src/lib/characterData.ts`, tested), so nothing can undo a newer change.
+  The panel's bottom edge jumped on every visit because it sized itself before the
+  charm summaries had loaded and while the grid was still widening, and the grid then
+  reported its older copy of the height back; it now waits for both, ignores the grid's
+  copy of its height, and keeps the library for the visit. Deleting a ledger line now takes what it
+  bought off the sheet if it is still in training, and asks if it is done
+  (`src/lib/ledgerRemoval.ts`, tested).
 - **2026-10-16** — **No Expense without a milestone.** Angel: an Expense must note the
   milestones spent. Saving an Expense (or paying for a charm) now needs at least one;
   something free is logged as Char. Creation. Existing zero-cost lines were left

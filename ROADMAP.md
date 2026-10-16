@@ -20,6 +20,8 @@ the priorities — the order under **Next** is a suggestion until he does.
 - [x] Training, pieces 2–3: charms, dots and specialties linked to their ledger line,
       shown "in training" on the sheet with no effect until done; Milestones page
       redesigned with the training list beside the ledger (2026-10-16).
+- [x] Deleting a ledger line takes its purchase off the sheet (asks once trained);
+      charm removal fixed; Charms panel height steady (2026-10-16).
 
 ## Next (suggested)
 
@@ -27,6 +29,9 @@ the priorities — the order under **Next** is a suggestion until he does.
 - [ ] **Cut-off headings on the character sheet** — "Essence", "Anima" and "Power"
       show as "ESSE…", "ANI…", "PO…" at desktop width (found in the first screenshot
       review, 2026-10-15).
+- [ ] **Phone layouts** — the Milestones page's side column covers the ledger's
+      buttons at phone width, and the sheet's 128-column grid is squeezed rather than
+      stacked (seen in screenshots, 2026-10-16).
 - [ ] **Light mode** CSS theming pass.
 - [ ] **Charm mechanics** charm by charm, as needed — the list is in
       `CHARMS_NEEDING_IMPLEMENTATION.md`.

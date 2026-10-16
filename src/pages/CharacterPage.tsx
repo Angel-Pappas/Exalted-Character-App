@@ -6,6 +6,7 @@ import { useAuth } from '../contexts/AuthContext'
 import { canEditCharacter } from '../lib/characterAccess'
 import type { CharacterData, TrainingDone } from '../types/character'
 import { todayKey } from '../lib/milestones'
+import { applyChange, type CharacterChange } from '../lib/characterData'
 import TabBar from '../components/TabBar'
 import SheetTab from '../tabs/SheetTab'
 import MilestonesTab from '../tabs/MilestonesTab'
@@ -70,10 +71,11 @@ export default function CharacterPage() {
   // campaign) is shown read-only: only the sheet, nothing clickable, never saved.
   const readOnly = character !== null && !canEditCharacter(character, user?.id, role)
 
-  function updateData(partial: Partial<CharacterData>) {
-    if (readOnly) { setData(prev => ({ ...prev, ...partial })); return }
+  // Each change carries only what it touched, merged onto the latest data (see applyChange).
+  function updateData(change: CharacterChange) {
+    if (readOnly) { setData(prev => applyChange(prev, change)); return }
     setData(prev => {
-      const next = { ...prev, ...partial }
+      const next = applyChange(prev, change)
       pending.current = next
       if (saveTimeout) clearTimeout(saveTimeout)
       setSaveTimeout(setTimeout(() => save(next), 1000))
@@ -157,7 +159,7 @@ export default function CharacterPage() {
             milestones={data.milestones}
             sheet={data.sheet}
             trainingDone={trainingDone}
-            onChange={(milestones, sheet) => updateData(sheet ? { milestones, sheet } : { milestones })}
+            onChange={(milestones, sheet) => updateData({ milestones, sheet })}
             onTrainingDone={(lineId, finished) => void setTrainingDone(lineId, finished)}
           />
         )}

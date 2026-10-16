@@ -1,4 +1,4 @@
-import { useState, useRef, useEffect } from 'react' // useState used by CharmPanel and other local state
+import { useState, useRef, useEffect, useLayoutEffect } from 'react' // useState used by CharmPanel and other local state
 import { GridLayout, useContainerWidth, noCompactor } from 'react-grid-layout'
 // noCompactor has allowOverlap:false which causes panels to push each other during drag.
 // Override it so panels can freely overlap — no collision resolution, no compaction.
@@ -23,17 +23,15 @@ import { trainedAbilities, trainedAttributes, traitTraining } from '../lib/trait
 import { formatDay, todayKey } from '../lib/milestones'
 import CharmCostModal from '../components/CharmCostModal'
 import type { ChoicePick } from '../lib/charmPurchase'
-import { sheetLibraryCharm } from '../lib/charmLibrary'
-import { ROW_HEIGHT, fitPanelHeight, rowsToFit } from '../lib/panelLayout'
+import { cachedCharmLibrary, loadCharmLibrary } from '../lib/charmLibrary'
+import { ROW_HEIGHT, fitPanelHeight, gridLayoutChange, rowsToFit } from '../lib/panelLayout'
 import { bestEquipped, calculateDefenses, STATIC_BONUS_CAP } from '../lib/defenses'
 import {
   DEFAULT_OX_BODY_PICK, LEVEL_NAMES, buildHealthTrack, clampDamage, currentWound, damageAfterClick,
   legacyDamage, oxBodyGrant, oxBodyHasChoice, woundPenalty,
 } from '../lib/health'
-import type { CharmLibraryRow } from '../components/CharmLibraryTab'
 import ModalPortal from '../components/ModalPortal'
 import { FolderInput, Pencil, RefreshCw, RotateCcw, Trash2, Undo2, X } from 'lucide-react'
-import { api } from '../lib/api'
 import { Tooltip, TooltipLayer } from '../components/Tooltip'
 
 const ATTRIBUTE_GROUPS = [
@@ -119,14 +117,16 @@ interface Props {
   // Someone else's character: nothing can be dragged or changed (the page also
   // disables every control and never saves).
   readOnly?: boolean
-  onChange: (sheet: SheetData) => void
+  // Every change names only the fields it touched; the page merges them onto the
+  // latest sheet, so a change made from an older render can't undo a newer one.
+  onChange: (patch: Partial<SheetData>) => void
   gameData?: GameData
   // The milestone ledger and which trainings are done: a charm purchase or dots
   // still in training show on the sheet but count for nothing yet.
   milestones: MilestoneTransaction[]
   trainingDone: TrainingDone
   // Charm purchases change the sheet and the ledger together.
-  onLedgerChange: (sheet: SheetData, milestones: MilestoneTransaction[]) => void
+  onLedgerChange: (patch: Partial<SheetData>, milestones: MilestoneTransaction[]) => void
   onTrainingDone: (lineId: string) => void
 }
 
@@ -837,8 +837,8 @@ function CharmPanel({ charms, milestones, training, onLedgerChange, onTrainingDo
   attributes: Record<string, number>
   essence: number
 }) {
-  const [library, setLibrary] = useState<LibraryCharm[]>([])
-  const [libraryLoaded, setLibraryLoaded] = useState(false)
+  const [library, setLibrary] = useState<LibraryCharm[]>(() => cachedCharmLibrary() ?? [])
+  const [libraryLoaded, setLibraryLoaded] = useState(() => cachedCharmLibrary() !== null)
   const [browsing, setBrowsing] = useState(false)
   const [openId, setOpenId] = useState<string | null>(null)
   const [picking, setPicking] = useState<LibraryCharm | null>(null)
@@ -855,8 +855,8 @@ function CharmPanel({ charms, milestones, training, onLedgerChange, onTrainingDo
   // The library gives the cards their suggested summaries and the charm window
   // its details; the Add Charm browser lists it.
   useEffect(() => {
-    api<CharmLibraryRow[]>('GET', 'charms').then(({ data }) => {
-      if (data) setLibrary(data.map(sheetLibraryCharm))
+    loadCharmLibrary().then(charms => {
+      setLibrary(charms)
       setLibraryLoaded(true)
     })
   }, [])
@@ -872,9 +872,15 @@ function CharmPanel({ charms, milestones, training, onLedgerChange, onTrainingDo
     return () => observer.disconnect()
   }, [])
 
-  useEffect(() => {
-    if (contentHeight > 0) onContentHeight(contentHeight)
-  }, [contentHeight, onContentHeight])
+  // Sized only once the library is in: until then the cards lack their summaries,
+  // so the panel would shrink and then grow back (and save both) on every visit.
+  // The height is read from the page here, not from contentHeight, which can
+  // still hold the measurement from before the summaries arrived.
+  useLayoutEffect(() => {
+    const el = contentRef.current
+    if (!libraryLoaded || !el || contentHeight === 0) return
+    onContentHeight(el.getBoundingClientRect().height)
+  }, [libraryLoaded, contentHeight, onContentHeight])
 
   // Every purchase first asks what paid for it (CharmCostModal), then lands with its ledger line.
   function addCharm(lib: LibraryCharm, pick: ChoicePick | null) {
@@ -2241,7 +2247,7 @@ export default function SheetTab({ sheet, onChange, editMode, readOnly = false, 
   const [editIntimacyIntensity, setEditIntimacyIntensity] = useState<IntimacyEntry['intensity']>('Minor')
   const [editIntimacyDesc, setEditIntimacyDesc] = useState('')
 
-  function update(partial: Partial<SheetData>) { onChange({ ...data, ...partial }) }
+  function update(partial: Partial<SheetData>) { onChange(partial) }
   function setAttr(name: string, value: number) { update({ attributes: { ...data.attributes, [name]: value } }) }
   function setAbility(name: string, patch: Partial<AbilityData>) {
     update({ abilities: { ...data.abilities, [name]: { ...(data.abilities[name] ?? defaultAbility), ...patch } } })
@@ -2787,7 +2793,7 @@ export default function SheetTab({ sheet, onChange, editMode, readOnly = false, 
         charms={data.charms}
         milestones={milestones}
         training={charmTraining}
-        onLedgerChange={next => onLedgerChange({ ...data, charms: next.charms }, next.milestones)}
+        onLedgerChange={next => onLedgerChange({ charms: next.charms }, next.milestones)}
         onTrainingDone={onTrainingDone}
         groups={data.charmGroups}
         onContentHeight={fitCharmsPanel}
@@ -2826,7 +2832,9 @@ export default function SheetTab({ sheet, onChange, editMode, readOnly = false, 
   }
 
   // Measure the grid container's exact pixel width so GridLayout snap points
-  const { width, containerRef, mounted } = useContainerWidth()
+  // Measured before the grid mounts, so panels open at their real width instead of
+  // animating from a default one (which made the Charms panel resize as it opened).
+  const { width, containerRef, mounted } = useContainerWidth({ measureBeforeMount: true })
 
   return (
     <div className="relative" ref={containerRef}>
@@ -2839,7 +2847,10 @@ export default function SheetTab({ sheet, onChange, editMode, readOnly = false, 
           compactor={freeCompactor}
           // The Charms panel's height follows its content, so it only resizes sideways.
           layout={data.layout.map(l => l.i === 'charms' ? { ...l, resizeHandles: ['e' as const] } : l)}
-          onLayoutChange={(newLayout) => update({ layout: newLayout.map(({ i, x, y, w, h }) => ({ i, x, y, w, h })) })}
+          onLayoutChange={newLayout => {
+            const next = gridLayoutChange(data.layout, newLayout, 'charms')
+            if (next !== data.layout) update({ layout: next })
+          }}
           autoSize={false}
           style={{
             minHeight: '2000px',

@@ -1,11 +1,11 @@
 import { Fragment, useEffect, useState } from 'react'
 import type { LibraryCharm, MilestoneKind, MilestoneTransaction, SheetData, TraitPurchase, TrainingDone } from '../types/character'
-import { api } from '../lib/api'
 import { Tooltip } from '../components/Tooltip'
 import { TrainingCost } from '../components/TrainingCost'
 import { CharmBrowseModal } from './SheetTab'
-import type { CharmLibraryRow } from '../components/CharmLibraryTab'
-import { sheetLibraryCharm } from '../lib/charmLibrary'
+import ModalPortal from '../components/ModalPortal'
+import { cachedCharmLibrary, loadCharmLibrary } from '../lib/charmLibrary'
+import { boughtOnSheet, undoBought } from '../lib/ledgerRemoval'
 import type { ChoicePick } from '../lib/charmPurchase'
 import { buyCharm, charmLine } from '../lib/charmTraining'
 import { applyTrait, traitDescription } from '../lib/traitTraining'
@@ -19,8 +19,9 @@ interface Props {
   milestones: MilestoneTransaction[]
   sheet: SheetData
   trainingDone: TrainingDone
-  // A purchase that buys a charm or dots changes the sheet too, in the same save.
-  onChange: (milestones: MilestoneTransaction[], sheet?: SheetData) => void
+  // A purchase that buys a charm or dots changes the sheet too, in the same save:
+  // `sheet` names only the fields that change.
+  onChange: (milestones: MilestoneTransaction[], sheet?: Partial<SheetData>) => void
   onTrainingDone: (lineId: string, finished: boolean) => void
 }
 
@@ -294,12 +295,14 @@ export default function MilestonesTab({ milestones, sheet, trainingDone, onChang
   const [editDraft, setEditDraft] = useState<Draft>(newDraft('gain'))
   const [order, setOrder] = useState<Order>(readOrder)
   const [browsing, setBrowsing] = useState(false)
-  const [library, setLibrary] = useState<LibraryCharm[] | null>(null)
+  const [library, setLibrary] = useState<LibraryCharm[] | null>(cachedCharmLibrary)
+  // A line whose purchase is done training, waiting for "remove it from the sheet too?"
+  const [deleting, setDeleting] = useState<{ line: MilestoneTransaction; thing: string } | null>(null)
 
   // The charm library loads only when a charm is first chosen here.
   useEffect(() => {
     if (!browsing || library) return
-    api<CharmLibraryRow[]>('GET', 'charms').then(({ data }) => setLibrary((data ?? []).map(sheetLibraryCharm)))
+    loadCharmLibrary().then(setLibrary)
   }, [browsing, library])
 
   function toggleOrder() {
@@ -336,7 +339,7 @@ export default function MilestonesTab({ milestones, sheet, trainingDone, onChang
       const lines = description
         ? next.milestones.map((m, i) => (i === next.milestones.length - 1 ? { ...m, description } : m))
         : next.milestones
-      onChange(lines, { ...sheet, charms: next.charms })
+      onChange(lines, { charms: next.charms })
     } else {
       const trait = adding.kind === 'gain' ? null : draftTrait(bought)
       const tx: MilestoneTransaction = {
@@ -349,7 +352,7 @@ export default function MilestonesTab({ milestones, sheet, trainingDone, onChang
         ...(trait ? { trait } : {}),
       }
       // Appended, so entries sharing a date keep the order they were logged in.
-      if (trait) onChange([...milestones, tx], { ...sheet, ...applyTrait({ attributes: sheet.attributes ?? {}, abilities: sheet.abilities ?? {} }, trait) })
+      if (trait) onChange([...milestones, tx], applyTrait({ attributes: sheet.attributes ?? {}, abilities: sheet.abilities ?? {} }, trait))
       else onChange([...milestones, tx])
     }
     setAdding(null)
@@ -381,6 +384,24 @@ export default function MilestonesTab({ milestones, sheet, trainingDone, onChang
     if (!wasTraining && nowTraining && tx.id in trainingDone) onTrainingDone(tx.id, false)
   }
 
+  // Deleting a line that bought something still on the sheet (Angel, 2026-10-16):
+  // still in training, the purchase goes with it; trained, the player chooses.
+  function startDelete(line: MilestoneTransaction) {
+    const thing = boughtOnSheet(line, { charms, attributes: sheet.attributes ?? {}, abilities: sheet.abilities ?? {} })
+    if (!thing) onChange(milestones.filter(m => m.id !== line.id))
+    else if (training.includes(line)) void deleteLine(line, true)
+    else setDeleting({ line, thing })
+  }
+
+  async function deleteLine(line: MilestoneTransaction, fromSheet: boolean) {
+    setDeleting(null)
+    const rest = milestones.filter(m => m.id !== line.id)
+    if (!fromSheet) { onChange(rest); return }
+    // A charm's pick schedule says how many picks its last purchase made.
+    const lib = line.charm ? (library ?? await loadCharmLibrary()).find(l => l.id === line.charm?.libraryId) : undefined
+    onChange(rest, undoBought(line, { charms, attributes: sheet.attributes ?? {}, abilities: sheet.abilities ?? {} }, lib))
+  }
+
   // A charm chosen in the browser goes into the new entry's form.
   function chooseCharm(lib: LibraryCharm, pick: ChoicePick | null) {
     setAdding(a => (a ? { ...a, bought: { kind: 'charm', lib, pick } } : a))
@@ -404,6 +425,27 @@ export default function MilestonesTab({ milestones, sheet, trainingDone, onChang
           onAdd={chooseCharm}
           onClose={() => setBrowsing(false)}
         />
+      )}
+
+      {deleting && (
+        <ModalPortal onClose={() => setDeleting(null)}>
+          <div className="fixed inset-0 z-[60] flex items-center justify-center bg-black/70" onClick={() => setDeleting(null)}>
+            <div role="dialog" aria-label="Delete line" onClick={e => e.stopPropagation()}
+              className="w-[28rem] max-w-[95vw] rounded-xl border border-stone-700 bg-stone-900 p-4 shadow-2xl space-y-3">
+              <div>
+                <h2 className="text-sm font-semibold text-amber-400">Delete “{deleting.line.description}”</h2>
+                <p className="text-sm text-stone-300 mt-1">{deleting.line.training ? 'Its training is done. ' : ''}Remove {deleting.thing} from the sheet too?</p>
+              </div>
+              <div className="flex flex-wrap items-center justify-end gap-2 pt-1 [&>button]:whitespace-nowrap">
+                <button type="button" onClick={() => setDeleting(null)} className="text-stone-400 hover:text-stone-200 text-sm px-2 mr-auto">Cancel</button>
+                <button type="button" onClick={() => void deleteLine(deleting.line, false)}
+                  className="bg-stone-700 hover:bg-stone-600 text-white rounded px-3 py-1.5 text-sm transition-colors">Keep on sheet</button>
+                <button type="button" autoFocus onClick={() => void deleteLine(deleting.line, true)}
+                  className="bg-red-700 hover:bg-red-600 text-white rounded px-3 py-1.5 text-sm transition-colors">Remove from sheet</button>
+              </div>
+            </div>
+          </div>
+        </ModalPortal>
       )}
 
       {/* The ledger, from the very top of the page. */}
@@ -479,7 +521,7 @@ export default function MilestonesTab({ milestones, sheet, trainingDone, onChang
                             </svg>
                           </button>
                           <button
-                            onClick={() => onChange(milestones.filter(m => m.id !== tx.id))}
+                            onClick={() => startDelete(tx)}
                             className="text-stone-400 hover:text-red-400 text-xs transition-colors"
                             data-tip="Delete" aria-label="Delete"
                           >✕</button>

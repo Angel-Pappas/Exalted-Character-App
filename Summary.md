@@ -102,7 +102,11 @@ the Storyteller's call, so the app only records "started" (the line's date) and 
   (`MilestoneTransaction.charm`). The other way round, a new Expense or creation note
   can pick "What it bought": a charm (from the Add Charm browser), which lands on the
   sheet. Undo last purchase / Remove in the charm window take their linked lines with
-  them. Deleting a ledger line leaves the sheet alone.
+  them. **Deleting a ledger line** that bought something still on the sheet (a charm
+  purchase, dots, a specialty): if it is still in training, the purchase leaves the
+  sheet with it; if its training is done (or it never trained), a dialog asks
+  "Remove … from the sheet too?" — Remove from sheet / Keep on sheet / Cancel. A
+  charm bought several times loses one purchase (`src/lib/ledgerRemoval.ts`, tested).
 - **Dots and specialties** (`src/lib/traitTraining.ts`, tested): "What it bought" can
   also be ability dots (+1 to +3), an attribute dot or a specialty. Saving raises the
   rating (or sets the specialty) on the sheet at once (`MilestoneTransaction.trait`).
@@ -179,7 +183,7 @@ Only one armor can be equipped at a time (equipping one auto-unequips others).
 - **Charms panel (since 2026-10-16):** a row of group buttons in the header (All, each group with its count, Ungrouped while it holds charms or a charm is being dragged) picks what shows; the choice is kept for the visit, not saved (`src/lib/charmSelection.ts`, tested). Under All, each group shows under a small heading. ✎ ✕ after the buttons edit/delete the selected group. Charms show as compact cards (min 13rem, filling the panel's width): group colour bar, name, ×count and its **summary**, always in full (a card without a summary shows the start of the charm text instead, cut to two lines). Resting the mouse on a card (after the 300 ms hint delay) shows its full text, choices and modes in a pop-up. Clicking a card opens the **charm window** over the sheet. Its header holds everything about the charm: name (×count), type · abilities · page and prerequisites on the left, wrapping as needed; on the right, never wrapping, the controls as icon buttons (lucide-react, pinned): Group dropdown, Repurchase, Undo last purchase, Remove (asks for a second click), Close. A button that can't be used stays in place, dimmed, and its hint says why. Below: summary and charm text, each with ✎ edit and ↺ revert icons by its label, and Ox Body's health-level picks. Purchase rules (`canBuyAgain`, `addPurchase`, `undoPurchase`) live in `src/lib/charmPurchase.ts`, tested, shared with the Add Charm browser.
 - **Summaries:** `charm_library.summary` holds a suggested one-liner per charm (Admin → Charms edits it); a player can override it per character (`CharacterCharm.customSummary`). The card shows the player's, else the library's, else the start of the charm text (`cardSummary`). The library is read live, so a summary written in Admin reaches every sheet. Every library charm has one: Kaien's 20 (migration `2026_10_16_000002`) and the other 464 (`2026_10_16_000003`), drafted from the book text — core effect only, with cost and combat step first; exalt-type modes stay in the full text. Charms added later start without one.
 - Groups (`SheetData.charmGroups`, per character, never premade): name and colour only. A charm sits in at most one group (`CharacterCharm.groupId`; absent = Ungrouped); order inside a group is the array order. Dragging a card onto another puts it before that card (joining its group); onto a group button, at the end of that group; a group button onto another moves the group before it (off in layout-edit mode). Deleting a group ungroups its charms, never deletes them. Logic in `src/lib/charmGroups.ts` (tested). Sheets saved earlier may still carry a `column` per charm from the old two-column boxes; it is ignored.
-- The Charms panel never scrolls: it measures its content (ResizeObserver) and sets its own grid height (`rowsToFit`), and `fitPanelHeight` (`src/lib/panelLayout.ts`, tested) moves panels below it in the same columns by the same amount. Its height can't be dragged in layout-edit mode, only its width.
+- The Charms panel never scrolls: it measures its content (ResizeObserver) and sets its own grid height (`rowsToFit`), and `fitPanelHeight` (`src/lib/panelLayout.ts`, tested) moves panels below it in the same columns by the same amount. Its height can't be dragged in layout-edit mode, only its width. It sizes itself only once the library (the cards' summaries) has loaded, and the grid mounts at its measured width (`measureBeforeMount`), so the panel opens at its final height instead of jumping; the library is kept for the visit (`cachedCharmLibrary`, refreshed on each open). The grid's own layout reports never change the Charms height (`gridLayoutChange`, tested) — its copy can be a fit behind, which made the panel flip between two heights.
 - Each CharacterCharm: `libraryId`, `name`, `libraryMechanicalKey` (denormalized), `customDescription` and `customSummary` (player overrides), `mechanicalKeyOverride`
 - Effective mechanical key = `mechanicalKeyOverride ?? libraryMechanicalKey`; a charm with a key the sheet computes (`ox_body`, `foi`, `excellency`) always applies — there is no on/off switch since 2026-10-16 (`mechanicalEnabled` is still saved but no longer read)
 - Custom descriptions override library text per character; can be reverted
@@ -204,11 +208,12 @@ Only one armor can be equipped at a time (equipping one auto-unequips others).
 
 ## Key Rules for Development
 1. **All state that should survive a refresh or session gap goes to the database through the API** — never use local React state for persistent data
-2. **Always commit, push and deploy after every code change** — no need to ask
-3. Ignore "highest appropriate attribute" from book quotes — each stat has a fixed attribute mapping
-4. Light mode toggle exists in Settings but CSS is not wired up yet (all colors are hardcoded stone/amber)
-5. **Never prompt for permission** except before permanently deleting DB data or changing admin access
-6. **Tooltips on the sheet use `data-tip="…"`, never `title=`** — `src/components/Tooltip.tsx` renders them above every panel and keeps them in the window. Rich content (the Defenses breakdown) uses `<Tooltip content={…}>`. Icon-only buttons also need `aria-label`, since the hint no longer names them.
+2. **Tabs send only the sheet fields they change** (`onChange(patch)`); the page merges them onto the latest data (`applyChange`). Never send a whole copy of the sheet: one made from an older render overwrites newer changes (the lost charm removal of 2026-10-16)
+3. **Always commit, push and deploy after every code change** — no need to ask
+4. Ignore "highest appropriate attribute" from book quotes — each stat has a fixed attribute mapping
+5. Light mode toggle exists in Settings but CSS is not wired up yet (all colors are hardcoded stone/amber)
+6. **Never prompt for permission** except before permanently deleting DB data or changing admin access
+7. **Tooltips on the sheet use `data-tip="…"`, never `title=`** — `src/components/Tooltip.tsx` renders them above every panel and keeps them in the window. Rich content (the Defenses breakdown) uses `<Tooltip content={…}>`. Icon-only buttons also need `aria-label`, since the hint no longer names them.
 
 ---
 

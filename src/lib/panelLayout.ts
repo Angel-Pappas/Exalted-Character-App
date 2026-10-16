@@ -23,3 +23,19 @@ export function fitPanelHeight(layout: PanelLayout[], id: string, h: number): Pa
     return sharesColumn && l.y >= oldBottom ? { ...l, y: Math.max(0, l.y + delta) } : l
   })
 }
+
+// A layout the grid reports back (after a drag or resize, and also whenever it
+// catches up with a layout it was given), applied to the current one. Only
+// position and size are kept. A panel whose height follows its content keeps
+// the height it has now: the grid's copy can be one fit behind, and taking it
+// would undo the fit and make the panel jump between the two heights. Returns
+// `current` itself when nothing changed, so an echo costs no save.
+export function gridLayoutChange(current: PanelLayout[], reported: readonly PanelLayout[], fittedId: string): PanelLayout[] {
+  const fitted = current.find(l => l.i === fittedId)
+  const next = reported.map(({ i, x, y, w, h }) => ({ i, x, y, w, h: i === fittedId && fitted ? fitted.h : h }))
+  const same = next.length === current.length && next.every(n => {
+    const c = current.find(l => l.i === n.i)
+    return c !== undefined && c.x === n.x && c.y === n.y && c.w === n.w && c.h === n.h
+  })
+  return same ? current : next
+}

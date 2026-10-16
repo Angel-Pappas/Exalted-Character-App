@@ -1,4 +1,5 @@
 import type { CharmLibraryRow } from '../components/CharmLibraryTab'
+import { api } from './api'
 import type { LibraryCharm } from '../types/character'
 
 // A charm library row from the API as the character sheet uses it (the Add Charm
@@ -23,4 +24,21 @@ export function sheetLibraryCharm(r: CharmLibraryRow): LibraryCharm {
     multiselectCapBasis: r.multiselect_cap_basis ?? null,
     pickCounts: r.pick_counts ?? null,
   }
+}
+
+// The library as last loaded, kept for the visit: the Charms panel shows the
+// cards' final text at once when the sheet is opened again, instead of starting
+// without summaries and resizing when they arrive.
+let cached: LibraryCharm[] | null = null
+
+/** The library from the last load this visit, or null before the first one. */
+export function cachedCharmLibrary(): LibraryCharm[] | null {
+  return cached
+}
+
+/** Loads the library afresh (an admin may have edited it) and remembers it. */
+export async function loadCharmLibrary(): Promise<LibraryCharm[]> {
+  const { data } = await api<CharmLibraryRow[]>('GET', 'charms')
+  if (data) cached = data.map(sheetLibraryCharm)
+  return cached ?? []
 }

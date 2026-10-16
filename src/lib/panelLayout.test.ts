@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest'
-import { ROW_HEIGHT, fitPanelHeight, rowsToFit } from './panelLayout'
+import { ROW_HEIGHT, fitPanelHeight, gridLayoutChange, rowsToFit } from './panelLayout'
 import type { PanelLayout } from '../types/character'
 
 const p = (i: string, x: number, y: number, w: number, h: number): PanelLayout => ({ i, x, y, w, h })
@@ -44,5 +44,27 @@ describe('fitPanelHeight — the Charms panel grows to fit its content', () => {
   it('returns the same layout when nothing changes, so no save is triggered', () => {
     expect(fitPanelHeight(layout, 'charms', 46)).toBe(layout)
     expect(fitPanelHeight(layout, 'missing', 10)).toBe(layout)
+  })
+})
+
+describe('gridLayoutChange', () => {
+  const layout = [p('charms', 60, 0, 40, 115), p('effects', 60, 115, 40, 40)]
+
+  // 2026-10-16: the grid reported its copy from one fit earlier (charms at 100),
+  // which undid the fit, which fitted again — the panel's bottom edge jumped
+  // between the two heights for as long as the page was open.
+  it('keeps the fitted panel at its current height when the grid reports an older one', () => {
+    const next = gridLayoutChange(layout, [p('charms', 60, 0, 40, 100), p('effects', 60, 115, 40, 40)], 'charms')
+    expect(next).toBe(layout)
+  })
+
+  it('takes moves and other resizes from the grid', () => {
+    const next = gridLayoutChange(layout, [p('charms', 50, 0, 50, 100), p('effects', 60, 120, 40, 30)], 'charms')
+    expect(next).toEqual([p('charms', 50, 0, 50, 115), p('effects', 60, 120, 40, 30)])
+  })
+
+  it('drops the grid’s extra fields', () => {
+    const next = gridLayoutChange(layout, [{ ...p('charms', 60, 0, 40, 115), moved: false } as never, p('effects', 60, 116, 40, 40)], 'charms')
+    expect(next[0]).toEqual(p('charms', 60, 0, 40, 115))
   })
 })

@@ -58,7 +58,7 @@ export function addPurchase(charms: CharacterCharm[], lib: LibraryCharm, pick: C
 // entry goes once its last purchase is undone. For a pickCounts-scheduled charm the
 // last purchase may have picked several at once (Sharpshooter's first purchase picks
 // 2), so that many are popped.
-export function undoPurchase(charms: CharacterCharm[], lib: LibraryCharm): CharacterCharm[] {
+export function undoPurchase(charms: CharacterCharm[], lib: Pick<LibraryCharm, 'id' | 'pickCounts'>): CharacterCharm[] {
   const owned = charms.find(c => c.libraryId === lib.id)
   if (!owned) return charms
   const count = owned.count ?? 1
