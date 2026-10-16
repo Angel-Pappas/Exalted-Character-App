@@ -4,6 +4,10 @@ One entry per shipped change, newest first: what changed and **why**. How things
 now is in `Summary.md`; plans in `ROADMAP.md`. Entries before 2026-10-15 were rebuilt
 from the git history (one per day, its commits listed).
 
+- **2026-10-16** — **Charm cards show the whole summary.** They cut it at two lines,
+  which defeated the point of a summary (reading what a charm does at a glance), as
+  Angel pointed out. Only the stand-in for a charm without a summary — the start of
+  its book text — is still cut at two lines.
 - **2026-10-16** — **New Charms panel: cards, hover, charm window, summaries.** After
   trying the three layouts on the preview page, Angel chose a mix of A and B: compact
   cards in a grid, filtered by a row of group buttons so he never scans past

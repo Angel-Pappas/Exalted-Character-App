@@ -965,9 +965,11 @@ function CharmPanel({ charms, groups, onChange, onGroupsChange, onContentHeight,
             {count > 1 && <span className="text-[10px] px-1 rounded bg-stone-900 border border-stone-600 text-stone-300 shrink-0">×{count}</span>}
             {lit && <span className="text-xs leading-none text-amber-400 shrink-0">⚙</span>}
           </div>
-          <p className={`text-xs leading-snug line-clamp-2 ${summary ? 'text-stone-300' : 'text-stone-500'}`}>
-            {summary ?? charm.customDescription ?? charm.libraryDescription}
-          </p>
+          {/* The summary always shows in full — reading it at a glance is the card's job.
+              Without one, the start of the charm text stands in, cut to two lines. */}
+          {summary
+            ? <p className="text-xs leading-snug text-stone-300">{summary}</p>
+            : <p className="text-xs leading-snug line-clamp-2 text-stone-500">{charm.customDescription ?? charm.libraryDescription}</p>}
         </div>
       </Tooltip>
     )
