@@ -16,6 +16,12 @@ the priorities — the order under **Next** is a suggestion until he does.
 
 ## Next (suggested)
 
+- [ ] **Pick the Charms panel layout** — Angel tries A / B / C on
+      `/character/<Kaien>/charm-preview`. The chosen one replaces today's boxes on the
+      sheet; then delete the preview page, the `CharmView` values not picked, and
+      the two-column code (`splitColumns`, `pinColumns`, `CharacterCharm.column`) if
+      the winner doesn't use it.
+
 - [ ] **Cut-off headings on the character sheet** — "Essence", "Anima" and "Power"
       show as "ESSE…", "ANI…", "PO…" at desktop width (found in the first screenshot
       review, 2026-10-15).

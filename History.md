@@ -4,6 +4,16 @@ One entry per shipped change, newest first: what changed and **why**. How things
 now is in `Summary.md`; plans in `ROADMAP.md`. Entries before 2026-10-15 were rebuilt
 from the git history (one per day, its commits listed).
 
+- **2026-10-16** — **Charm layout preview page.** Angel still wasn't happy with the
+  Charms panel: wide cards mean a lot of scrolling, narrow ones turn into tall
+  columns, and with every group on screen at once he still scans past the defensive
+  charms to find a social one. Instead of another round of tweaks, three candidate
+  layouts now exist side by side on `/character/:id/charm-preview` (nothing there is
+  saved) so he can try them in his own browser with Kaien's real charms: A, compact
+  cards that open on a click; B, compact cards that show everything on hover; C, full
+  cards in newspaper columns, one group at a time. All three put a row of group
+  buttons on top of the panel. Today's sheet is unchanged. Also: `npm run shots …
+  --wide` screenshots at Angel's 2560px width, full page.
 - **2026-10-15** — **Shared way of working.** The universal rules moved to the shared
   `~/.claude/CLAUDE.md` (all projects on the VM). `info/SESSION_SUMMARY.md` became the
   root `Summary.md` (auto-loaded); added `History.md`, `ROADMAP.md`, a `DemoSeeder`

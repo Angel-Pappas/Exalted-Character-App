@@ -48,8 +48,9 @@ the VM and its MySQL backups (`~/backups/exalted/`) are the only copies. Keep
   build → `npm run check` → commit + push → waits for CI (`checks.yml`) → deploy.
 - **Look before shipping:** `(cd backend && php artisan db:seed --class=DemoSeeder)`
   adds a `demo` / `password` admin with a "Demo Solar" character (it only adds, never
-  wipes); `npm run build`; then `npm run shots / /characters "/character/<id>"`
-  (`--mobile`, `--dark`) → PNGs in `backend/storage/screenshots/`. The script serves
+  wipes); `npm run build`; then `npm run shots -- / /characters "/character/<id>"`
+  (`--mobile`, `--dark`, `--wide` = Angel's 2560px desktop, full page; the `--` stops
+  npm from swallowing those flags) → PNGs in `backend/storage/screenshots/`. The script serves
   `dist/` and forwards `/api` to `php artisan serve`, like nginx does live.
   `playwright-core` is pinned to 1.63.0 to use the Chromium already cached on the VM.
 - **The live database holds everyone's characters and must never be lost.**

@@ -7,6 +7,7 @@ import HomePage from './pages/HomePage'
 import CharactersPage from './pages/CharactersPage'
 import CharacterPage from './pages/CharacterPage'
 import CharacterOptionsPage from './pages/CharacterOptionsPage'
+import CharmPreviewPage from './pages/CharmPreviewPage'
 import CampaignsPage from './pages/CampaignsPage'
 import CampaignPage from './pages/CampaignPage'
 import SettingsPage from './pages/SettingsPage'
@@ -22,6 +23,7 @@ export default function App() {
             <Route path="/" element={<ProtectedRoute><HomePage /></ProtectedRoute>} />
             <Route path="/characters" element={<ProtectedRoute><CharactersPage /></ProtectedRoute>} />
             <Route path="/character/:id" element={<ProtectedRoute><CharacterPage /></ProtectedRoute>} />
+            <Route path="/character/:id/charm-preview" element={<ProtectedRoute><CharmPreviewPage /></ProtectedRoute>} />
             <Route path="/character/:id/options" element={<ProtectedRoute><CharacterOptionsPage /></ProtectedRoute>} />
             <Route path="/campaigns" element={<ProtectedRoute><CampaignsPage /></ProtectedRoute>} />
             <Route path="/campaign/:id" element={<ProtectedRoute><CampaignPage /></ProtectedRoute>} />

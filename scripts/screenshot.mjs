@@ -1,7 +1,12 @@
 // Screenshot app pages from the DEV checkout (dev database + the `demo` login from
 // DemoSeeder, never live), so a change can be looked at before it ships. Usage:
 //
-//   npm run shots / /characters "/character/<id>"   [--mobile] [--dark]
+//   npm run shots -- / /characters "/character/<id>"   [--mobile] [--dark] [--wide]
+//
+// (the `--` matters: without it npm swallows the --flags itself)
+//
+// --wide is Angel's desktop (2560 wide) and captures the whole page, not just the
+// first screenful — the sheet's layout is sized for that width.
 //
 // Serves the built front end (`dist/`, SPA fallback to index.html) and forwards
 // `/api/*` to `php artisan serve` (backend/), the same split nginx does live. Logs
@@ -32,6 +37,7 @@ const TYPES = {
 const args = process.argv.slice(2);
 const mobile = args.includes('--mobile');
 const dark = args.includes('--dark');
+const wide = args.includes('--wide');
 const paths = args.filter((a) => !a.startsWith('--'));
 if (paths.length === 0) paths.push('/');
 
@@ -92,7 +98,9 @@ try {
     const context = await browser.newContext({
         viewport: mobile
             ? { width: 390, height: 844 }
-            : { width: 1440, height: 900 },
+            : wide
+              ? { width: 2560, height: 1440 }
+              : { width: 1440, height: 900 },
         colorScheme: dark ? 'dark' : 'light',
         storageState: existsSync(AUTH) ? AUTH : undefined,
     });
@@ -113,8 +121,8 @@ try {
         await page.waitForLoadState('networkidle');
         const slug =
             path.replace(/[^a-z0-9]+/gi, '-').replace(/^-|-$/g, '') || 'home';
-        const file = `${OUT}/${slug}${mobile ? '-mobile' : ''}${dark ? '-dark' : ''}.png`;
-        await page.screenshot({ path: file });
+        const file = `${OUT}/${slug}${mobile ? '-mobile' : ''}${wide ? '-wide' : ''}${dark ? '-dark' : ''}.png`;
+        await page.screenshot({ path: file, fullPage: wide });
         console.log(file);
     }
 } finally {

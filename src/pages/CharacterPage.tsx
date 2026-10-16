@@ -1,60 +1,26 @@
-import { useEffect, useState, useCallback } from 'react'
+import { useState, useCallback } from 'react'
 import { useParams, useNavigate } from 'react-router-dom'
 import { api } from '../lib/api'
+import { useCharacter, useGameData } from '../hooks/useCharacter'
 import { useAuth } from '../contexts/AuthContext'
 import { canEditCharacter } from '../lib/characterAccess'
-import type { Character, CharacterData, GameData } from '../types/character'
-import { DEFAULT_GAME_DATA } from '../types/character'
+import type { CharacterData } from '../types/character'
 import TabBar from '../components/TabBar'
 import SheetTab from '../tabs/SheetTab'
 import MilestonesTab from '../tabs/MilestonesTab'
 import NotesTab from '../tabs/NotesTab'
 import CircleTab from '../tabs/CircleTab'
 
-const defaultData: CharacterData = {
-  sheet: { attributes: {}, abilities: {}, defenses: {}, defenseOther: false, fullDefense: false, essence: 1, anima: 0, power: 0, will: 0, defenseBonus: { parry: 0, evasion: 0, soak: 0, hardness: 0, resolve: 0 }, languages: [], merits: [], intimacies: [], motes: { current: 0, committed: 0, total: 0 }, damage: 0, layout: [], charms: [], charmGroups: [], effects: [], inventory: [], foi: { active: false, weight: null, tag: null, artifact: false }, foiOriginals: {}, exaltType: '', caste: '' },
-  milestones: [],
-  notes: '',
-  npcs: [],
-}
-
 export default function CharacterPage() {
   const { id } = useParams<{ id: string }>()
   const navigate = useNavigate()
   const { user, role } = useAuth()
-  const [character, setCharacter] = useState<Character | null>(null)
-  const [data, setData] = useState<CharacterData>(defaultData)
-  const [gameData, setGameData] = useState<GameData>(DEFAULT_GAME_DATA)
+  const { character, data, setData } = useCharacter(id)
+  const gameData = useGameData()
   const [activeTab, setActiveTab] = useState('sheet')
   const [sheetEditMode, setSheetEditMode] = useState(false)
   const [saving, setSaving] = useState(false)
   const [saveTimeout, setSaveTimeout] = useState<ReturnType<typeof setTimeout> | null>(null)
-
-  useEffect(() => {
-    if (!id) return
-    api<Character>('GET', `characters/${id}`)
-      .then(({ data: char, error }) => {
-        if (error || !char) { navigate('/'); return }
-        setCharacter(char)
-        setData({ ...defaultData, ...char.data })
-      })
-  }, [id, navigate])
-
-  useEffect(() => {
-    if (!user) return
-    api<{ data: Partial<GameData> | null }>('GET', 'game-data')
-      .then(({ data: row }) => {
-        if (row?.data) {
-          setGameData({
-            weapons:      row.data.weapons      ?? DEFAULT_GAME_DATA.weapons,
-            armor:        row.data.armor        ?? DEFAULT_GAME_DATA.armor,
-            tagGroups:    row.data.tagGroups    ?? DEFAULT_GAME_DATA.tagGroups,
-            essenceMotes: row.data.essenceMotes ?? DEFAULT_GAME_DATA.essenceMotes,
-            animaStates:  row.data.animaStates  ?? DEFAULT_GAME_DATA.animaStates,
-          })
-        }
-      })
-  }, [user])
 
   const save = useCallback(async (newData: CharacterData) => {
     if (!id) return

@@ -18,7 +18,7 @@ type Anchor = { el: Element; content: React.ReactNode }
 /** How long the pointer must rest on a `data-tip` hint before it shows. */
 const HINT_DELAY_MS = 300
 
-function Bubble({ anchor, children }: { anchor: Element; children: React.ReactNode }) {
+function Bubble({ anchor, wide = false, children }: { anchor: Element; wide?: boolean; children: React.ReactNode }) {
   const ref = useRef<HTMLDivElement>(null)
 
   // Positioned by writing styles directly: the size is only known after the bubble
@@ -41,7 +41,7 @@ function Bubble({ anchor, children }: { anchor: Element; children: React.ReactNo
       ref={ref}
       role="tooltip"
       style={{ visibility: 'hidden', top: 0, left: 0 }}
-      className="tooltip-in fixed z-[1000] pointer-events-none max-w-xs rounded-lg border border-amber-500/30 bg-stone-900/95 px-3 py-2 text-xs leading-snug text-stone-200 shadow-2xl shadow-black/60 backdrop-blur-sm"
+      className={`tooltip-in fixed z-[1000] pointer-events-none ${wide ? 'max-w-md' : 'max-w-xs'} rounded-lg border border-amber-500/30 bg-stone-900/95 px-3 py-2 text-xs leading-snug text-stone-200 shadow-2xl shadow-black/60 backdrop-blur-sm`}
     >
       {children}
     </div>,
@@ -109,9 +109,11 @@ export function TooltipLayer() {
   return active ? <Bubble anchor={active.el}>{active.content}</Bubble> : null
 }
 
-/** Wraps `children` in a div that shows `content` while hovered. Shows at once. */
-export function Tooltip({ content, className, children }: {
+/** Wraps `children` in a div that shows `content` while hovered. Shows at once.
+ *  `wide` gives long content (a charm's full text) more room per line. */
+export function Tooltip({ content, wide, className, children }: {
   content: React.ReactNode
+  wide?: boolean
   className?: string
   children: React.ReactNode
 }) {
@@ -126,7 +128,7 @@ export function Tooltip({ content, className, children }: {
       onPointerLeave={hide}
     >
       {children}
-      {anchor && <Bubble anchor={anchor}>{content}</Bubble>}
+      {anchor && <Bubble anchor={anchor} wide={wide}>{content}</Bubble>}
     </div>
   )
 }

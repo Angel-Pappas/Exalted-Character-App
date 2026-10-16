@@ -15,6 +15,8 @@ import {
   shorterColumn, splitColumns,
 } from '../lib/charmGroups'
 import type { GroupColor } from '../lib/charmGroups'
+import { initialSelection, sameSelection, visibleSections } from '../lib/charmView'
+import type { CharmSelection, CharmView } from '../lib/charmView'
 import { ROW_HEIGHT, fitPanelHeight, rowsToFit } from '../lib/panelLayout'
 import { bestEquipped, calculateDefenses, STATIC_BONUS_CAP } from '../lib/defenses'
 import {
@@ -112,6 +114,8 @@ interface Props {
   readOnly?: boolean
   onChange: (sheet: SheetData) => void
   gameData?: GameData
+  // How the Charms panel presents charms; only the charm layout preview page changes it.
+  charmView?: CharmView
 }
 
 function SectionHeader({ title }: { title: string }) {
@@ -601,7 +605,8 @@ function CharmGroupForm({ initial, submitLabel, onSubmit, onCancel }: {
   )
 }
 
-function CharmPanel({ charms, groups, onChange, onGroupsChange, onContentHeight, dragEnabled, exaltType, caste, abilities, attributes, essence }: {
+function CharmPanel({ view, charms, groups, onChange, onGroupsChange, onContentHeight, dragEnabled, exaltType, caste, abilities, attributes, essence }: {
+  view: CharmView
   charms: CharacterCharm[]
   groups: CharmGroup[]
   // Reports the natural height (px) of everything inside the panel, so the sheet
@@ -627,6 +632,9 @@ function CharmPanel({ charms, groups, onChange, onGroupsChange, onContentHeight,
   const [collapsed, setCollapsed] = useState<Set<string>>(new Set())
   const [dropHint, setDropHint] = useState<CharmDropHint>(null)
   const [dragging, setDragging] = useState<CharmDrag | null>(null)
+  // Group buttons (every layout but `boxes`): the chosen group, and which compact cards are open.
+  const [selection, setSelection] = useState<CharmSelection>(() => initialSelection(view, groups))
+  const [openIds, setOpenIds] = useState<Set<string>>(new Set())
   const contentRef = useRef<HTMLDivElement>(null)
   const [contentHeight, setContentHeight] = useState(0)
 
@@ -733,6 +741,10 @@ function CharmPanel({ charms, groups, onChange, onGroupsChange, onContentHeight,
     onChange(charms.map(c => c.id === id ? { ...c, mechanicalEnabled: !c.mechanicalEnabled } : c))
   }
 
+  function toggleOpen(id: string) {
+    setOpenIds(s => { const n = new Set(s); if (n.has(id)) n.delete(id); else n.add(id); return n })
+  }
+
   function toggleCollapsed(id: string) {
     setCollapsed(s => { const n = new Set(s); if (n.has(id)) n.delete(id); else n.add(id); return n })
   }
@@ -804,12 +816,134 @@ function CharmPanel({ charms, groups, onChange, onGroupsChange, onContentHeight,
   const { grouped, ungrouped } = partitionCharms(charms, groups)
   const filtering = query.trim() !== ''
 
-  // A card shows everything about the charm at once and grows downwards to fit;
-  // there is nothing to click open. Its corner holds edit, implementation and remove.
-  function card(charm: CharacterCharm, group: CharmGroup | null, column: CharmColumn) {
+  // ── Card pieces, shared by every layout ──
+
+  // The corner of a card: purchase count, "edited" dot, ✎ edit, ⚙ implementation, ✕ remove.
+  function controls(charm: CharacterCharm) {
     const key = activeKey(charm)
     const implemented = key !== null && AUTOMATED_KEYS.has(key)
     const lit = implemented && charm.mechanicalEnabled
+    return (
+      <>
+        {(charm.count ?? 1) > 1 && <span data-tip={`Purchased ${charm.count}×`} className="text-[10px] px-1 rounded bg-stone-900 border border-stone-600 text-stone-300 shrink-0">×{charm.count}</span>}
+        {charm.customDescription !== null && <span data-tip="You edited this charm's text" className="w-1.5 h-1.5 mt-1 rounded-full bg-amber-500 shrink-0" />}
+        <button onClick={() => startEdit(charm)} data-tip="Edit text" aria-label="Edit text" className="text-xs leading-none text-stone-500 hover:text-amber-400 transition-colors shrink-0">✎</button>
+        {implemented ? (
+          <button onClick={() => toggleMechanical(charm.id)}
+            data-tip={lit ? 'Implementation on — click to turn off' : 'Implementation off — click to turn on'}
+            aria-label={lit ? 'Turn implementation off' : 'Turn implementation on'} aria-pressed={lit}
+            className={`text-xs leading-none transition-colors shrink-0 ${lit ? 'text-amber-400 hover:text-amber-300' : 'text-stone-600 hover:text-stone-400'}`}>⚙</button>
+        ) : (
+          <span data-tip="No implementation — the sheet doesn't calculate this charm" className="text-xs leading-none text-stone-700 shrink-0">⚙</span>
+        )}
+        <button onClick={() => removeCharm(charm.id)} data-tip="Remove charm" aria-label="Remove charm" className="text-xs leading-none text-stone-600 hover:text-red-400 transition-colors shrink-0">✕</button>
+      </>
+    )
+  }
+
+  // Editing a charm's text, in place of its details.
+  function editor(charm: CharacterCharm) {
+    return (
+      <>
+        <textarea value={editDesc} onChange={e => setEditDesc(e.target.value)} rows={6}
+          className="w-full bg-stone-800 border border-stone-600 text-stone-100 rounded px-2 py-1 text-xs focus:outline-none focus:border-amber-500 resize-y" />
+        <div className="flex items-center gap-1">
+          {charm.customDescription !== null && (
+            <button onClick={() => { revert(charm.id); setEditingId(null) }} className="text-xs text-stone-500 hover:text-amber-400 transition-colors">revert to original</button>
+          )}
+          <span className="flex-1" />
+          <button onClick={() => saveEdit(charm)} className="bg-amber-600 hover:bg-amber-500 text-white rounded px-2 py-0.5 text-xs">Save</button>
+          <button onClick={() => setEditingId(null)} className="text-stone-500 hover:text-stone-300 text-xs px-1">Cancel</button>
+        </div>
+      </>
+    )
+  }
+
+  // Everything about the charm: choices, text, modes, Ox Body picks.
+  function details(charm: CharacterCharm) {
+    return (
+      <>
+        {charm.picks && charm.picks.length > 0 && (
+          <p className="text-xs text-stone-500">
+            Choices: <span className="text-amber-300">{charm.picks.join(', ')}</span>
+          </p>
+        )}
+        {charm.groupedPicks && charm.groupedPicks.length > 0 && (
+          <div className="text-xs text-stone-500 space-y-0.5">
+            {charm.groupedPicks.map((g, i) => (
+              <p key={i}>
+                <span className="text-stone-300">{g.target}</span>: <span className="text-amber-300">{g.selected.join(', ')}</span>
+              </p>
+            ))}
+          </div>
+        )}
+        <p className="text-xs text-stone-400 leading-relaxed whitespace-pre-wrap">{charm.customDescription ?? charm.libraryDescription}</p>
+        {charm.libraryModes && charm.libraryModes.length > 0 && (
+          <div className="space-y-1">
+            {sortModes(charm.libraryModes.filter(m => isModeInScope(m.label, exaltType, caste, false))).map((m, i) => {
+              const lockReasons = modeLockReasons(m, charm.libraryModes, charm.count ?? 1, essence, abilities)
+              const locked = lockReasons.length > 0
+              return (
+                <div key={`${m.label}-${i}`} className={locked ? 'opacity-40' : undefined} data-tip={locked ? `Locked: ${lockReasons.join(', ')}` : undefined}>
+                  <p className={`text-xs font-bold flex items-center gap-1 ${locked ? 'text-stone-500' : 'text-amber-400'}`}>
+                    <span>{modeIcon(m.label).glyph}</span>
+                    {m.label}
+                  </p>
+                  <p className="text-xs text-stone-400 leading-relaxed whitespace-pre-wrap">{m.text}</p>
+                  {locked && <p className="text-xs text-stone-600">Locked: {lockReasons.join(', ')}</p>}
+                </div>
+              )
+            })}
+          </div>
+        )}
+        {activeKey(charm) === OX_BODY_KEY && charm.mechanicalEnabled && (
+          <div className="rounded border border-amber-900/50 bg-amber-950/20 px-1.5 py-1 space-y-1">
+            <p className="text-[10px] font-semibold uppercase tracking-wider text-amber-400">Health levels gained</p>
+            {oxBodyHasChoice(exaltType, caste) ? (
+              Array.from({ length: charm.count ?? 1 }, (_, i) => {
+                const pick = charm.oxBodyPicks?.[i] ?? DEFAULT_OX_BODY_PICK
+                return (
+                  <div key={i} className="flex items-center gap-1.5 text-xs">
+                    <span className="text-stone-500 w-14 shrink-0">Purchase {i + 1}</span>
+                    {([['zero', 'One 0'], ['twoInjured', 'Two −1']] as const).map(([value, label]) => (
+                      <button key={value} onClick={() => setOxBodyPick(charm, i, value)}
+                        className={`px-1.5 py-0.5 rounded border text-[11px] transition-colors ${
+                          pick === value
+                            ? 'bg-amber-600 border-amber-500 text-white'
+                            : 'border-stone-600 text-stone-400 hover:border-amber-500 hover:text-amber-300'
+                        }`}>
+                        {label}
+                      </button>
+                    ))}
+                  </div>
+                )
+              })
+            ) : (
+              <p className="text-xs text-stone-400">
+                Each purchase adds {oxBodyGrant(exaltType, caste, DEFAULT_OX_BODY_PICK).map(l => l === 0 ? '0' : `−${-l}`).join(' and ')} ({charm.count ?? 1}×)
+              </p>
+            )}
+            <p className="text-[10px] text-stone-500">Plus 1 base Soak, counted once.</p>
+          </div>
+        )}
+      </>
+    )
+  }
+
+  // A compact card's two lines: its choices (if any), then the start of its text.
+  function summary(charm: CharacterCharm) {
+    const choices = [...(charm.picks ?? []), ...(charm.groupedPicks ?? []).map(g => g.target)]
+    return (
+      <>
+        {choices.length > 0 && <p className="text-[11px] text-amber-300 truncate">{choices.join(', ')}</p>}
+        <p className="text-xs text-stone-400 leading-snug line-clamp-2">{charm.customDescription ?? charm.libraryDescription}</p>
+      </>
+    )
+  }
+
+  // A card shows everything about the charm at once and grows downwards to fit;
+  // there is nothing to click open. Its corner holds edit, implementation and remove.
+  function card(charm: CharacterCharm, group: CharmGroup | null, column: CharmColumn) {
     const editing = editingId === charm.id
     const dropBefore = dropHint?.kind === 'card' && dropHint.id === charm.id
     return (
@@ -824,101 +958,50 @@ function CharmPanel({ charms, groups, onChange, onGroupsChange, onContentHeight,
           ${dropBefore ? 'border-amber-400/80 border-l-2' : 'border-stone-700'}`}>
         <div className="flex items-start gap-1">
           <span className="text-xs font-semibold text-stone-100 leading-snug flex-1 min-w-0">{charm.name}</span>
-          {(charm.count ?? 1) > 1 && <span data-tip={`Purchased ${charm.count}×`} className="text-[10px] px-1 rounded bg-stone-900 border border-stone-600 text-stone-300 shrink-0">×{charm.count}</span>}
-          {charm.customDescription !== null && <span data-tip="You edited this charm's text" className="w-1.5 h-1.5 mt-1 rounded-full bg-amber-500 shrink-0" />}
-          <button onClick={() => startEdit(charm)} data-tip="Edit text" aria-label="Edit text" className="text-xs leading-none text-stone-500 hover:text-amber-400 transition-colors shrink-0">✎</button>
-          {implemented ? (
-            <button onClick={() => toggleMechanical(charm.id)}
-              data-tip={lit ? 'Implementation on — click to turn off' : 'Implementation off — click to turn on'}
-              aria-label={lit ? 'Turn implementation off' : 'Turn implementation on'} aria-pressed={lit}
-              className={`text-xs leading-none transition-colors shrink-0 ${lit ? 'text-amber-400 hover:text-amber-300' : 'text-stone-600 hover:text-stone-400'}`}>⚙</button>
-          ) : (
-            <span data-tip="No implementation — the sheet doesn't calculate this charm" className="text-xs leading-none text-stone-700 shrink-0">⚙</span>
-          )}
-          <button onClick={() => removeCharm(charm.id)} data-tip="Remove charm" aria-label="Remove charm" className="text-xs leading-none text-stone-600 hover:text-red-400 transition-colors shrink-0">✕</button>
+          {controls(charm)}
         </div>
-        {editing ? (
-          <>
-            <textarea value={editDesc} onChange={e => setEditDesc(e.target.value)} rows={6}
-              className="w-full bg-stone-800 border border-stone-600 text-stone-100 rounded px-2 py-1 text-xs focus:outline-none focus:border-amber-500 resize-y" />
-            <div className="flex items-center gap-1">
-              {charm.customDescription !== null && (
-                <button onClick={() => { revert(charm.id); setEditingId(null) }} className="text-xs text-stone-500 hover:text-amber-400 transition-colors">revert to original</button>
-              )}
-              <span className="flex-1" />
-              <button onClick={() => saveEdit(charm)} className="bg-amber-600 hover:bg-amber-500 text-white rounded px-2 py-0.5 text-xs">Save</button>
-              <button onClick={() => setEditingId(null)} className="text-stone-500 hover:text-stone-300 text-xs px-1">Cancel</button>
-            </div>
-          </>
-        ) : (
-          <>
-            {charm.picks && charm.picks.length > 0 && (
-              <p className="text-xs text-stone-500">
-                Choices: <span className="text-amber-300">{charm.picks.join(', ')}</span>
-              </p>
-            )}
-            {charm.groupedPicks && charm.groupedPicks.length > 0 && (
-              <div className="text-xs text-stone-500 space-y-0.5">
-                {charm.groupedPicks.map((g, i) => (
-                  <p key={i}>
-                    <span className="text-stone-300">{g.target}</span>: <span className="text-amber-300">{g.selected.join(', ')}</span>
-                  </p>
-                ))}
-              </div>
-            )}
-            <p className="text-xs text-stone-400 leading-relaxed whitespace-pre-wrap">{charm.customDescription ?? charm.libraryDescription}</p>
-            {charm.libraryModes && charm.libraryModes.length > 0 && (
-              <div className="space-y-1">
-                {sortModes(charm.libraryModes.filter(m => isModeInScope(m.label, exaltType, caste, false))).map((m, i) => {
-                  const lockReasons = modeLockReasons(m, charm.libraryModes, charm.count ?? 1, essence, abilities)
-                  const locked = lockReasons.length > 0
-                  return (
-                    <div key={`${m.label}-${i}`} className={locked ? 'opacity-40' : undefined} data-tip={locked ? `Locked: ${lockReasons.join(', ')}` : undefined}>
-                      <p className={`text-xs font-bold flex items-center gap-1 ${locked ? 'text-stone-500' : 'text-amber-400'}`}>
-                        <span>{modeIcon(m.label).glyph}</span>
-                        {m.label}
-                      </p>
-                      <p className="text-xs text-stone-400 leading-relaxed whitespace-pre-wrap">{m.text}</p>
-                      {locked && <p className="text-xs text-stone-600">Locked: {lockReasons.join(', ')}</p>}
-                    </div>
-                  )
-                })}
-              </div>
-            )}
-            {activeKey(charm) === OX_BODY_KEY && charm.mechanicalEnabled && (
-              <div className="rounded border border-amber-900/50 bg-amber-950/20 px-1.5 py-1 space-y-1">
-                <p className="text-[10px] font-semibold uppercase tracking-wider text-amber-400">Health levels gained</p>
-                {oxBodyHasChoice(exaltType, caste) ? (
-                  Array.from({ length: charm.count ?? 1 }, (_, i) => {
-                    const pick = charm.oxBodyPicks?.[i] ?? DEFAULT_OX_BODY_PICK
-                    return (
-                      <div key={i} className="flex items-center gap-1.5 text-xs">
-                        <span className="text-stone-500 w-14 shrink-0">Purchase {i + 1}</span>
-                        {([['zero', 'One 0'], ['twoInjured', 'Two −1']] as const).map(([value, label]) => (
-                          <button key={value} onClick={() => setOxBodyPick(charm, i, value)}
-                            className={`px-1.5 py-0.5 rounded border text-[11px] transition-colors ${
-                              pick === value
-                                ? 'bg-amber-600 border-amber-500 text-white'
-                                : 'border-stone-600 text-stone-400 hover:border-amber-500 hover:text-amber-300'
-                            }`}>
-                            {label}
-                          </button>
-                        ))}
-                      </div>
-                    )
-                  })
-                ) : (
-                  <p className="text-xs text-stone-400">
-                    Each purchase adds {oxBodyGrant(exaltType, caste, DEFAULT_OX_BODY_PICK).map(l => l === 0 ? '0' : `−${-l}`).join(' and ')} ({charm.count ?? 1}×)
-                  </p>
-                )}
-                <p className="text-[10px] text-stone-500">Plus 1 base Soak, counted once.</p>
-              </div>
-            )}
-          </>
-        )}
+        {editing ? editor(charm) : details(charm)}
       </div>
     )
+  }
+
+  // A compact card (the `click` and `hover` layouts): name and two lines. In
+  // `click`, clicking it opens it across the whole row (clicking its name row
+  // closes it again); in `hover`, resting the mouse on it shows everything.
+  // Editing always opens it, in both.
+  function tile(charm: CharacterCharm, group: CharmGroup | null) {
+    const editing = editingId === charm.id
+    const open = editing || (view === 'click' && openIds.has(charm.id))
+    const dropBefore = dropHint?.kind === 'card' && dropHint.id === charm.id
+    const clickable = view === 'click' && !editing
+    const body = (
+      <div key={charm.id}
+        draggable={dragEnabled && !open}
+        onDragStart={e => dragEnabled && !open && onDragStart(e, { kind: 'charm', id: charm.id })}
+        onDragEnd={onDragEnd}
+        onDragOver={e => onCardDragOver(e, charm.id)}
+        onDrop={e => onCardDrop(e, charm, group?.id ?? null, charm.column ?? 0)}
+        onClick={clickable && !open ? () => toggleOpen(charm.id) : undefined}
+        className={`h-full rounded border border-t-[3px] bg-stone-800/60 px-1.5 py-1 space-y-1 break-words transition-colors
+          ${clickable && !open ? 'cursor-pointer hover:bg-stone-800' : ''}
+          ${group ? groupColor(group).bar : 'border-t-stone-600'}
+          ${dropBefore ? 'border-amber-400/80 border-l-2' : 'border-stone-700'}`}>
+        <div className={`flex items-start gap-1 ${clickable && open ? 'cursor-pointer' : ''}`}
+          onClick={clickable && open ? () => toggleOpen(charm.id) : undefined}>
+          <span className="text-xs font-semibold text-stone-100 leading-snug flex-1 min-w-0">{charm.name}</span>
+          {/* The corner's buttons do their own thing, never open or close the card. */}
+          <span className="contents" onClick={e => e.stopPropagation()}>{controls(charm)}</span>
+        </div>
+        {editing ? editor(charm)
+          : open ? <div className="columns-[22rem] gap-4 [&>*]:break-inside-avoid">{details(charm)}</div>
+          : summary(charm)}
+      </div>
+    )
+    const span = open ? 'col-span-full' : ''
+    if (view === 'hover' && !open) {
+      return <Tooltip key={charm.id} wide className={span} content={<div className="space-y-1.5"><p className="font-semibold text-stone-100">{charm.name}</p>{details(charm)}</div>}>{body}</Tooltip>
+    }
+    return <div key={charm.id} className={span}>{body}</div>
   }
 
   // One group's box: header, then its cards. `group` null = Ungrouped.
@@ -981,6 +1064,103 @@ function CharmPanel({ charms, groups, onChange, onGroupsChange, onContentHeight,
     )
   }
 
+  // ── Group buttons (every layout but `boxes`) ──
+  const shownGroups = visibleSections(grouped, ungrouped, selection)
+  const selected = shownGroups.selection
+  const selectedGroup = selected.kind === 'group' ? groups.find(g => g.id === selected.id) ?? null : null
+
+  // A charm dropped on a group's button joins the end of that group; a group
+  // dropped on another group's button moves before it.
+  function onChipDragOver(e: React.DragEvent, groupId: string | null) {
+    if (!dragging || (dragging.kind === 'group' && groupId === null)) return
+    e.preventDefault()
+    setDropHint({ kind: 'group', id: groupId ?? '' })
+  }
+  function onChipDrop(e: React.DragEvent, groupId: string | null) {
+    const drag = dragging
+    if (!drag) return
+    e.preventDefault()
+    if (drag.kind === 'charm') {
+      const members = groupId === null ? ungrouped : grouped.find(g => g.group.id === groupId)?.charms ?? []
+      dropCharm(drag.id, { groupId, column: shorterColumn(members.filter(c => c.id !== drag.id)) })
+      return
+    }
+    if (groupId === null) return
+    const next = moveGroup(groups, drag.id, groupId)
+    if (next !== groups) onGroupsChange(next)
+    onDragEnd()
+  }
+
+  // One group button. `target` null = All (not a drop target); '' = Ungrouped.
+  function chip(sel: CharmSelection, label: string, dot: string | null, count: number, target: string | null | undefined, group?: CharmGroup) {
+    const on = sameSelection(sel, selected)
+    const droppable = target !== undefined
+    const hinted = droppable && dropHint?.kind === 'group' && dropHint.id === (target ?? '')
+    return (
+      <button key={label + (group?.id ?? '')} onClick={() => setSelection(sel)}
+        draggable={!!group && dragEnabled}
+        onDragStart={e => group && dragEnabled && onDragStart(e, { kind: 'group', id: group.id })}
+        onDragEnd={onDragEnd}
+        onDragOver={droppable ? e => onChipDragOver(e, target) : undefined}
+        onDragLeave={droppable ? () => setDropHint(null) : undefined}
+        onDrop={droppable ? e => onChipDrop(e, target) : undefined}
+        className={`flex items-center gap-1 px-2 py-0.5 rounded border text-[11px] transition-colors ${
+          hinted ? 'border-amber-400 bg-amber-500/20 text-amber-100'
+            : on ? 'border-amber-500/70 bg-amber-500/10 text-amber-200'
+            : 'border-stone-700 text-stone-400 hover:text-stone-200 hover:border-stone-500'}`}>
+        {dot && <span className={`w-2 h-2 rounded-full shrink-0 ${dot}`} />}
+        {label}
+        <span className="text-stone-500">{count}</span>
+      </button>
+    )
+  }
+
+  function chipBar() {
+    return (
+      <div className="flex flex-wrap items-center gap-1 flex-1 min-w-0">
+        {chip({ kind: 'all' }, 'All', null, charms.length, undefined)}
+        {grouped.map(({ group, charms: members }) => chip({ kind: 'group', id: group.id }, group.name, groupColor(group).dot, members.length, group.id, group))}
+        {(ungrouped.length > 0 || dragging?.kind === 'charm') && chip({ kind: 'ungrouped' }, 'Ungrouped', 'bg-stone-600', ungrouped.length, null)}
+        {selectedGroup && (
+          <>
+            <button onClick={() => setEditingGroupId(selectedGroup.id)} data-tip="Edit group" aria-label="Edit group" className="text-xs text-stone-500 hover:text-amber-400 transition-colors px-0.5">✎</button>
+            <button onClick={() => removeGroup(selectedGroup.id)} data-tip="Delete group (its charms become ungrouped)" aria-label="Delete group" className="text-xs text-stone-600 hover:text-red-400 transition-colors px-0.5">✕</button>
+          </>
+        )}
+      </div>
+    )
+  }
+
+  // The chosen group's charms (under All, every group under its own small heading).
+  function sections() {
+    return shownGroups.sections.map(({ group, charms: members }) => {
+      const list = filterCharms(members, query)
+      if (filtering && list.length === 0) return null
+      return (
+        <div key={group?.id ?? ''} className="space-y-1">
+          {selected.kind === 'all' && (
+            <div className="flex items-center gap-1.5">
+              <span className={`w-2 h-2 rounded-full shrink-0 ${group ? groupColor(group).dot : 'bg-stone-600'}`} />
+              <span className="text-xs font-semibold text-stone-300">{group?.name ?? 'Ungrouped'}</span>
+            </div>
+          )}
+          {list.length === 0 ? (
+            <p className="text-xs text-stone-500">No charms in this group yet. Drag one onto its button above.</p>
+          ) : view === 'open' ? (
+            // Newspaper columns: cards fill one column top to bottom, then the next, so there are no gaps.
+            <div className="columns-[18rem] gap-1.5">
+              {list.map(c => <div key={c.id} className="break-inside-avoid mb-1.5">{card(c, group, c.column ?? 0)}</div>)}
+            </div>
+          ) : (
+            <div className="grid grid-cols-[repeat(auto-fill,minmax(13rem,1fr))] gap-1.5">
+              {list.map(c => tile(c, group))}
+            </div>
+          )}
+        </div>
+      )
+    })
+  }
+
   return (
     <div className="bg-stone-900 border border-stone-700 rounded-lg p-2 overflow-clip h-full">
       {browsing && (
@@ -1001,7 +1181,7 @@ function CharmPanel({ charms, groups, onChange, onGroupsChange, onContentHeight,
       <div ref={contentRef} className="flow-root">
       <div className="flex items-center gap-2 mb-2">
         <SectionHeader title="Charms" />
-        <span className="flex-1" />
+        {view === 'boxes' ? <span className="flex-1" /> : chipBar()}
         {charms.length > 0 && (
           <input type="text" value={query} onChange={e => setQuery(e.target.value)} placeholder="Filter…" aria-label="Filter charms"
             className="w-24 bg-stone-800 border border-stone-600 text-stone-100 rounded px-1.5 py-0.5 text-[11px] focus:outline-none focus:border-amber-500 placeholder-stone-500" />
@@ -1024,14 +1204,24 @@ function CharmPanel({ charms, groups, onChange, onGroupsChange, onContentHeight,
             }}
             onCancel={() => setAddingGroup(false)} />
         )}
+        {view !== 'boxes' && selectedGroup && editingGroupId === selectedGroup.id && (
+          <div className="w-[19.25rem]">
+            <CharmGroupForm submitLabel="Save"
+              initial={{ name: selectedGroup.name, color: isGroupColor(selectedGroup.color) ? selectedGroup.color : DEFAULT_GROUP_COLOR }}
+              onSubmit={v => { onGroupsChange(editGroup(groups, selectedGroup.id, v)); setEditingGroupId(null) }}
+              onCancel={() => setEditingGroupId(null)} />
+          </div>
+        )}
         {charms.length === 0 && <p className="text-xs text-stone-500">No charms. Click + to browse the library.</p>}
         {/* Groups sit side by side and wrap onto the next row when the panel runs out of width. */}
+        {view !== 'boxes' ? sections() : (
         <div className="flex flex-wrap items-start gap-1.5">
           {grouped.map(({ group, charms: members }) => box(group, members))}
           {/* Ungrouped only shows when it holds charms — or while a charm is being
               dragged, so a charm can still be dropped out of its group. */}
           {(ungrouped.length > 0 || dragging?.kind === 'charm') && box(null, ungrouped)}
         </div>
+        )}
       </div>
       </div>
     </div>
@@ -2031,7 +2221,7 @@ function Counter({ value, onStep, size = 'lg', valueCls = 'text-stone-100' }: {
   )
 }
 
-export default function SheetTab({ sheet, onChange, editMode, readOnly = false, gameData: gd }: Props) {
+export default function SheetTab({ sheet, onChange, editMode, readOnly = false, gameData: gd, charmView = 'boxes' }: Props) {
   const gameData = gd ?? DEFAULT_GAME_DATA
   const dragEnabled = !editMode && !readOnly
   const def = defaultSheet()
@@ -2639,6 +2829,8 @@ export default function SheetTab({ sheet, onChange, editMode, readOnly = false, 
 
     charms: (
       <CharmPanel
+        key={charmView}
+        view={charmView}
         charms={data.charms}
         groups={data.charmGroups}
         onContentHeight={fitCharmsPanel}
