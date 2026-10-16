@@ -6,7 +6,8 @@ const lib = (overrides: Partial<LibraryCharm> = {}): LibraryCharm => ({
   id: 'lib', type: 'Universal', abilities: [], name: 'Charm', page: null, description: 'Text.', summary: null,
   mechanicalKey: null, mechanicalDescription: null, prerequisiteAbilities: [], prerequisiteEssence: null,
   prerequisiteCharms: [], modes: [], choiceType: null, choiceOptions: [], targetChoiceType: null, targetOptions: [],
-  multiselectCapBasis: null, pickCounts: null, ...overrides,
+  multiselectCapBasis: null, pickCounts: null,
+  commitMotes: 0, commitNeedsRepurchase: false, ongoing: false, purchaseLimit: null, ...overrides,
 })
 const owned = (overrides: Partial<CharacterCharm> = {}): CharacterCharm => ({
   id: 'c', libraryId: 'lib', name: 'Charm', libraryDescription: 'Text.', libraryModes: [], libraryMechanicalKey: null,

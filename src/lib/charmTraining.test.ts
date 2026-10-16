@@ -10,7 +10,8 @@ const lib = (overrides: Partial<LibraryCharm> = {}): LibraryCharm => ({
   id: 'ox', type: 'Universal', abilities: [], name: 'Ox-Body Technique', page: null, description: 'Text.', summary: null,
   mechanicalKey: 'ox_body', mechanicalDescription: null, prerequisiteAbilities: [], prerequisiteEssence: null,
   prerequisiteCharms: [], modes: [], choiceType: null, choiceOptions: [], targetChoiceType: null, targetOptions: [],
-  multiselectCapBasis: null, pickCounts: null, ...overrides,
+  multiselectCapBasis: null, pickCounts: null,
+  commitMotes: 0, commitNeedsRepurchase: false, ongoing: false, purchaseLimit: null, ...overrides,
 })
 const exalted4 = { kind: 'purchase' as const, amounts: { personal: 0, exalted: 4, minor: 0, major: 0 }, training: true }
 const ids = (n: number) => ({ charm: `c${n}`, line: `l${n}` })

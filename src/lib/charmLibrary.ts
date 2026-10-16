@@ -23,6 +23,10 @@ export function sheetLibraryCharm(r: CharmLibraryRow): LibraryCharm {
     targetOptions: (r.charm_target_options ?? []).sort((a, b) => a.sort_order - b.sort_order).map(o => o.option),
     multiselectCapBasis: r.multiselect_cap_basis ?? null,
     pickCounts: r.pick_counts ?? null,
+    commitMotes: r.commit_motes ?? 0,
+    commitNeedsRepurchase: r.commit_needs_repurchase ?? false,
+    ongoing: r.ongoing ?? false,
+    purchaseLimit: r.purchase_limit ?? null,
   }
 }
 

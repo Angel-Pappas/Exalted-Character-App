@@ -58,6 +58,9 @@ export interface DefenseInputs {
   bestArmorHardness: number
   /** Owns Ox Body Technique (any number of purchases) with its implementation on. */
   oxBody: boolean
+  /** Soak from charms in use (Iron Kettle Body, Endurance of a Thousand Cuts). Added like
+   *  Ox Body's +1, as part of the base, not as gear; the panel lists each on its own line. */
+  charmSoak: number
   fullDefense: boolean
   defendOther: boolean
   bonus: { parry: number; evasion: number; soak: number; hardness: number; resolve: number }
@@ -124,7 +127,7 @@ export function calculateDefenses(i: DefenseInputs): DefenseResult {
 
   const parry = applyLimits(parryBase, weaponBonus, i.bonus.parry)
   const evasion = applyLimits(evasionBase, weaponBonus, i.bonus.evasion)
-  const soak = applyLimits(soakBase + oxBodySoak, i.bestArmorSoak, i.bonus.soak)
+  const soak = applyLimits(soakBase + oxBodySoak + i.charmSoak, i.bestArmorSoak, i.bonus.soak)
   const hardness = applyLimits(hardnessBase, i.bestArmorHardness, i.bonus.hardness)
   // No capped source feeds Resolve yet — Intimacies/Virtues come through the manual box,
   // which is exempt. Routed through applyLimits anyway so the floor applies and so a

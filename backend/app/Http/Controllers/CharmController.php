@@ -73,6 +73,11 @@ class CharmController extends Controller
             'multiselect_cap_basis' => ['nullable', 'in:essence,target_rating'],
             'pick_counts' => ['nullable', 'array', 'list'],
             'pick_counts.*' => ['integer'],
+            'commit_motes' => ['sometimes', 'integer', 'min:0', 'max:10'],
+            'commit_needs_repurchase' => ['sometimes', 'boolean'],
+            'ongoing' => ['sometimes', 'boolean'],
+            // A number, or the trait whose rating is the limit (see LibraryCharm.purchaseLimit).
+            'purchase_limit' => ['nullable', 'string', 'regex:/^([1-9][0-9]?|essence|[a-z ]+)$/'],
             'abilities' => ['present', 'array', 'list'],
             'abilities.*' => ['string', 'max:255', 'distinct'],
             'prerequisite_abilities' => ['present', 'array', 'list'],
@@ -99,6 +104,10 @@ class CharmController extends Controller
             'target_choice_type' => $validated['target_choice_type'] ?? null,
             'multiselect_cap_basis' => $validated['multiselect_cap_basis'] ?? null,
             'pick_counts' => $validated['pick_counts'] ?? null,
+            'commit_motes' => $validated['commit_motes'] ?? 0,
+            'commit_needs_repurchase' => $validated['commit_needs_repurchase'] ?? false,
+            'ongoing' => $validated['ongoing'] ?? false,
+            'purchase_limit' => $validated['purchase_limit'] ?? null,
         ];
 
         $lists = [

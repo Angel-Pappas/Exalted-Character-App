@@ -22,6 +22,11 @@ import { buyCharm, charmsInEffect, removeCharm as removeCharmAndLines, trainingB
 import { ratingToStore, trainedAbilities, trainedAttributes, trainingHint, traitTraining } from '../lib/traitTraining'
 import { formatDay, todayKey } from '../lib/milestones'
 import CharmCostModal from '../components/CharmCostModal'
+import {
+  FISTS_OF_IRON, RIGHTEOUS_LION, UNCONQUERED_SIGHT, WARD_OF_THE_SUN, charmKey, charmProblems, charmSoakBonuses, clickDot, dotCount, litDots,
+  protectable, protectedIntimacies, toggleInUse, type Pools, type ProblemContext,
+} from '../lib/charmUse'
+import { IntimacyPickModal, NamePromptModal } from '../components/CharmChoiceModals'
 import type { ChoicePick } from '../lib/charmPurchase'
 import { cachedCharmLibrary, loadCharmLibrary } from '../lib/charmLibrary'
 import { ROW_HEIGHT, STACK_BELOW_PX, fitPanelHeight, gridLayoutChange, rowsToFit, stackOrder } from '../lib/panelLayout'
@@ -31,7 +36,7 @@ import {
   legacyDamage, oxBodyGrant, oxBodyHasChoice, woundPenalty,
 } from '../lib/health'
 import ModalPortal from '../components/ModalPortal'
-import { FolderInput, Pencil, RefreshCw, RotateCcw, Trash2, Undo2, X } from 'lucide-react'
+import { CircleAlert, FolderInput, Pencil, RefreshCw, RotateCcw, Trash2, Undo2, X, Zap } from 'lucide-react'
 import { Tooltip, TooltipLayer } from '../components/Tooltip'
 
 const ATTRIBUTE_GROUPS = [
@@ -639,10 +644,13 @@ function CharmTextEditor({ initial, rows, onSave, onCancel }: {
 // The charm window: opens over the sheet when a charm card is clicked. Everything
 // about the charm, and everything that can be done to it, lives here, so the cards
 // themselves carry no buttons.
-function CharmWindow({ charm, lib, groups, exaltType, caste, essence, abilities, attributes, training, onTrainingDone, onChange, onMoveToGroup, onRepurchase, onUndoPurchase, onRemove, onClose }: {
+function CharmWindow({ charm, lib, groups, exaltType, caste, essence, abilities, attributes, training, onTrainingDone, problems, intimacies, onSetAlly, onChange, onMoveToGroup, onRepurchase, onUndoPurchase, onRemove, onClose }: {
   charm: CharacterCharm
   training: MilestoneTransaction[]   // this charm's purchases still in training, longest-waiting first
   onTrainingDone: (lineId: string) => void
+  problems: string[]                 // what its "!" asks the player to fix
+  intimacies: IntimacyEntry[]
+  onSetAlly: (index: number, name: string) => void   // Unconquered Sun's Sight: the ally of repurchase `index`
   lib: LibraryCharm | undefined   // undefined while the library loads, or if the charm was deleted from it
   groups: CharmGroup[]
   exaltType: string
@@ -659,7 +667,7 @@ function CharmWindow({ charm, lib, groups, exaltType, caste, essence, abilities,
 }) {
   const [editing, setEditing] = useState<'summary' | 'text' | null>(null)
   const count = charm.count ?? 1
-  const key = activeKey(charm)
+  const key = charmKey(charm, lib)
   const summary = cardSummary(charm, lib?.summary)
   const meta = lib ? [lib.type, lib.abilities.join(', '), lib.page ? `p. ${lib.page}` : ''].filter(Boolean).join(' · ') : ''
   const requires = lib ? [
@@ -727,6 +735,35 @@ function CharmWindow({ charm, lib, groups, exaltType, caste, essence, abilities,
           </div>
 
           <div className="overflow-y-auto no-scrollbar px-4 py-3 space-y-4">
+            {problems.length > 0 && (
+              <section className="flex gap-2 rounded border border-red-900/70 bg-red-950/30 px-3 py-2 text-xs text-red-300">
+                <CircleAlert size={14} className="shrink-0 mt-px" aria-hidden />
+                <div className="space-y-0.5">{problems.map(p => <p key={p}>{p}</p>)}</div>
+              </section>
+            )}
+            {key === RIGHTEOUS_LION && (
+              <section className="space-y-1">
+                <label htmlFor="lion-intimacy" className={sectionLabel}>Protects</label>
+                <select id="lion-intimacy" value={charm.protectedIntimacyId ?? ''} className={selectCls}
+                  onChange={e => onChange({ ...charm, protectedIntimacyId: e.target.value || undefined })}>
+                  <option value="">Choose a Major or Defining Intimacy…</option>
+                  {intimacies.filter(protectable).map(i => <option key={i.id} value={i.id}>{i.intensity}: {i.description}</option>)}
+                </select>
+              </section>
+            )}
+            {key === UNCONQUERED_SIGHT && count > 1 && (
+              <section className="space-y-1">
+                <span className={sectionLabel}>Allies (one per repurchase)</span>
+                {Array.from({ length: count - 1 }, (_, i) => (
+                  <input key={i} id={`sight-ally-${i}`} aria-label={`Ally of repurchase ${i + 1}`} placeholder={`Repurchase ${i + 1}: ally's name`}
+                    defaultValue={charm.repurchaseAllies?.[i] ?? ''} onBlur={e => { if (e.target.value.trim() !== (charm.repurchaseAllies?.[i] ?? '')) onSetAlly(i, e.target.value.trim()) }}
+                    className={inputCls} />
+                ))}
+              </section>
+            )}
+            {key === WARD_OF_THE_SUN && charm.wardName && (
+              <p className="text-sm text-stone-300"><span className={sectionLabel}>Ward</span> <span className="ml-2 text-amber-300">{charm.wardName}</span></p>
+            )}
             {training.length > 0 && (
               <section className="rounded border border-amber-700/40 bg-amber-950/20 px-3 py-2 space-y-1">
                 {training.map(line => (
@@ -817,13 +854,23 @@ function CharmWindow({ charm, lib, groups, exaltType, caste, essence, abilities,
   )
 }
 
-function CharmPanel({ charms, milestones, training, onLedgerChange, onTrainingDone, groups, onChange, onGroupsChange, onContentHeight, dragEnabled, exaltType, caste, abilities, attributes, essence }: {
+function CharmPanel({ library, libraryLoaded, charms, milestones, training, onLedgerChange, onTrainingDone, pools, onSheetChange, problemContext, foiActive, groups, onChange, onGroupsChange, onContentHeight, dragEnabled, exaltType, caste, abilities, attributes, essence }: {
+  // The library gives the cards their suggested summaries and settings, and the
+  // charm window its details; the Add Charm browser lists it. Loaded by the sheet.
+  library: LibraryCharm[]
+  libraryLoaded: boolean
   charms: CharacterCharm[]
   milestones: MilestoneTransaction[]
   training: Map<string, MilestoneTransaction[]>   // purchases still in training, by library id
   // Buying, undoing or removing a charm also changes the ledger line that paid for it.
   onLedgerChange: (next: CharmsAndLedger) => void
   onTrainingDone: (lineId: string) => void
+  // Commit dots commit motes in the Essence panel, so a click changes the charm,
+  // the motes and anima together.
+  pools: Pools
+  onSheetChange: (patch: Partial<SheetData>) => void
+  problemContext: ProblemContext   // what the "!" checks against (Essence, ratings, Intimacies)
+  foiActive: boolean               // Fists of Iron is on in the Inventory (its in-use icon shows it)
   groups: CharmGroup[]
   // Reports the natural height (px) of everything inside the panel, so the sheet
   // can size the panel to fit it and the panel never scrolls.
@@ -839,12 +886,14 @@ function CharmPanel({ charms, milestones, training, onLedgerChange, onTrainingDo
   attributes: Record<string, number>
   essence: number
 }) {
-  const [library, setLibrary] = useState<LibraryCharm[]>(() => cachedCharmLibrary() ?? [])
-  const [libraryLoaded, setLibraryLoaded] = useState(() => cachedCharmLibrary() !== null)
   const [browsing, setBrowsing] = useState(false)
   const [openId, setOpenId] = useState<string | null>(null)
   const [picking, setPicking] = useState<LibraryCharm | null>(null)
   const [paying, setPaying] = useState<{ lib: LibraryCharm; pick: ChoicePick | null } | null>(null)
+  // Choices a charm asks for after it is bought or used (see CharmChoiceModals).
+  const [wardFor, setWardFor] = useState<string | null>(null)                         // charm id
+  const [allyFor, setAllyFor] = useState<{ charmId: string; index: number } | null>(null)
+  const [lionFor, setLionFor] = useState<string | null>(null)                         // charm id
   const [query, setQuery] = useState('')
   const [addingGroup, setAddingGroup] = useState(false)
   const [editingGroupId, setEditingGroupId] = useState<string | null>(null)
@@ -854,14 +903,6 @@ function CharmPanel({ charms, milestones, training, onLedgerChange, onTrainingDo
   const contentRef = useRef<HTMLDivElement>(null)
   const [contentHeight, setContentHeight] = useState(0)
 
-  // The library gives the cards their suggested summaries and the charm window
-  // its details; the Add Charm browser lists it.
-  useEffect(() => {
-    loadCharmLibrary().then(charms => {
-      setLibrary(charms)
-      setLibraryLoaded(true)
-    })
-  }, [])
   const libById = new Map(library.map(l => [l.id, l]))
 
   // Watch the content's natural height; it changes with charms, filtering, the
@@ -891,8 +932,38 @@ function CharmPanel({ charms, milestones, training, onLedgerChange, onTrainingDo
 
   function pay(cost: CharmCost) {
     if (!paying) return
-    onLedgerChange(buyCharm({ charms, milestones }, paying.lib, paying.pick, cost, { charm: crypto.randomUUID(), line: crypto.randomUUID() }, todayKey()))
+    const ids = { charm: crypto.randomUUID(), line: crypto.randomUUID() }
+    const next = buyCharm({ charms, milestones }, paying.lib, paying.pick, cost, ids, todayKey())
+    onLedgerChange(next)
     setPaying(null)
+    // Some charms ask for a choice as soon as they are bought.
+    const bought = next.charms.find(c => c.libraryId === paying.lib.id)
+    const key = bought ? charmKey(bought, paying.lib) : null
+    if (bought && key === RIGHTEOUS_LION && (bought.count ?? 1) === 1) setLionFor(bought.id)
+    if (bought && key === UNCONQUERED_SIGHT && (bought.count ?? 1) > 1) setAllyFor({ charmId: bought.id, index: (bought.count ?? 1) - 2 })
+  }
+
+  function setCharm(id: string, change: (c: CharacterCharm) => CharacterCharm) {
+    onChange(charms.map(c => c.id === id ? change(c) : c))
+  }
+
+  // A commit dot: commits or releases a mote in the Essence panel, as the
+  // Committed counter does by hand. Lighting Ward of the Sun asks who is warded.
+  function clickCharmDot(charm: CharacterCharm, index: number) {
+    const lib = libById.get(charm.libraryId)
+    const result = clickDot(charm, lib, index, pools)
+    if (!result) return
+    onSheetChange({ charms: charms.map(c => c.id === charm.id ? result.charm : c), motes: result.pools.motes, anima: result.pools.anima })
+    if (charmKey(charm, lib) === WARD_OF_THE_SUN && litDots(charm, lib) === 0) setWardFor(charm.id)
+  }
+
+  function setAlly(charmId: string, index: number, name: string) {
+    setCharm(charmId, c => {
+      const allies = [...(c.repurchaseAllies ?? [])]
+      while (allies.length < index) allies.push('')
+      allies[index] = name
+      return { ...c, repurchaseAllies: allies }
+    })
   }
 
   function undoLast(lib: LibraryCharm) {
@@ -1003,10 +1074,19 @@ function CharmPanel({ charms, milestones, training, onLedgerChange, onTrainingDo
     const count = charm.count ?? 1
     const waiting = training.get(charm.libraryId)?.length ?? 0
     const allWaiting = waiting >= count
+    const lib = libById.get(charm.libraryId)
+    const dots = dotCount(charm, lib)
+    const lit = litDots(charm, lib)
+    const isFoi = charmKey(charm, lib) === FISTS_OF_IRON
+    const inUse = isFoi ? foiActive : !!charm.inUse
+    const problems = charmProblems(charm, lib, problemContext)
+    // Clicks on the card's own controls must not open the charm window.
+    const own = (e: React.SyntheticEvent) => e.stopPropagation()
     return (
       <Tooltip key={charm.id} wide delayed content={
         <div className="space-y-1.5">
           <p className="font-semibold text-stone-100">{charm.name}{count > 1 ? ` ×${count}` : ''}</p>
+          {charm.wardName && <p className="text-amber-300">Ward: {charm.wardName}</p>}
           <CharmText charm={charm} exaltType={exaltType} caste={caste} essence={essence} abilities={abilities} />
         </div>
       }>
@@ -1028,6 +1108,34 @@ function CharmPanel({ charms, milestones, training, onLedgerChange, onTrainingDo
               <span className="text-[10px] px-1 rounded bg-amber-950/60 border border-amber-700/60 text-amber-300 shrink-0"
                 data-tip={allWaiting ? 'In training — no effect until it is done' : `${waiting} purchase${waiting > 1 ? 's' : ''} in training`}>
                 {allWaiting ? 'Training' : `+${waiting} training`}
+              </span>
+            )}
+            {dots > 0 && (
+              <span className="flex items-center gap-0.5 shrink-0 h-4" onClick={own} onKeyDown={own}>
+                {Array.from({ length: dots }, (_, i) => (
+                  <button key={i} type="button" onClick={() => clickCharmDot(charm, i)}
+                    aria-label={i < lit ? 'Release a committed mote' : 'Commit a mote'}
+                    data-tip={i < lit ? 'Committed — click to release the mote' : 'Click to commit a mote'}
+                    className={`w-2.5 h-2.5 rounded-full border transition-colors ${i < lit ? 'bg-amber-400 border-amber-400' : 'border-stone-500 hover:border-amber-400'}`} />
+                ))}
+              </span>
+            )}
+            {lib?.ongoing && (isFoi ? (
+              <span data-tip={inUse ? 'In use: Fists of Iron is on (switched in the Inventory)' : 'Not in use: switch Fists of Iron on in the Inventory'}
+                className={`shrink-0 h-4 inline-flex items-center ${inUse ? 'text-amber-400' : 'text-stone-600'}`}>
+                <Zap size={13} aria-hidden fill={inUse ? 'currentColor' : 'none'} />
+              </span>
+            ) : (
+              <button type="button" onClick={e => { own(e); setCharm(charm.id, toggleInUse) }} onKeyDown={own}
+                aria-label={inUse ? 'In use — click to turn off' : 'Not in use — click to turn on'} aria-pressed={inUse}
+                data-tip={inUse ? 'In use — click to turn off' : 'Not in use — click to turn on'}
+                className={`shrink-0 h-4 inline-flex items-center transition-colors ${inUse ? 'text-amber-400' : 'text-stone-600 hover:text-stone-300'}`}>
+                <Zap size={13} aria-hidden fill={inUse ? 'currentColor' : 'none'} />
+              </button>
+            ))}
+            {problems.length > 0 && (
+              <span data-tip={problems.join(' ')} aria-label={problems.join(' ')} role="img" className="shrink-0 h-4 inline-flex items-center text-red-400">
+                <CircleAlert size={13} aria-hidden />
               </span>
             )}
             {count > 1 && <span className="text-[10px] px-1 rounded bg-stone-900 border border-stone-600 text-stone-300 shrink-0">×{count}</span>}
@@ -1073,11 +1181,28 @@ function CharmPanel({ charms, milestones, training, onLedgerChange, onTrainingDo
           onMoveToGroup={groupId => onChange(moveCharm(charms, openCharm.id, { groupId }))}
           training={training.get(openCharm.libraryId) ?? []}
           onTrainingDone={onTrainingDone}
+          problems={charmProblems(openCharm, libById.get(openCharm.libraryId), problemContext)}
+          intimacies={problemContext.intimacies}
+          onSetAlly={(index, name) => setAlly(openCharm.id, index, name)}
           onRepurchase={repurchase}
           onUndoPurchase={undoLast}
           onRemove={() => removeCharm(openCharm.id)}
           onClose={() => setOpenId(null)}
         />
+      )}
+      {wardFor && (
+        <NamePromptModal title="Ward of the Sun" hint="Who is the ally you ward? Shown when you rest the mouse on the card, until the charm is turned off."
+          label="Ward's name" onClose={() => setWardFor(null)}
+          onSave={name => { setCharm(wardFor, c => ({ ...c, wardName: name })); setWardFor(null) }} />
+      )}
+      {allyFor && (
+        <NamePromptModal title="Unconquered Sun's Sight — repurchase" hint="Name the ally this repurchase covers."
+          label="Ally's name" onClose={() => setAllyFor(null)}
+          onSave={name => { setAlly(allyFor.charmId, allyFor.index, name); setAllyFor(null) }} />
+      )}
+      {lionFor && (
+        <IntimacyPickModal intimacies={problemContext.intimacies} onClose={() => setLionFor(null)}
+          onPick={id => { setCharm(lionFor, c => ({ ...c, protectedIntimacyId: id })); setLionFor(null) }} />
       )}
       {paying && (
         <CharmCostModal
@@ -2249,6 +2374,18 @@ export default function SheetTab({ sheet, onChange, editMode, readOnly = false, 
   const [editIntimacyIntensity, setEditIntimacyIntensity] = useState<IntimacyEntry['intensity']>('Minor')
   const [editIntimacyDesc, setEditIntimacyDesc] = useState('')
 
+  // The charm library: the Charms panel's cards and browser, and each charm's live
+  // mechanical key and settings (commit dots, in-use icon, purchase limit).
+  const [library, setLibrary] = useState<LibraryCharm[]>(() => cachedCharmLibrary() ?? [])
+  const [libraryLoaded, setLibraryLoaded] = useState(() => cachedCharmLibrary() !== null)
+  useEffect(() => {
+    loadCharmLibrary().then(charms => {
+      setLibrary(charms)
+      setLibraryLoaded(true)
+    })
+  }, [])
+  const libById = new Map(library.map(l => [l.id, l]))
+
   function update(partial: Partial<SheetData>) { onChange(partial) }
   function setAttr(name: string, value: number) { update({ attributes: { ...data.attributes, [name]: value } }) }
   function setAbility(name: string, patch: Partial<AbilityData>) {
@@ -2292,7 +2429,13 @@ export default function SheetTab({ sheet, onChange, editMode, readOnly = false, 
   // calculation below reads these instead of the raw charms and ratings.
   const charmTraining = trainingByCharm(milestones, trainingDone)
   const traitsInTraining = traitTraining(milestones, trainingDone)
-  const effectCharms = charmsInEffect(data.charms, charmTraining)
+  // Mechanical keys are read live from the library, so a charm bought before its
+  // key was set still works (charmKey); every effect below uses these.
+  const liveCharms = data.charms.map(c => {
+    const key = charmKey(c, libById.get(c.libraryId))
+    return key !== activeKey(c) && c.mechanicalKeyOverride === null ? { ...c, libraryMechanicalKey: key } : c
+  })
+  const effectCharms = charmsInEffect(liveCharms, charmTraining)
   const calcAttributes = trainedAttributes(data.attributes, traitsInTraining)
   const calcAbilities = trainedAbilities(data.abilities, traitsInTraining)
   const trainingInput = (n: number | undefined) => n ? ' !border-dashed !border-amber-600' : ''
@@ -2301,6 +2444,8 @@ export default function SheetTab({ sheet, onChange, editMode, readOnly = false, 
   const oxBody = findOxBody(effectCharms)
   const healthTrack = buildHealthTrack(data.exaltType, data.caste, oxBody ? (oxBody.count ?? 1) : 0, oxBody?.oxBodyPicks ?? [])
   const damage = clampDamage(data.damage, healthTrack.length)
+  const charmSoak = charmSoakBonuses(effectCharms, libById, woundPenalty(healthTrack, damage))
+  const unbreakableIntimacies = protectedIntimacies(effectCharms, libById)
   const setDamage = (n: number) => update({ damage: clampDamage(n, healthTrack.length) })
 
   const panelBase = "bg-stone-900 border border-stone-700 rounded-lg p-2 overflow-y-auto no-scrollbar h-full"
@@ -2423,6 +2568,7 @@ export default function SheetTab({ sheet, onChange, editMode, readOnly = false, 
         integrity: integ, essence: data.essence ?? 1,
         bestWeaponDefense: bestWpnDef, bestArmorSoak, bestArmorHardness: bestArmorHard,
         oxBody: !!oxBody,
+        charmSoak: charmSoak.reduce((sum, b) => sum + b.value, 0),
         fullDefense: data.fullDefense, defendOther: data.defenseOther,
         bonus: {
           parry: db.parry ?? 0, evasion: db.evasion ?? 0, soak: db.soak ?? 0,
@@ -2473,6 +2619,7 @@ export default function SheetTab({ sheet, onChange, editMode, readOnly = false, 
               { label: 'Base', value: soakBase, detail: `1, plus 1 at Physique 3+ (you have ${phys})` },
               gearLine('Armor', 'Best equipped armor', bestArmorSoak, capped.soak),
               ...(oxBodySoak ? [{ label: 'Ox Body', value: oxBodySoak, signed: true, detail: 'Ox Body Technique, counted once' }] : []),
+              ...charmSoak.map(b => ({ label: b.name, value: b.value, signed: true, detail: 'In use' })),
               bonusLine('soak'),
             ], bonusInput('soak'))}
             {calcRow('Hardness', hardness, [
@@ -2754,12 +2901,16 @@ export default function SheetTab({ sheet, onChange, editMode, readOnly = false, 
       <div className="bg-stone-900 border border-stone-700 rounded-lg p-2 overflow-hidden h-full flex flex-col">
         <SectionHeader title="Intimacies" />
         <div className="space-y-1 mb-2 overflow-y-auto no-scrollbar flex-1">
-          {data.intimacies.map(intimacy => (
-            <div key={intimacy.id}>
+          {data.intimacies.map(intimacy => {
+            // Marked gold like an Excellency's Ability while Righteous Lion Spirit protects it.
+            const unbreakable = unbreakableIntimacies.has(intimacy.id) && protectable(intimacy)
+            return (
+            <div key={intimacy.id} className={unbreakable ? 'bg-amber-950/40 rounded' : undefined}
+              data-tip={unbreakable ? 'Unbreakable — Righteous Lion Spirit' : undefined}>
               <div className="flex items-start justify-between text-xs gap-1">
                 <div className="flex items-start gap-1.5 min-w-0">
                   <span className={`self-center shrink-0 font-semibold px-1 py-0.5 rounded ${intimacy.intensity === 'Defining' ? 'bg-purple-900 text-purple-300' : intimacy.intensity === 'Major' ? 'bg-amber-900 text-amber-300' : 'bg-stone-700 text-stone-300'}`}>{intimacy.intensity[0]}</span>
-                  <span className="text-stone-200 break-words min-w-0">{intimacy.description}</span>
+                  <span className={`break-words min-w-0 ${unbreakable ? 'text-amber-300' : 'text-stone-200'}`}>{intimacy.description}</span>
                 </div>
                 <div className="flex gap-1 shrink-0">
                   <button onClick={() => { setEditingIntimacyId(intimacy.id); setEditIntimacyIntensity(intimacy.intensity); setEditIntimacyDesc(intimacy.description) }} className="text-stone-500 hover:text-amber-400 transition-colors">✎</button>
@@ -2780,7 +2931,8 @@ export default function SheetTab({ sheet, onChange, editMode, readOnly = false, 
                 </div>
               )}
             </div>
-          ))}
+            )
+          })}
           {data.intimacies.length === 0 && <p className="text-xs text-stone-500">None.</p>}
         </div>
         <div className="flex gap-1">
@@ -2798,6 +2950,15 @@ export default function SheetTab({ sheet, onChange, editMode, readOnly = false, 
 
     charms: (
       <CharmPanel
+        library={library}
+        libraryLoaded={libraryLoaded}
+        pools={{ motes: data.motes, anima: data.anima }}
+        onSheetChange={update}
+        problemContext={{
+          essence: data.essence ?? 1, attributes: data.attributes, abilities: data.abilities,
+          intimacies: data.intimacies, oxBodyHasChoice: oxBodyHasChoice(data.exaltType, data.caste),
+        }}
+        foiActive={!!data.foi?.active}
         charms={data.charms}
         milestones={milestones}
         training={charmTraining}

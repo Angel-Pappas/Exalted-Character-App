@@ -1,6 +1,7 @@
 # Kaien's charms — the agreed plan
 
-Updated 2026-10-16 with Angel's answers. Nothing is built yet. Go through the charms, then
+**Built and shipped 2026-10-16** (see `Summary.md` → Using charms on the sheet). Updated
+2026-10-16 with Angel's answers. Go through the charms, then
 give the green light (or change any numbered item).
 
 ## The rules we agreed

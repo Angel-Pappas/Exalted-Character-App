@@ -4,6 +4,15 @@ One entry per shipped change, newest first: what changed and **why**. How things
 now is in `Summary.md`; plans in `ROADMAP.md`. Entries before 2026-10-15 were rebuilt
 from the git history (one per day, its commits listed).
 
+- **2026-10-16** — **Using charms on the sheet: commit dots, in-use icons and "!".** After
+  reviewing Kaien's 22 charms with Angel (`info/kaien-charms-review.md`): charms that commit
+  motes get dots that commit them as if by hand; charms with an ongoing effect get an
+  in-use icon, and their sheet effects (Iron Kettle Body and Endurance of a Thousand Cuts
+  on Soak) apply only while it's on; a charm over its purchase limit or missing a choice
+  gets a "!". Righteous Lion Spirit, Unconquered Sun's Sight and Ward of the Sun ask for
+  their choices. No Use buttons or cost tracking: Angel's table tracks those itself.
+  Settings live per charm in Admin → Charms. Kaien's Arsenal-Summoning Gesture became ×3
+  (the Dawn mode is a purchase in Angel's homebrew; his yes, T1).
 - **2026-10-16** — **Phone layouts; ratings in training show today's value.** Angel
   asked for the sheet and Milestones page to be usable on a phone: the sheet's panels
   now stack in one column there, the header's tabs get their own row, and the

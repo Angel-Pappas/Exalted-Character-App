@@ -9,6 +9,7 @@ function charm(overrides: Partial<LibraryCharm> = {}): LibraryCharm {
     prerequisiteEssence: 1, prerequisiteCharms: ['Other Charm'], modes: [],
     choiceType: 'custom', choiceOptions: ['A', 'B'], targetChoiceType: 'custom', targetOptions: ['T'],
     multiselectCapBasis: 'essence', pickCounts: [2, 1],
+    commitMotes: 0, commitNeedsRepurchase: false, ongoing: false, purchaseLimit: null,
     ...overrides,
   }
 }
@@ -21,6 +22,7 @@ describe('charmPayload', () => {
       choice_type: 'custom', target_choice_type: null, multiselect_cap_basis: null, pick_counts: [2, 1],
       abilities: ['Melee'], prerequisite_abilities: ['Melee 1'], prerequisite_charms: ['Other Charm'],
       choice_options: ['A', 'B'], target_options: [],
+      commit_motes: 0, commit_needs_repurchase: false, ongoing: false, purchase_limit: null,
     })
   })
 
@@ -45,5 +47,14 @@ describe('charmPayload', () => {
   it('drops the option list and pick schedule for freetext charms', () => {
     expect(charmPayload(charm({ choiceType: 'freetext' }))).toMatchObject({ choice_options: [], pick_counts: null })
     expect(charmPayload(charm({ choiceType: null }))).toMatchObject({ choice_options: [], pick_counts: null, target_options: [] })
+  })
+
+  it('sends how the charm is used on the sheet, with the limit tidied', () => {
+    const body = charmPayload(charm({ commitMotes: 2, commitNeedsRepurchase: true, ongoing: true, purchaseLimit: ' Essence ' }))
+    expect(body).toMatchObject({ commit_motes: 2, commit_needs_repurchase: true, ongoing: true, purchase_limit: 'essence' })
+  })
+
+  it('drops "only from the repurchase" when the charm has no commit dots', () => {
+    expect(charmPayload(charm({ commitMotes: 0, commitNeedsRepurchase: true })).commit_needs_repurchase).toBe(false)
   })
 })

@@ -17,12 +17,17 @@ use Illuminate\Database\Eloquent\Model;
  * @property list<int>|null $pick_counts
  * @property bool $needs_review
  * @property string|null $review_action
+ * @property int $commit_motes
+ * @property bool $commit_needs_repurchase
+ * @property bool $ongoing
+ * @property string|null $purchase_limit
  */
 #[Table('charm_library')]
 #[Fillable([
     'type', 'name', 'page', 'description', 'summary', 'mechanical_key', 'mechanical_description',
     'prerequisite_essence', 'choice_type', 'target_choice_type', 'multiselect_cap_basis',
     'pick_counts', 'needs_review', 'review_action',
+    'commit_motes', 'commit_needs_repurchase', 'ongoing', 'purchase_limit',
 ])]
 class Charm extends Model
 {
@@ -38,6 +43,9 @@ class Charm extends Model
             'prerequisite_essence' => 'integer',
             'pick_counts' => 'array',
             'needs_review' => 'boolean',
+            'commit_motes' => 'integer',
+            'commit_needs_repurchase' => 'boolean',
+            'ongoing' => 'boolean',
         ];
     }
 }

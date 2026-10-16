@@ -52,6 +52,11 @@ export interface LibraryCharm {
   // possible even if unchosen options remain. null/undefined = always pick 1
   // per purchase, uncapped by a schedule (the common case).
   pickCounts: number[] | null
+  // How the charm is used on the sheet (set once per charm in Admin, 2026-10-16):
+  commitMotes: number              // commit dots on its card; 0 = none
+  commitNeedsRepurchase: boolean   // dots only from the second purchase (Iron Kettle Body)
+  ongoing: boolean                 // an in-use icon on its card
+  purchaseLimit: string | null     // a number, or the trait whose rating is the limit ("essence", "physique"); null = none
 }
 
 // Known charm types from the book, used to populate type pickers. Admin can still free-type others.
@@ -78,6 +83,12 @@ export interface CharacterCharm {
   groupedPicks?: { target: string; selected: string[] }[]  // used instead of picks for choiceType === 'multiselect'; one entry per purchase/target
   oxBodyPicks?: OxBodyPick[]  // Ox Body Technique only: health levels chosen per purchase, where the Exalt type gets a choice
   groupId?: string         // the player-made CharmGroup this charm sits in; absent = ungrouped
+  // Using it on the sheet (2026-10-16):
+  litDots?: number         // commit dots lit (each one is a mote committed in the Essence panel)
+  inUse?: boolean          // its in-use icon is on; sheet effects apply only then
+  wardName?: string        // Ward of the Sun: who is warded, while its dot is lit and it is in use
+  protectedIntimacyId?: string  // Righteous Lion Spirit: the Major/Defining Intimacy it protects
+  repurchaseAllies?: string[]   // Unconquered Sun's Sight: the ally named by each repurchase, in order
 }
 
 // A player-made group in the Charms panel (e.g. "Social"). Per character, never premade.

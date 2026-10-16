@@ -38,5 +38,9 @@ export function charmPayload(charm: LibraryCharm) {
     prerequisite_charms: charm.prerequisiteCharms,
     choice_options: usesOptionList(charm.choiceType) ? charm.choiceOptions : [],
     target_options: multiselect && charm.targetChoiceType === 'custom' ? charm.targetOptions : [],
+    commit_motes: charm.commitMotes,
+    commit_needs_repurchase: charm.commitMotes > 0 && charm.commitNeedsRepurchase,
+    ongoing: charm.ongoing,
+    purchase_limit: charm.purchaseLimit?.trim().toLowerCase() || null,
   }
 }

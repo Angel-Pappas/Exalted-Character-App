@@ -17,6 +17,8 @@ the priorities — the order under **Next** is a suggestion until he does.
 - [x] Summaries for every charm in the library (2026-10-16).
 - [x] Training, piece 1: spending milestones starts a training; player and
       Storyteller lists; either marks it done (2026-10-16).
+- [x] Using charms: commit dots, in-use icons with sheet effects, "!" for limits and
+      missing choices; Kaien's charms set up (2026-10-16).
 - [x] Training, pieces 2–3: charms, dots and specialties linked to their ledger line,
       shown "in training" on the sheet with no effect until done; Milestones page
       redesigned with the training list beside the ledger (2026-10-16).

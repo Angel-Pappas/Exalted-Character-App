@@ -1,5 +1,6 @@
 <?php
 
+use App\Models\Character;
 use App\Models\Charm;
 use App\Models\User;
 use Illuminate\Support\Facades\DB;
@@ -150,4 +151,62 @@ it('fills empty library summaries but never overwrites one written in Admin', fu
     expect(Charm::query()->findOrFail('569b8f8b-cfa4-486e-84ca-fead121cf6a6')->summary)
         ->toBe('Double 9s on Stealth to stay unseen (8s if you didn\'t move last turn).')
         ->and(Charm::query()->findOrFail('91fbf118-441b-4660-b8a0-dfe683fefe96')->summary)->toBe('Written in Admin.');
+});
+
+describe('how a charm is used on the sheet (Angel, 2026-10-16)', function () {
+    it('saves commit dots, the in-use icon and the purchase limit, and returns them', function () {
+        $admin = User::factory()->admin()->create();
+        $id = $this->actingAs($admin)->postJson('/api/charms', charmPayload([
+            'commit_motes' => 2, 'commit_needs_repurchase' => true, 'ongoing' => true, 'purchase_limit' => 'essence',
+        ]))->assertCreated()->json('id');
+
+        $charm = collect($this->actingAs($admin)->getJson('/api/charms')->json())->firstWhere('id', $id);
+
+        expect($charm)
+            ->commit_motes->toBe(2)
+            ->commit_needs_repurchase->toBeTrue()
+            ->ongoing->toBeTrue()
+            ->purchase_limit->toBe('essence');
+    });
+
+    it('defaults to no dots, no icon and no limit', function () {
+        $admin = User::factory()->admin()->create();
+        $id = $this->actingAs($admin)->postJson('/api/charms', charmPayload())->json('id');
+
+        expect(Charm::query()->findOrFail($id))
+            ->commit_motes->toBe(0)
+            ->ongoing->toBeFalse()
+            ->purchase_limit->toBeNull();
+    });
+
+    it('takes a number or a trait name as the limit, nothing else', function (string $limit, bool $ok) {
+        $admin = User::factory()->admin()->create();
+        $response = $this->actingAs($admin)->postJson('/api/charms', charmPayload(['purchase_limit' => $limit]));
+
+        $ok ? $response->assertCreated() : $response->assertUnprocessable();
+    })->with([
+        ['3', true], ['physique', true], ['close combat', true], ['0', false], ['3; drop', false],
+    ]);
+
+    it('records Arsenal-Summoning Gesture\'s Dawn mode as a third purchase, once', function () {
+        $arsenal = Charm::query()->create(['name' => 'Arsenal-Summoning Gesture', 'description' => '', 'choice_type' => 'custom']);
+        DB::table('charm_choice_options')->insert([
+            ['charm_id' => $arsenal->id, 'option' => 'Weapons', 'sort_order' => 0],
+            ['charm_id' => $arsenal->id, 'option' => 'Armor', 'sort_order' => 1],
+        ]);
+        $kaien = Character::factory()->create(['data' => (object) ['sheet' => (object) ['charms' => [
+            (object) ['id' => 'c', 'libraryId' => $arsenal->id, 'name' => 'Arsenal-Summoning Gesture', 'count' => 2, 'picks' => ['Weapons', 'Armor']],
+        ]]]]);
+        DB::table('characters')->where('id', $kaien->id)->update(['id' => '7b910733-97f8-418c-bac1-cbaa1e0cb39e']);
+
+        $migration = require database_path('migrations/2026_10_16_000021_arsenal_dawn_mode_purchase.php');
+        $migration->up();
+        $migration->up();
+
+        $charm = Character::query()->findOrFail('7b910733-97f8-418c-bac1-cbaa1e0cb39e')->data->sheet->charms[0];
+        expect($charm->count)->toBe(3)
+            ->and($charm->picks)->toBe(['Weapons', 'Armor', 'Perfected Panoply Selection'])
+            ->and(DB::table('charm_choice_options')->where('charm_id', $arsenal->id)->orderBy('sort_order')->pluck('option')->all())
+            ->toBe(['Weapons', 'Armor', 'Perfected Panoply Selection']);
+    });
 });

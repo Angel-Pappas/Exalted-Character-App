@@ -27,10 +27,9 @@ We'll work through these one at a time later.
   were actually picked — there's no data link between a `charm_modes` row and
   a specific `charm_choice_options` pick, so it can't tell which to hide.
 
-- **Arsenal-Summoning Gesture** — purchase flow is implemented (custom list:
-  choose Weapons or Armor). Not implemented: the summon/banish action itself
-  (no "Elsewhere" storage slot, no mote-spend button on the sheet to call the
-  chosen gear into hand at short range).
+- **Arsenal-Summoning Gesture** — done as far as the sheet goes. Angel decided
+  (2026-10-16) it needs no summon/banish tracking; its purchases are Weapons, Armor and
+  (homebrew) the Dawn mode Perfected Panoply Selection, limit 3.
 
 - **Augmented Attribute** — purchase flow is implemented (custom list:
   choose Force, Finesse, or Fortitude). Not implemented: applying the

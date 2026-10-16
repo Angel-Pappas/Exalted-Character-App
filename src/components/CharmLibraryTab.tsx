@@ -1,5 +1,6 @@
 import { Fragment, useEffect, useState } from 'react'
 import { api } from '../lib/api'
+import { sheetLibraryCharm } from '../lib/charmLibrary'
 import { charmPayload, supportsPickSchedule, usesOptionList } from '../lib/charmPayload'
 import type { CharmChoiceType, CharmMode, LibraryCharm, MultiselectCapBasis, MultiselectTargetType } from '../types/character'
 import { baseAbility, abilityRank, modeIcon, sortAbilities, sortModes, typeRank } from '../lib/charmRules'
@@ -35,6 +36,10 @@ export interface CharmLibraryRow {
   target_choice_type: MultiselectTargetType | null
   multiselect_cap_basis: MultiselectCapBasis | null
   pick_counts: number[] | null
+  commit_motes?: number
+  commit_needs_repurchase?: boolean
+  ongoing?: boolean
+  purchase_limit?: string | null
   needs_review: boolean
   review_action: ReviewAction
   charm_abilities: CharmAbilityRow[]
@@ -87,7 +92,7 @@ function blankCharm(): LibraryCharm {
     prerequisiteEssence: null, prerequisiteCharms: [], modes: [],
     choiceType: null, choiceOptions: [],
     targetChoiceType: null, targetOptions: [], multiselectCapBasis: null,
-    pickCounts: null,
+    pickCounts: null, commitMotes: 0, commitNeedsRepurchase: false, ongoing: false, purchaseLimit: null,
   }
 }
 
@@ -154,6 +159,42 @@ function PickScheduleConfig({ pickCounts, onChange, textInput }: {
   )
 }
 
+// How the charm is used on the sheet, for every character (2026-10-16): commit
+// dots on its card, an in-use icon for an ongoing effect, and a purchase limit
+// (a number, or the trait whose rating is the limit, e.g. "essence", "physique").
+function CharmUseConfig({ charm, onChange, textInput }: {
+  charm: LibraryCharm
+  onChange: (patch: Partial<LibraryCharm>) => void
+  textInput: string
+}) {
+  return (
+    <div className="flex flex-wrap items-center gap-x-4 gap-y-2 text-xs text-stone-400">
+      <label className="flex items-center gap-1.5">
+        Commit dots
+        <input type="number" min={0} max={10} value={charm.commitMotes} aria-label="Commit dots"
+          onChange={e => onChange({ commitMotes: Math.max(0, Math.min(10, parseInt(e.target.value) || 0)) })}
+          className={`${textInput} !w-14`} />
+      </label>
+      {charm.commitMotes > 0 && (
+        <label className="flex items-center gap-1.5">
+          <input type="checkbox" checked={charm.commitNeedsRepurchase} onChange={e => onChange({ commitNeedsRepurchase: e.target.checked })} className="accent-amber-500" />
+          only from the repurchase
+        </label>
+      )}
+      <label className="flex items-center gap-1.5">
+        <input type="checkbox" checked={charm.ongoing} onChange={e => onChange({ ongoing: e.target.checked })} className="accent-amber-500" />
+        In-use icon (ongoing effect)
+      </label>
+      <label className="flex items-center gap-1.5">
+        Purchase limit
+        <input value={charm.purchaseLimit ?? ''} placeholder="e.g. 3, essence" aria-label="Purchase limit"
+          onChange={e => onChange({ purchaseLimit: e.target.value || null })}
+          className={`${textInput} !w-32`} />
+      </label>
+    </div>
+  )
+}
+
 function EditCharmRow({ charm, onSave, onCancel, saving, textInput, abilitySuggestions, charmNameSuggestions, prereqAbilitySuggestions }: {
   charm: LibraryCharm
   onSave: (c: LibraryCharm) => void
@@ -184,6 +225,7 @@ function EditCharmRow({ charm, onSave, onCancel, saving, textInput, abilitySugge
       <textarea value={form.description} onChange={e => set({ description: e.target.value })} placeholder="Description…" rows={3} className={`${textInput} resize-none`} />
       <textarea value={form.summary ?? ''} onChange={e => set({ summary: e.target.value || null })} placeholder="Summary — one line shown on the character sheet's charm card…" rows={2} className={`${textInput} resize-none`} />
       <input value={form.mechanicalKey ?? ''} onChange={e => set({ mechanicalKey: e.target.value || null })} placeholder="Mechanical key (optional)…" className={textInput} />
+      <CharmUseConfig charm={form} onChange={set} textInput={textInput} />
       <textarea value={form.mechanicalDescription ?? ''} onChange={e => set({ mechanicalDescription: e.target.value || null })} placeholder="Mechanical implementation description (optional)…" rows={2} className={`${textInput} resize-none`} />
       <div>
         <p className="text-[10px] text-stone-500 mb-0.5">Purchase choice (optional — a pick required each time the charm is bought)</p>
@@ -244,30 +286,7 @@ export default function CharmLibraryTab({ isOwner, textInput }: { isOwner: boole
     api<CharmLibraryRow[]>('GET', 'charms')
       .then(({ data: rows }) => {
         if (rows) setCharms(rows.map(r => ({
-          id: r.id,
-          type: r.type ?? 'Universal',
-          abilities: (r.charm_abilities ?? []).map(a => a.ability),
-          name: r.name,
-          page: r.page,
-          description: r.description,
-          summary: r.summary ?? null,
-          mechanicalKey: r.mechanical_key ?? null,
-          mechanicalDescription: r.mechanical_description ?? null,
-          prerequisiteAbilities: (r.charm_prerequisite_abilities ?? []).map(p => p.text),
-          prerequisiteEssence: r.prerequisite_essence ?? null,
-          prerequisiteCharms: (r.charm_prerequisite_charms ?? []).map(p => p.charm_name),
-          modes: (r.charm_modes ?? []).map(m => ({
-            label: m.label,
-            text: m.mode_text,
-            prerequisiteEssence: m.prerequisite_essence,
-            prerequisiteAbilities: (m.charm_mode_prerequisite_abilities ?? []).map(p => p.text),
-          })),
-          choiceType: r.choice_type ?? null,
-          choiceOptions: (r.charm_choice_options ?? []).sort((a, b) => a.sort_order - b.sort_order).map(o => o.option),
-          targetChoiceType: r.target_choice_type ?? null,
-          targetOptions: (r.charm_target_options ?? []).sort((a, b) => a.sort_order - b.sort_order).map(o => o.option),
-          multiselectCapBasis: r.multiselect_cap_basis ?? null,
-          pickCounts: r.pick_counts ?? null,
+          ...sheetLibraryCharm(r),
           needsReview: r.needs_review,
           reviewAction: r.review_action,
         })))
@@ -301,6 +320,10 @@ export default function CharmLibraryTab({ isOwner, textInput }: { isOwner: boole
         targetOptions: newCharm.choiceType === 'multiselect' && newCharm.targetChoiceType === 'custom' ? newCharm.targetOptions : [],
         multiselectCapBasis: row.multiselect_cap_basis ?? null,
         pickCounts: row.pick_counts ?? null,
+        commitMotes: newCharm.commitMotes,
+        commitNeedsRepurchase: newCharm.commitNeedsRepurchase,
+        ongoing: newCharm.ongoing,
+        purchaseLimit: newCharm.purchaseLimit,
         needsReview: false,
         reviewAction: null,
       }])
@@ -403,6 +426,7 @@ export default function CharmLibraryTab({ isOwner, textInput }: { isOwner: boole
                 <textarea value={newCharm.description} onChange={e => setNewCharm(f => ({ ...f, description: e.target.value }))} placeholder="Description…" rows={3} className={`${textInput} resize-none`} />
                 <textarea value={newCharm.summary ?? ''} onChange={e => setNewCharm(f => ({ ...f, summary: e.target.value || null }))} placeholder="Summary — one line shown on the character sheet's charm card…" rows={2} className={`${textInput} resize-none`} />
                 <input value={newCharm.mechanicalKey ?? ''} onChange={e => setNewCharm(f => ({ ...f, mechanicalKey: e.target.value || null }))} placeholder="Mechanical key (optional, e.g. foi)…" className={textInput} />
+                <CharmUseConfig charm={newCharm} onChange={patch => setNewCharm(f => ({ ...f, ...patch }))} textInput={textInput} />
                 <textarea value={newCharm.mechanicalDescription ?? ''} onChange={e => setNewCharm(f => ({ ...f, mechanicalDescription: e.target.value || null }))} placeholder="Mechanical implementation description (optional)…" rows={2} className={`${textInput} resize-none`} />
                 <div>
                   <p className="text-[10px] text-stone-500 mb-0.5">Purchase choice (optional — a pick required each time the charm is bought)</p>

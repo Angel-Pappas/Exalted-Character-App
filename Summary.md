@@ -190,8 +190,36 @@ Only one armor can be equipped at a time (equipping one auto-unequips others).
 - Groups (`SheetData.charmGroups`, per character, never premade): name and colour only. A charm sits in at most one group (`CharacterCharm.groupId`; absent = Ungrouped); order inside a group is the array order. Dragging a card onto another puts it before that card (joining its group); onto a group button, at the end of that group; a group button onto another moves the group before it (off in layout-edit mode). Deleting a group ungroups its charms, never deletes them. Logic in `src/lib/charmGroups.ts` (tested). Sheets saved earlier may still carry a `column` per charm from the old two-column boxes; it is ignored.
 - The Charms panel never scrolls: it measures its content (ResizeObserver) and sets its own grid height (`rowsToFit`), and `fitPanelHeight` (`src/lib/panelLayout.ts`, tested) moves panels below it in the same columns by the same amount. Its height can't be dragged in layout-edit mode, only its width. It sizes itself only once the library (the cards' summaries) has loaded, and the grid mounts at its measured width (`measureBeforeMount`), so the panel opens at its final height instead of jumping; the library is kept for the visit (`cachedCharmLibrary`, refreshed on each open). The grid's own layout reports never change the Charms height (`gridLayoutChange`, tested) — its copy can be a fit behind, which made the panel flip between two heights.
 - Each CharacterCharm: `libraryId`, `name`, `libraryMechanicalKey` (denormalized), `customDescription` and `customSummary` (player overrides), `mechanicalKeyOverride`
-- Effective mechanical key = `mechanicalKeyOverride ?? libraryMechanicalKey`; a charm with a key the sheet computes (`ox_body`, `foi`, `excellency`) always applies — there is no on/off switch since 2026-10-16 (`mechanicalEnabled` is still saved but no longer read)
+- Effective mechanical key = `mechanicalKeyOverride ??` the library's key (read live) `?? libraryMechanicalKey` (`charmKey`), so a charm bought before its key was set still works; a charm with a key the sheet computes (`ox_body`, `foi`, `excellency`, and those below) always applies — there is no on/off switch since 2026-10-16 (`mechanicalEnabled` is still saved but no longer read)
 - Custom descriptions override library text per character; can be reverted
+
+### Using charms on the sheet (since 2026-10-16)
+Angel's rules: no "Use" buttons and no tracking of costs or combat steps (the table tracks
+those). Set once per charm in Admin → Charms, for every character (`charm_library`
+`commit_motes`, `commit_needs_repurchase`, `ongoing`, `purchase_limit`). Logic in
+`src/lib/charmUse.ts`, tested.
+- **Commit dots** on the card, one per mote the charm commits. Clicking an empty dot does
+  what raising Committed by hand does (a mote from Current to Committed, anima +1; not with
+  Current at 0); clicking a lit one gives the mote back (`CharacterCharm.litDots`). Iron
+  Kettle Body's dots only appear from its repurchase.
+- **In-use icon** (⚡) for charms with an ongoing effect; off by default, click to switch
+  (`CharacterCharm.inUse`). Dots and icon are independent. Sheet effects apply only while
+  it's on, and never for a purchase still in training: **Iron Kettle Body** adds Soak equal
+  to its lit dots, **Endurance of a Thousand Cuts** adds the current wound penalty to
+  Soak; each gets its own line in the Soak breakdown and counts like Ox Body's +1 (base,
+  not gear). Fists of Iron's icon is display only: lit while FoI is on in the Inventory.
+- **"!" mark** on the card (and in the charm window, saying what to fix) when a charm is
+  bought more times than its limit (a number, or a trait's rating: Essence, Physique… —
+  every purchase counts) or a purchase is missing its choice.
+- **Choices:** Righteous Lion Spirit asks, when bought, which Major or Defining Intimacy it
+  protects (`protectedIntimacyId`; changeable in the charm window); that Intimacy is marked
+  gold in the Intimacies panel. Each repurchase of Unconquered Sun's Sight asks for an
+  ally's name (free text, `repurchaseAllies`; edited in the charm window). Lighting Ward of
+  the Sun's dot asks who is warded (`wardName`), shown on hover, cleared when the dot or
+  the icon goes off; it doesn't touch Full Defense or Defend Other. "Later" leaves a
+  choice open, and the "!" shows until it's made.
+- Arsenal-Summoning Gesture: per Angel's homebrew its Dawn mode, Perfected Panoply
+  Selection, is a third purchase (a third choice, limit 3).
 
 ### Fists of Iron Technique (FoI)
 - FoI button only appears if a charm with effective key `'foi'` exists
