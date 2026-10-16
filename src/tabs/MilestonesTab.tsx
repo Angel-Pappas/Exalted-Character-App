@@ -1,15 +1,20 @@
-import { Fragment, useState } from 'react'
-import type { MilestoneKind, MilestoneTransaction } from '../types/character'
+import { Fragment, useEffect, useState } from 'react'
+import type { MilestoneKind, MilestoneTransaction, TrainingDone } from '../types/character'
+import { api } from '../lib/api'
 import { Tooltip } from '../components/Tooltip'
+import { TrainingCost } from '../components/TrainingCost'
 import {
-  KIND_LABELS, MILESTONE_TYPES, MILESTONE_USES, dateKey, isValidEntry, parseAmount,
+  KIND_LABELS, MILESTONE_TYPES, MILESTONE_USES, dateKey, formatDay, inTraining, isValidEntry, parseAmount,
   remaining, sortLedger, todayKey, totalEarned,
   type MilestoneAmounts, type MilestoneType,
 } from '../lib/milestones'
 
 interface Props {
+  characterId: string
   milestones: MilestoneTransaction[]
   onChange: (milestones: MilestoneTransaction[]) => void
+  /** Saves the sheet now, so the server has the line a training refers to. */
+  beforeTraining: () => Promise<void>
 }
 
 // Form state keeps raw strings so a field can be blank while typing.
@@ -18,6 +23,7 @@ interface Draft {
   amounts: Record<MilestoneType, string>
   description: string
   date: string
+  training: boolean   // Expenses only: still in training
 }
 
 type Order = 'oldest' | 'newest'
@@ -39,14 +45,15 @@ const DESC_PLACEHOLDER: Record<MilestoneKind, string> = {
 
 const inputClass = 'w-full bg-stone-800 border border-stone-600 text-stone-100 rounded px-2 py-1 text-sm focus:outline-none focus:border-amber-500'
 
+// A new Expense starts a training unless the player unticks it (e.g. a free charm).
 function newDraft(kind: MilestoneKind): Draft {
-  return { kind, amounts: blankAmounts, description: '', date: kind === 'creation' ? '' : todayKey() }
+  return { kind, amounts: blankAmounts, description: '', date: kind === 'creation' ? '' : todayKey(), training: true }
 }
 
-function draftFrom(tx: MilestoneTransaction): Draft {
+function draftFrom(tx: MilestoneTransaction, training: boolean): Draft {
   const amounts = { ...blankAmounts }
   for (const t of MILESTONE_TYPES) amounts[t] = tx[t] ? String(tx[t]) : ''
-  return { kind: tx.kind, amounts, description: tx.description, date: dateKey(tx.date) }
+  return { kind: tx.kind, amounts, description: tx.description, date: dateKey(tx.date), training }
 }
 
 function parsedAmounts(draft: Draft): MilestoneAmounts {
@@ -144,12 +151,45 @@ function EntryFields({ draft, setDraft, showDate }: { draft: Draft; setDraft: (d
           className={inputClass}
         />
       </div>
+      {draft.kind === 'purchase' && (
+        <label className="flex items-center gap-2 text-sm text-stone-300 w-fit cursor-pointer">
+          <input
+            type="checkbox"
+            checked={draft.training}
+            onChange={e => setDraft({ ...draft, training: e.target.checked })}
+            className="accent-amber-500"
+          />
+          In training
+          <span className="text-xs text-stone-500">— you or the Storyteller mark it done when the story says so</span>
+        </label>
+      )}
     </div>
   )
 }
 
-export default function MilestonesTab({ milestones, onChange }: Props) {
+export default function MilestonesTab({ characterId, milestones, onChange, beforeTraining }: Props) {
   const [adding, setAdding] = useState<Draft | null>(null)
+  const [done, setDone] = useState<TrainingDone>({})
+  const [trainingError, setTrainingError] = useState<string | null>(null)
+
+  useEffect(() => {
+    api<TrainingDone>('GET', `characters/${characterId}/training`).then(({ data }) => setDone(data ?? {}))
+  }, [characterId])
+
+  // Marks a training done (or back in training) on the server, which keeps it
+  // outside the sheet so the Storyteller can mark it too.
+  async function setTrainingDone(entryId: string, finished: boolean) {
+    setTrainingError(null)
+    await beforeTraining()
+    const { error } = await api(finished ? 'PUT' : 'DELETE', `characters/${characterId}/training/${entryId}`)
+    if (error) { setTrainingError(error); return }
+    setDone(prev => {
+      const next = { ...prev }
+      if (finished) next[entryId] = todayKey()
+      else delete next[entryId]
+      return next
+    })
+  }
   const [editingId, setEditingId] = useState<string | null>(null)
   const [editDraft, setEditDraft] = useState<Draft>(newDraft('gain'))
   const [order, setOrder] = useState<Order>(readOrder)
@@ -175,6 +215,7 @@ export default function MilestonesTab({ milestones, onChange }: Props) {
       ...amounts,
       description: adding.description.trim() || 'Session',
       date: adding.date,
+      ...(adding.kind === 'purchase' && adding.training ? { training: true } : {}),
     }
     // Appended, so entries sharing a date keep the order they were logged in.
     onChange([...milestones, tx])
@@ -183,25 +224,32 @@ export default function MilestonesTab({ milestones, onChange }: Props) {
 
   function startEdit(tx: MilestoneTransaction) {
     setEditingId(tx.id)
-    setEditDraft(draftFrom(tx))
+    setEditDraft(draftFrom(tx, training.includes(tx)))
     setAdding(null)
   }
 
   function saveEdit(tx: MilestoneTransaction) {
     const amounts = parsedAmounts(editDraft)
     if (!isValidEntry(editDraft.kind, amounts, editDraft.description)) return
+    const wasTraining = training.includes(tx)
+    const nowTraining = editDraft.kind === 'purchase' && editDraft.training
     const updated: MilestoneTransaction = {
       ...tx,
       kind: editDraft.kind,
       ...amounts,
       description: editDraft.description.trim() || tx.description,
       date: editDraft.date,
+      // Once tracked, a line stays tracked: unticking means "done", not "never trained".
+      ...(nowTraining ? { training: true } : {}),
     }
     onChange(milestones.map(m => (m.id === tx.id ? updated : m)))
     setEditingId(null)
+    if (wasTraining && !nowTraining && editDraft.kind === 'purchase') void setTrainingDone(tx.id, true)
+    if (!wasTraining && nowTraining && tx.id in done) void setTrainingDone(tx.id, false)
   }
 
   const sorted = sortLedger(milestones, order)
+  const training = inTraining(milestones, done)
   const addValid = adding ? isValidEntry(adding.kind, parsedAmounts(adding), adding.description) : false
   const editValid = isValidEntry(editDraft.kind, parsedAmounts(editDraft), editDraft.description)
 
@@ -230,6 +278,28 @@ export default function MilestonesTab({ milestones, onChange }: Props) {
           )
         })}
       </div>
+
+      {training.length > 0 && (
+        <section className="rounded-xl border border-amber-700/40 bg-stone-900/60 px-4 py-3">
+          <h2 className="text-[11px] font-semibold uppercase tracking-widest text-amber-400 mb-2">In training</h2>
+          <ul>
+            {training.map(tx => (
+              <li key={tx.id} className="flex items-center gap-3 py-1.5 border-b border-stone-800 last:border-0 text-sm">
+                <span className="text-stone-100 min-w-0 flex-1">{tx.description}</span>
+                <span className="text-xs text-stone-400"><TrainingCost entry={tx} /></span>
+                {dateKey(tx.date) && <span className="text-xs text-stone-500 whitespace-nowrap">since {formatDay(dateKey(tx.date))}</span>}
+                <button
+                  onClick={() => void setTrainingDone(tx.id, true)}
+                  className="text-xs px-2 py-0.5 rounded border border-stone-600 text-stone-300 hover:text-amber-300 hover:border-amber-500 transition-colors"
+                >
+                  Done
+                </button>
+              </li>
+            ))}
+          </ul>
+        </section>
+      )}
+      {trainingError && <p className="text-sm text-red-400">{trainingError}</p>}
 
       {/* Action buttons */}
       <div className="flex flex-wrap gap-3 items-center">

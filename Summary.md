@@ -65,6 +65,7 @@ A web-based interactive character sheet for a **custom version of the Exalted ta
 | `game_data` | Per-user reference tables (weapons, armor, tags, essence motes, anima states) |
 | `charm_library` (+ child list tables) | Global charm list; everyone reads, admins write |
 | `exalt_types` | Global exalt types with caste label and castes (10 seeded) |
+| `training_completions` | Which milestone trainings are done, when and by whom (kept outside the sheet) |
 
 The schema is `backend/database/migrations/`. Who may do what is enforced in Laravel
 (`CharacterPolicy`: owner or admin; `can:admin` routes for admin tools) and covered by
@@ -80,6 +81,28 @@ A campaign is one story a group plays. **Storyteller (ST) is a per-campaign role
 - Someone else's character opens with only the Character Sheet tab, "View only": a disabled `<fieldset>` switches off every control and nothing is saved.
 - **Circle** tab (replaced the old "Characters" NPC-notes tab, whose saved `npcs` data is left untouched and unused): the other players' PCs in each of the character's campaigns, with notes only the character's owner can read (not the ST, not admins) — `circle_notes`.
 - Server: `CampaignController`, `CharacterCampaignController` (options + campaign membership), `CircleController`; rules covered by `tests/Feature/CampaignTest.php`.
+
+## Milestones and training (training added 2026-10-16)
+The Milestones tab is a ledger of Income, Expense and Char. Creation lines (logic in
+`src/lib/milestones.ts`, tested). **Spending milestones starts a training:** a new
+Expense has "In training" ticked (untick it for something that needs none). Training
+time is entirely the Storyteller's call, so the app only records "started" (the line's
+date) and "done".
+- The player's Milestones tab lists what is in training between the totals and the
+  ledger, the longest-waiting first, each with a **Done** button. Ticking "In training"
+  again in a line's edit form puts it back (for a Done pressed by mistake).
+- The Storyteller sees an **In training** box at the top of the campaign page: every
+  character in the campaign with trainings still going, with the same Done button.
+- Who may mark done or undo: the owner, admins, and the Storyteller of any campaign the
+  character is in (`CharacterPolicy::train`). That is all the Storyteller gains; the
+  sheet itself stays view-only for them.
+- The sheet's Expense line carries only `training: true`; "done" lives in
+  `training_completions`, because the player's open page saves the whole sheet and
+  would overwrite a change the Storyteller made inside it. Expense lines logged before
+  training existed have no flag and count as done. Server: `TrainingController`,
+  tested in `tests/Feature/TrainingTest.php`.
+- Not yet: showing a charm or dot that is still in training on the sheet itself (see
+  `ROADMAP.md`).
 
 ## Character Sheet
 11 draggable/resizable panels on a 128-column grid. Layout saved per character in the database.

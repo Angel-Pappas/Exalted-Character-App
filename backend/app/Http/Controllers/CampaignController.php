@@ -6,6 +6,7 @@ use App\Enums\CharacterKind;
 use App\Models\Campaign;
 use App\Models\CampaignCharacter;
 use App\Models\Character;
+use App\Models\TrainingCompletion;
 use App\Models\User;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
@@ -90,6 +91,7 @@ class CampaignController extends Controller
             'is_storyteller' => $campaign->isStoryteller($me),
             'members' => $campaign->members->sortBy('username')->values()->map(fn (User $u) => $this->person($u)),
             'characters' => $characters,
+            'training' => $campaign->isStoryteller($me) ? $this->training($campaign) : [],
         ]);
     }
 
@@ -158,6 +160,39 @@ class CampaignController extends Controller
         $campaign->update(['storyteller_id' => $next->id]);
 
         return response()->noContent();
+    }
+
+    /**
+     * For the Storyteller: every character in the campaign with trainings not
+     * yet done, each training the longest-waiting first.
+     *
+     * @return list<array{character_id: string, character_name: string, owner: string, entries: list<array{id: string, description: string, date: string, personal: int, exalted: int, minor: int, major: int}>}>
+     */
+    private function training(Campaign $campaign): array
+    {
+        $done = TrainingCompletion::whereIn('character_id', $campaign->characters->modelKeys())
+            ->get(['character_id', 'entry_id'])
+            ->map(fn (TrainingCompletion $c) => $c->character_id.'/'.$c->entry_id)
+            ->flip();
+
+        $rows = [];
+        foreach ($campaign->characters->sortBy('name', SORT_NATURAL | SORT_FLAG_CASE) as $character) {
+            $open = array_values(array_filter(
+                $character->trainingEntries(),
+                fn (array $entry) => ! $done->has($character->id.'/'.$entry['id']),
+            ));
+            usort($open, fn (array $a, array $b) => strcmp($a['date'], $b['date']));
+            if ($open !== []) {
+                $rows[] = [
+                    'character_id' => $character->id,
+                    'character_name' => $character->name,
+                    'owner' => $character->user->username,
+                    'entries' => $open,
+                ];
+            }
+        }
+
+        return $rows;
     }
 
     private function storytellerOnly(Request $request, Campaign $campaign): void

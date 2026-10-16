@@ -1,4 +1,4 @@
-import { useState, useCallback } from 'react'
+import { useState, useCallback, useRef } from 'react'
 import { useParams, useNavigate } from 'react-router-dom'
 import { api } from '../lib/api'
 import { useCharacter, useGameData } from '../hooks/useCharacter'
@@ -22,12 +22,24 @@ export default function CharacterPage() {
   const [saving, setSaving] = useState(false)
   const [saveTimeout, setSaveTimeout] = useState<ReturnType<typeof setTimeout> | null>(null)
 
+  // The latest data not yet sent, so flushSave can send it at once.
+  const pending = useRef<CharacterData | null>(null)
+
   const save = useCallback(async (newData: CharacterData) => {
     if (!id) return
+    if (pending.current === newData) pending.current = null
     setSaving(true)
     await api('PUT', `characters/${id}`, { data: newData })
     setSaving(false)
   }, [id])
+
+  // Sends a waiting save now. Marking a training done needs the server to
+  // have the ledger line that was perhaps logged a moment ago.
+  async function flushSave() {
+    if (!pending.current) return
+    if (saveTimeout) clearTimeout(saveTimeout)
+    await save(pending.current)
+  }
 
   // Someone else's character (a Storyteller's view, or a public one in a shared
   // campaign) is shown read-only: only the sheet, nothing clickable, never saved.
@@ -37,6 +49,7 @@ export default function CharacterPage() {
     if (readOnly) { setData(prev => ({ ...prev, ...partial })); return }
     setData(prev => {
       const next = { ...prev, ...partial }
+      pending.current = next
       if (saveTimeout) clearTimeout(saveTimeout)
       setSaveTimeout(setTimeout(() => save(next), 1000))
       return next
@@ -111,8 +124,10 @@ export default function CharacterPage() {
         )}
         {!readOnly && activeTab === 'milestones' && (
           <MilestonesTab
+            characterId={character.id}
             milestones={data.milestones}
             onChange={milestones => updateData({ milestones })}
+            beforeTraining={flushSave}
           />
         )}
         {!readOnly && activeTab === 'notes' && (

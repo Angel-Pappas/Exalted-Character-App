@@ -149,7 +149,13 @@ export interface MilestoneTransaction {
   major: number
   description: string
   date: string   // YYYY-MM-DD (older entries: full ISO timestamp); '' = undated
+  // An Expense that starts a training (logged since 2026-10-16). Whether it is
+  // done lives on the server (GET characters/:id/training), not in the sheet.
+  training?: boolean
 }
+
+// Finished trainings: Expense entry id → the day it was marked done (YYYY-MM-DD).
+export type TrainingDone = Record<string, string>
 
 export interface NpcEntry {
   id: string

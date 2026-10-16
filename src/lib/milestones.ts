@@ -1,4 +1,4 @@
-import type { MilestoneKind, MilestoneTransaction } from '../types/character'
+import type { MilestoneKind, MilestoneTransaction, TrainingDone } from '../types/character'
 
 // The milestone ledger works like Angel's spreadsheet: every row is Income,
 // Expense, or a Character Creation note. Total = all income; Remaining =
@@ -89,4 +89,27 @@ export function sortLedger(entries: MilestoneTransaction[], order: 'oldest' | 'n
     .map(x => x.entry)
   const oldest = [...creation, ...rest]
   return order === 'oldest' ? oldest : oldest.reverse()
+}
+
+/**
+ * The Expenses still in training, the longest-waiting first. Only entries
+ * flagged `training` count: everything logged before training existed is
+ * treated as already done.
+ */
+export function inTraining(entries: MilestoneTransaction[], done: TrainingDone): MilestoneTransaction[] {
+  return entries
+    .map((entry, index) => ({ entry, index, key: dateKey(entry.date) }))
+    .filter(x => x.entry.kind === 'purchase' && x.entry.training === true && !(x.entry.id in done))
+    .sort((a, b) => (a.key < b.key ? -1 : a.key > b.key ? 1 : a.index - b.index))
+    .map(x => x.entry)
+}
+
+const MONTHS = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec']
+
+/** A YYYY-MM-DD day as "12 Oct", with the year only when it isn't this year's. */
+export function formatDay(key: string, today: string = todayKey()): string {
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(key)) return ''
+  const [y, m, d] = key.split('-')
+  const day = `${Number(d)} ${MONTHS[Number(m) - 1]}`
+  return y === today.slice(0, 4) ? day : `${day} ${y}`
 }

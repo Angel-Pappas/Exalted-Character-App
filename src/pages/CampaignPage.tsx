@@ -4,6 +4,8 @@ import { api } from '../lib/api'
 import { useAuth } from '../contexts/AuthContext'
 import { TooltipLayer } from '../components/Tooltip'
 import ConfirmButton from '../components/ConfirmButton'
+import { TrainingCost } from '../components/TrainingCost'
+import { formatDay } from '../lib/milestones'
 import type { Character } from '../types/character'
 import { KIND_LABEL } from '../types/campaign'
 import type { CampaignCharacter, CampaignDetail, Person } from '../types/campaign'
@@ -127,6 +129,32 @@ export default function CampaignPage() {
 
       <div className="max-w-4xl mx-auto px-4 py-6 space-y-4">
         {error && <p className="text-sm text-red-400">{error}</p>}
+
+        {st && campaign.training.length > 0 && (
+          <section className={card}>
+            <h2 className={heading}>In training</h2>
+            <div className="space-y-3">
+              {campaign.training.map(t => (
+                <div key={t.character_id}>
+                  <div className="flex items-baseline gap-2 mb-1">
+                    <button onClick={() => navigate(`/character/${t.character_id}`)} className="text-sm font-semibold text-stone-100 hover:text-amber-400 transition-colors">{t.character_name}</button>
+                    <span className="text-xs text-stone-500">{t.owner}</span>
+                  </div>
+                  <ul>
+                    {t.entries.map(e => (
+                      <li key={e.id} className="flex items-center gap-3 py-1 pl-3 border-l border-stone-700 text-sm">
+                        <span className="text-stone-200 min-w-0 flex-1">{e.description}</span>
+                        <span className="text-xs text-stone-400"><TrainingCost entry={e} /></span>
+                        {e.date && <span className="text-xs text-stone-500 whitespace-nowrap">since {formatDay(e.date)}</span>}
+                        <button onClick={() => void act('PUT', `characters/${t.character_id}/training/${e.id}`)} className={smallBtn}>Done</button>
+                      </li>
+                    ))}
+                  </ul>
+                </div>
+              ))}
+            </div>
+          </section>
+        )}
 
         <div className="grid gap-4 md:grid-cols-2">
           <section className={card}>

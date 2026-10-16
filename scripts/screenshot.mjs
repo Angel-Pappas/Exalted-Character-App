@@ -1,7 +1,7 @@
 // Screenshot app pages from the DEV checkout (dev database + the `demo` login from
 // DemoSeeder, never live), so a change can be looked at before it ships. Usage:
 //
-//   npm run shots -- / /characters "/character/<id>"   [--mobile] [--dark] [--wide]
+//   npm run shots -- / /characters "/character/<id>"   [--mobile] [--dark] [--wide] [--click=Milestones]
 //
 // (the `--` matters: without it npm swallows the --flags itself)
 //
@@ -38,6 +38,11 @@ const args = process.argv.slice(2);
 const mobile = args.includes('--mobile');
 const dark = args.includes('--dark');
 const wide = args.includes('--wide');
+// --click=Text (repeatable) clicks the button with that text on each page, in
+// order, before the shot — e.g. --click=Milestones to open that tab.
+const clicks = args
+    .filter((a) => a.startsWith('--click='))
+    .map((a) => a.slice('--click='.length));
 const paths = args.filter((a) => !a.startsWith('--'));
 if (paths.length === 0) paths.push('/');
 
@@ -119,9 +124,14 @@ try {
     for (const path of paths) {
         await page.goto(`${BASE}${path}`);
         await page.waitForLoadState('networkidle');
+        for (const text of clicks) {
+            await page.getByRole('button', { name: text, exact: true }).first().click();
+            await page.waitForLoadState('networkidle');
+        }
         const slug =
             path.replace(/[^a-z0-9]+/gi, '-').replace(/^-|-$/g, '') || 'home';
-        const file = `${OUT}/${slug}${mobile ? '-mobile' : ''}${wide ? '-wide' : ''}${dark ? '-dark' : ''}.png`;
+        const clicked = clicks.map((c) => `-${c.replace(/[^a-z0-9]+/gi, '-')}`).join('');
+        const file = `${OUT}/${slug}${clicked}${mobile ? '-mobile' : ''}${wide ? '-wide' : ''}${dark ? '-dark' : ''}.png`;
         await page.screenshot({ path: file, fullPage: wide });
         console.log(file);
     }

@@ -28,6 +28,25 @@ export interface CampaignCharacter {
   can_view: boolean
 }
 
+// One training not yet done: an Expense line from the character's milestone ledger.
+export interface TrainingEntry {
+  id: string
+  description: string
+  date: string   // YYYY-MM-DD it started; '' = undated
+  personal: number
+  exalted: number
+  minor: number
+  major: number
+}
+
+// For the Storyteller: a character with trainings still going, the longest-waiting first.
+export interface CampaignTraining {
+  character_id: string
+  character_name: string
+  owner: string
+  entries: TrainingEntry[]
+}
+
 export interface CampaignDetail {
   id: string
   name: string
@@ -35,6 +54,7 @@ export interface CampaignDetail {
   is_storyteller: boolean
   members: Person[]
   characters: CampaignCharacter[]
+  training: CampaignTraining[]   // Storyteller only; empty for everyone else
 }
 
 // One of the owner's campaigns, and this character's place in it (if any).

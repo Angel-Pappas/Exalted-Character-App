@@ -1,6 +1,6 @@
 import { describe, it, expect } from 'vitest'
 import {
-  MILESTONE_TYPES, MILESTONE_USES, dateKey, isValidEntry, parseAmount, remaining, sortLedger, todayKey, totalEarned, totalSpent,
+  MILESTONE_TYPES, MILESTONE_USES, dateKey, formatDay, inTraining, isValidEntry, parseAmount, remaining, sortLedger, todayKey, totalEarned, totalSpent,
 } from './milestones'
 import type { MilestoneTransaction } from '../types/character'
 
@@ -122,5 +122,38 @@ describe('Ledger order', () => {
 describe('Spend options', () => {
   it('every milestone type lists at least one thing it can buy', () => {
     for (const t of MILESTONE_TYPES) expect(MILESTONE_USES[t].length).toBeGreaterThan(0)
+  })
+})
+
+describe('Training — "spending milestones starts a training; the player or ST marks it done"', () => {
+  const old = tx({ kind: 'purchase', description: 'Bought before training existed', date: '2026-09-01' })
+  const late = tx({ kind: 'purchase', training: true, description: 'Excellent Strike', date: '2026-10-14' })
+  const early = tx({ kind: 'purchase', training: true, description: 'Ox Body', date: '2026-10-02' })
+  const finished = tx({ kind: 'purchase', training: true, description: 'Awareness 3', date: '2026-10-01' })
+  const income = tx({ kind: 'gain', training: true, personal: 2 })
+  const ledger = [old, late, income, early, finished]
+
+  it('lists what is in training, the longest-waiting first', () => {
+    expect(inTraining(ledger, { [finished.id]: '2026-10-10' })).toEqual([early, late])
+  })
+
+  it('treats Expenses logged before training existed as done', () => {
+    expect(inTraining([old], {})).toEqual([])
+  })
+
+  it('only Expenses train — never Income or creation notes', () => {
+    expect(inTraining([income, tx({ kind: 'creation', training: true })], {})).toEqual([])
+  })
+
+  it('keeps logging order for trainings started the same day', () => {
+    const a = tx({ kind: 'purchase', training: true, date: '2026-10-05' })
+    const b = tx({ kind: 'purchase', training: true, date: '2026-10-05' })
+    expect(inTraining([b, a], {})).toEqual([b, a])
+  })
+
+  it('shows days as "12 Oct", adding the year only when it is not this year', () => {
+    expect(formatDay('2026-10-12', '2026-10-16')).toBe('12 Oct')
+    expect(formatDay('2025-01-03', '2026-10-16')).toBe('3 Jan 2025')
+    expect(formatDay('', '2026-10-16')).toBe('')
   })
 })

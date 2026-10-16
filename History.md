@@ -4,6 +4,13 @@ One entry per shipped change, newest first: what changed and **why**. How things
 now is in `Summary.md`; plans in `ROADMAP.md`. Entries before 2026-10-15 were rebuilt
 from the git history (one per day, its commits listed).
 
+- **2026-10-16** — **Training.** Angel: spending milestones starts a training, and
+  the Storyteller decides when it is complete. New Expenses start "In training"; the
+  player's Milestones tab and the Storyteller's campaign page list what is in
+  training, and either can mark it done ("In the oven" at the table; the app says
+  "In training", Angel's pick). "Done" is kept in its own table, not in the sheet, so
+  the player's next autosave can't undo the Storyteller's click; old Expenses count
+  as done. The screenshot script gained `--click=Text` to open a tab first.
 - **2026-10-16** — **A summary for every charm.** Angel asked for the remaining 464
   library charms to get a summary like Kaien's 20, so every card says what its charm
   does. Drafted from each charm's book text in the same style (cost and step first,

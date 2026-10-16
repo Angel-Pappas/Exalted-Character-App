@@ -9,6 +9,7 @@ use App\Http\Controllers\CharmController;
 use App\Http\Controllers\CircleController;
 use App\Http\Controllers\ExaltTypeController;
 use App\Http\Controllers\GameDataController;
+use App\Http\Controllers\TrainingController;
 use Illuminate\Support\Facades\Route;
 
 // Loaded with the `web` middleware group under the /api prefix (see
@@ -34,6 +35,9 @@ Route::middleware('auth')->group(function () {
     Route::delete('characters/{character}/campaigns/{campaign}', [CharacterCampaignController::class, 'destroy']);
     Route::get('characters/{character}/circle', [CircleController::class, 'show']);
     Route::put('characters/{character}/circle/{subject}', [CircleController::class, 'update']);
+    Route::get('characters/{character}/training', [TrainingController::class, 'index']);
+    Route::put('characters/{character}/training/{entry}', [TrainingController::class, 'complete']);
+    Route::delete('characters/{character}/training/{entry}', [TrainingController::class, 'reopen']);
 
     Route::apiResource('campaigns', CampaignController::class);
     Route::post('campaigns/{campaign}/members', [CampaignController::class, 'addMember']);
