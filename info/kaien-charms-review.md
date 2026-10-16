@@ -1,4 +1,4 @@
-# Kaien's charms — the agreed plan (round 3)
+# Kaien's charms — the agreed plan
 
 Updated 2026-10-16 with Angel's answers. Nothing is built yet. Go through the charms, then
 give the green light (or change any numbered item).
@@ -32,15 +32,18 @@ give the green light (or change any numbered item).
 - **B4 — Set once per charm in Admin → Charms**, true for every character: how many commit
   dots, whether it has the in-use icon, and its purchase limit.
 
+## Settled since round 3
+
+- **Purchase limits count every purchase**, first one included: Unconquered Sun's Sight ≤
+  Essence (3), Ox Body ≤ Physique (5), Enhanced Senses ≤ Essence (3).
+- **Arsenal-Summoning Gesture shows ×3**: weapons, armor and the Dawn mode.
+
 ## Still to confirm
 
-- **S1 — Purchase limits.** For Unconquered Sun's Sight, "a number of times equal to her
-  Essence" counts the *repurchases*: 1 purchase + Essence repurchases (Kaien: 1 + 3 = 4).
-  Do Ox Body Technique ("equal to the character's Physique") and Enhanced Senses ("equal to
-  the Exalt's Essence") count the same way: 1 + Physique and 1 + Essence?
-- **S2 — Arsenal-Summoning Gesture.** The sheet shows ×2 (Weapons, Armor), and the Dawn mode
-  is owned as a mode. So the "×" stays 2 and there's no "!", right? (The ledger also has its
-  own lines for Five-Direction Armaments and Perfected Panoply Selection.)
+- **T1 — Arsenal's third purchase.** The sheet has no way to record the Dawn mode as a
+  purchase of this charm yet. My proposal is 8.1 + 8.2: add "Perfected Panoply Selection" as
+  a third choice for the charm (limit 3), and I set Kaien's copy to ×3 with that choice
+  myself (his ledger already has the line, so no new ledger line). OK?
 
 ## At a glance
 
@@ -51,9 +54,9 @@ give the green light (or change any numbered item).
   Thousand Cuts (Soak + wound penalty).
 - **Choices:** Righteous Lion Spirit (an Intimacy), Unconquered Sun's Sight (an ally per
   repurchase), Ward of the Sun (the ward's name while committed).
-- **"!" today:** Righteous Lion Spirit (no Intimacy chosen), Unconquered Sun's Sight (×5,
-  and allies not named).
-- **Nothing to build:** the other 13.
+- **"!" today:** Righteous Lion Spirit (no Intimacy chosen), Unconquered Sun's Sight (×5
+  over a limit of 3, and allies not named).
+- **Nothing to build:** the other 12.
 
 ---
 
@@ -145,7 +148,7 @@ give the green light (or change any numbered item).
 
 **Plan:** nothing to build.
 
-## 8. Arsenal-Summoning Gesture ×2 (Weapons, Armor) — Universal, p. 191
+## 8. Arsenal-Summoning Gesture ×2, should be ×3 — Universal, p. 191
 
 > Spend 1 mote to summon your weapon or armor, or 2 motes to summon both. If the weapon or
 > armor in question is within short range, Arsenal-Summoning Gesture is a reflexive action.
@@ -163,7 +166,10 @@ give the green light (or change any numbered item).
 > you have repurchased Arsenal Summoning Gesture, you can use this mode to replace the armor
 > you are currently wearing similarly.
 
-**Plan:** nothing to build or mark. Per your homebrew, the purchases are weapons, armor and the Dawn mode (Perfected Panoply Selection). See **S2**.
+**Plan:** per your homebrew it has 3 purchases: weapons, armor and the Dawn mode (Perfected Panoply Selection). The sheet shows ×2 today. See **T1**.
+
+- **8.1** Add "Perfected Panoply Selection" as a third choice for this charm (Admin → Charms), with a limit of 3.
+- **8.2** Set Kaien's copy to ×3 with that choice (a one-off change to his sheet; the ledger already has the line). Needs your yes in **T1**.
 
 ## 9. Lightning Speed ×1 — Universal, p. 187
 
@@ -299,7 +305,7 @@ give the green light (or change any numbered item).
 > The Soak increase only applies once.
 > *Solar mode:* The Exalt gains their choice of an additional 0 or two −1 Health levels.
 
-**Plan:** already done. Limit: Physique (see **S1**); he has 3, and all health-level choices are made.
+**Plan:** already done. Limit: Physique (5); he has 3, and all health-level choices are made.
 
 ## 20. Endurance of a Thousand Cuts ×2 — Solar, p. 275
 
@@ -324,9 +330,9 @@ give the green light (or change any numbered item).
 > must be for a different sense each time. If two senses would apply to the same roll, double
 > 8s.
 
-**Plan:** nothing to build. Two senses chosen; within any limit.
+**Plan:** nothing to build. Limit: Essence (3); he has 2, both senses chosen.
 
-## 22. Unconquered Sun's Sight ×5 (should be ×4) — Solar, p. 272
+## 22. Unconquered Sun's Sight ×5 (limit 3) — Solar, p. 272
 
 > Commit 1 mote. For the scene, the Solar recognizes when someone uses deception to
 > masquerade as something toward which she has an Intimacy. When the player suspects
@@ -338,7 +344,7 @@ give the green light (or change any numbered item).
 > deceptions related to their Intimacies, as well. Whenever an ally benefits from this Charm,
 > gain 1 anima.
 
-**Plan:** 1 commit dot and an in-use icon; each repurchase names an ally. Kaien should have it ×4 (1 purchase + 3 repurchases). **The live sheet says ×5, so it shows the "!" until that's fixed** (Undo last purchase in the charm window), as well as the extra ledger line you mentioned.
+**Plan:** 1 commit dot and an in-use icon; each repurchase names an ally. Limit: Essence (3). **The live sheet says ×5, so it shows the "!" until it's down to ×3** (Undo last purchase in the charm window); you're fixing the ledger lines yourself.
 
 - **22.1** One commit dot and the in-use icon on the card.
 - **22.2** Each repurchase asks for an ally's name (free text) when bought. The charm window lists the named allies.
