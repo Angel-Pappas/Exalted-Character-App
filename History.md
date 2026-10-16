@@ -4,6 +4,10 @@ One entry per shipped change, newest first: what changed and **why**. How things
 now is in `Summary.md`; plans in `ROADMAP.md`. Entries before 2026-10-15 were rebuilt
 from the git history (one per day, its commits listed).
 
+- **2026-10-16** — **No implementation on/off switch.** Angel didn't want it. An
+  implemented charm (Ox Body, Fists of Iron, Excellency) now always applies;
+  `mechanicalEnabled` is still saved but no longer read, so an old "off" can't get
+  stuck. Checked first: no live charm had it switched off.
 - **2026-10-16** — **No ⚙ on charm cards.** Angel doesn't need to see on the card
   whether a charm's implementation is on; it's shown and switched in the charm window.
 - **2026-10-16** — **Charm window: every control in the header, as icons.** Angel

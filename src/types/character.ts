@@ -72,7 +72,7 @@ export interface CharacterCharm {
   customDescription: string | null
   customSummary?: string | null  // the player's own card summary; absent/null = the library's suggestion
   mechanicalKeyOverride: string | null  // null = use libraryMechanicalKey
-  mechanicalEnabled: boolean
+  mechanicalEnabled: boolean  // no longer read (the on/off switch was removed 2026-10-16: an implemented charm always applies); still written for older code paths and kept in saved data
   count?: number           // number of times purchased (1 + repurchases); absent = 1
   picks?: string[]         // one entry per purchase; only used when the library charm has a choiceType
   groupedPicks?: { target: string; selected: string[] }[]  // used instead of picks for choiceType === 'multiselect'; one entry per purchase/target

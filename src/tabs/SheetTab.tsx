@@ -27,7 +27,7 @@ import {
 } from '../lib/health'
 import type { CharmLibraryRow } from '../components/CharmLibraryTab'
 import ModalPortal from '../components/ModalPortal'
-import { FolderInput, Pencil, RefreshCw, RotateCcw, Settings, Trash2, Undo2, X } from 'lucide-react'
+import { FolderInput, Pencil, RefreshCw, RotateCcw, Trash2, Undo2, X } from 'lucide-react'
 import { api } from '../lib/api'
 import { Tooltip, TooltipLayer } from '../components/Tooltip'
 
@@ -45,12 +45,11 @@ const ABILITIES = [
 
 const DEFENSES = ['Parry', 'Evasion', 'Soak', 'Hardness', 'Resolve']
 
-// A charm's implementation is live when it carries this key and its toggle is on.
+// A charm's implementation is live whenever it carries one of the keys the sheet
+// computes (ox_body, foi, excellency); there is no on/off switch.
 const activeKey = (c: CharacterCharm) => c.mechanicalKeyOverride ?? c.libraryMechanicalKey
 const OX_BODY_KEY = 'ox_body'
-// Mechanical keys the sheet actually computes; a charm carrying one shows an "Auto" tag.
-const AUTOMATED_KEYS = new Set([OX_BODY_KEY, 'foi', 'excellency'])
-const findOxBody = (charms: CharacterCharm[]) => charms.find(c => activeKey(c) === OX_BODY_KEY && c.mechanicalEnabled)
+const findOxBody = (charms: CharacterCharm[]) => charms.find(c => activeKey(c) === OX_BODY_KEY)
 
 // Rows the Essence panel needs to show Essence/Power/Will, Motes and Anima without
 // scrolling. LEGACY_ESSENCE_H is the height the first merge assigned when it folded
@@ -644,7 +643,6 @@ function CharmWindow({ charm, lib, groups, exaltType, caste, essence, abilities,
   const [editing, setEditing] = useState<'summary' | 'text' | null>(null)
   const count = charm.count ?? 1
   const key = activeKey(charm)
-  const implemented = key !== null && AUTOMATED_KEYS.has(key)
   const summary = cardSummary(charm, lib?.summary)
   const meta = lib ? [lib.type, lib.abilities.join(', '), lib.page ? `p. ${lib.page}` : ''].filter(Boolean).join(' · ') : ''
   const requires = lib ? [
@@ -692,16 +690,6 @@ function CharmWindow({ charm, lib, groups, exaltType, caste, essence, abilities,
                 {groups.map(g => <option key={g.id} value={g.id}>{g.name}</option>)}
               </select>
               {divider}
-              <button aria-pressed={implemented ? charm.mechanicalEnabled : undefined}
-                onClick={() => implemented && onChange({ ...charm, mechanicalEnabled: !charm.mechanicalEnabled })}
-                data-tip={!implemented ? 'Not implemented — the sheet doesn\'t calculate this charm'
-                  : charm.mechanicalEnabled ? 'Implementation on — click to turn off' : 'Implementation off — click to turn on'}
-                aria-label={!implemented ? 'Not implemented' : charm.mechanicalEnabled ? 'Turn implementation off' : 'Turn implementation on'}
-                className={implemented && charm.mechanicalEnabled
-                  ? 'w-7 h-7 shrink-0 inline-flex items-center justify-center rounded border border-amber-500/60 bg-amber-500/10 text-amber-400 hover:text-amber-300 transition-colors'
-                  : iconBtn(implemented)}>
-                <Settings size={15} aria-hidden />
-              </button>
               <button onClick={() => lib && buyAgain && onRepurchase(lib)} aria-label="Repurchase"
                 data-tip={buyAgain ? 'Repurchase (buy again)' : 'Repurchase — not available for this charm'}
                 className={iconBtn(buyAgain)}><RefreshCw size={15} aria-hidden /></button>
@@ -762,7 +750,7 @@ function CharmWindow({ charm, lib, groups, exaltType, caste, essence, abilities,
               )}
             </section>
 
-            {key === OX_BODY_KEY && charm.mechanicalEnabled && (
+            {key === OX_BODY_KEY && (
               <section className="rounded border border-amber-900/50 bg-amber-950/20 px-2 py-1.5 space-y-1">
                 <p className={sectionLabel}>Health levels gained</p>
                 {oxBodyHasChoice(exaltType, caste) ? (
@@ -1924,7 +1912,7 @@ function InventoryPanel({ items, onChange, foi, foiOriginals, onFoiChange, dragE
                   <span className="text-xs font-semibold text-amber-400/80 uppercase tracking-wider">{label}</span>
                   <div className="flex items-center gap-1.5">
                     {kind === 'weapon' && (() => {
-                      const foiCharm = charms.find(c => activeKey(c) === 'foi' && c.mechanicalEnabled)
+                      const foiCharm = charms.find(c => activeKey(c) === 'foi')
                       if (!foiCharm) return null
                       const hasUnarmed = kindItems.some(i => i.weight === 'Unarmed')
                       return (
@@ -2271,7 +2259,7 @@ export default function SheetTab({ sheet, onChange, editMode, readOnly = false, 
       // purchase; while its implementation is active, the Ex tags are derived
       // from those picks instead of being manually toggled — see CLAUDE.md /
       // the mechanicalKey gating pattern used by FoI in InventoryPanel above.
-      const excellencyCharms = data.charms.filter(c => activeKey(c) === 'excellency' && c.mechanicalEnabled)
+      const excellencyCharms = data.charms.filter(c => activeKey(c) === 'excellency')
       const excellencyManaged = excellencyCharms.length > 0
       const excellencyAbilities = new Set(excellencyCharms.flatMap(c => c.picks ?? []))
 
