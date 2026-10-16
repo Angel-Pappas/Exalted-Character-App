@@ -14,12 +14,10 @@ the priorities — the order under **Next** is a suggestion until he does.
 - [x] Moved to our VM (Laravel API + MySQL), 2026-10-01.
 - [x] Way of working: shared rules, demo login + screenshots, one-command ship.
 - [x] Charms panel: group buttons, compact cards with summaries, hover, charm window (2026-10-16).
+- [x] Summaries for every charm in the library (2026-10-16).
 
 ## Next (suggested)
 
-- [ ] **Charm summaries for the rest of the library** — only Kaien's 20 of 484 have
-      one; the others show the start of their text. Written in Admin → Charms (Angel
-      said he doesn't need them drafted for now).
 - [ ] **Cut-off headings on the character sheet** — "Essence", "Anima" and "Power"
       show as "ESSE…", "ANI…", "PO…" at desktop width (found in the first screenshot
       review, 2026-10-15).

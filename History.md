@@ -4,6 +4,11 @@ One entry per shipped change, newest first: what changed and **why**. How things
 now is in `Summary.md`; plans in `ROADMAP.md`. Entries before 2026-10-15 were rebuilt
 from the git history (one per day, its commits listed).
 
+- **2026-10-16** — **A summary for every charm.** Angel asked for the remaining 464
+  library charms to get a summary like Kaien's 20, so every card says what its charm
+  does. Drafted from each charm's book text in the same style (cost and step first,
+  core effect only) and filled by migration `2026_10_16_000003`, which only fills
+  empty summaries — one written in Admin is never overwritten (tested).
 - **2026-10-16** — **No implementation on/off switch.** Angel didn't want it. An
   implemented charm (Ox Body, Fists of Iron, Excellency) now always applies;
   `mechanicalEnabled` is still saved but no longer read, so an old "off" can't get

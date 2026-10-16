@@ -138,3 +138,16 @@ it('lets only admins change a summary', function () {
 
     expect($charm->refresh()->summary)->toBeNull();
 });
+
+it('fills empty library summaries but never overwrites one written in Admin', function () {
+    $empty = Charm::query()->create(['name' => 'Perfect Shadow Stillness', 'description' => '']);
+    $edited = Charm::query()->create(['name' => 'Ten Ox Meditation', 'description' => '', 'summary' => 'Written in Admin.']);
+    DB::table('charm_library')->where('id', $empty->id)->update(['id' => '569b8f8b-cfa4-486e-84ca-fead121cf6a6']);
+    DB::table('charm_library')->where('id', $edited->id)->update(['id' => '91fbf118-441b-4660-b8a0-dfe683fefe96']);
+
+    (require database_path('migrations/2026_10_16_000003_fill_remaining_charm_summaries.php'))->up();
+
+    expect(Charm::query()->findOrFail('569b8f8b-cfa4-486e-84ca-fead121cf6a6')->summary)
+        ->toBe('Double 9s on Stealth to stay unseen (8s if you didn\'t move last turn).')
+        ->and(Charm::query()->findOrFail('91fbf118-441b-4660-b8a0-dfe683fefe96')->summary)->toBe('Written in Admin.');
+});
