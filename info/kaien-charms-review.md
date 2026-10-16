@@ -1,84 +1,59 @@
-# Kaien's charms — text and suggested implementation (round 2)
+# Kaien's charms — the agreed plan (round 3)
 
-Redone 2026-10-16 under Angel's rules. Nothing here is built yet. Answer the questions,
-then approve, change or drop each numbered suggestion.
+Updated 2026-10-16 with Angel's answers. Nothing is built yet. Go through the charms, then
+give the green light (or change any numbered item).
 
-## Your rules, as I understood them
+## The rules we agreed
 
-- No "Use" buttons, and no tracking of steps or of what a charm costs to use: you track that
-  yourselves.
-- **Commit dots:** a charm that commits motes (forced or optional) shows empty dots on its
-  card, one per mote. Clicking one lights it and commits a mote in the Essence panel,
-  exactly as if you'd raised Committed by hand.
-- **In-use icon:** a charm with an ongoing effect shows an icon you click on and off. If the
-  effect changes something on the sheet, it applies only while the icon is on. How long it
-  lasts (scene, combat) is up to you.
-- **Modes:** every mode in Kaien's charms is owned, except upgrades whose stat requirements
-  he doesn't meet yet.
-- **"!" mark:** a charm bought more times than its limit, or missing a choice it needs,
-  shows an exclamation mark until it's fixed.
-- Anything unclear is a question below, not a guess.
+- No "Use" buttons, and no tracking of steps or of what a charm costs to use.
+- **Commit dots** for charms that commit motes, forced or optional.
+- **In-use icon** for every charm with an ongoing effect, whether or not it commits motes.
+  A sheet effect works only while the icon is on. How long it lasts is up to you.
+- Dots and icon are separate: lighting a dot doesn't switch the icon on, and switching the
+  icon off doesn't release motes.
+- All modes in Kaien's charms are owned, except upgrades his stats don't unlock yet (the
+  charm window already greys those out).
+- **"!" mark** for a charm over its purchase limit, or missing a choice it needs.
+- No read-only hints (Glorious Presence, Excellency dice, Enhanced Senses, Voice), and no
+  Arsenal "Elsewhere".
 
 ## The building blocks
 
-- **B1 — Commit dots.** Empty dots on the card, one per mote the charm commits. Clicking
-  an empty dot does what raising Committed by hand does today: 1 mote from Current to
-  Committed, and anima +1. If Current is 0, the dot won't light. See **Q1**.
-- **B2 — In-use icon.** A small icon on the card of charms with an ongoing effect, off by
-  default; click to turn on and off. A sheet effect works only while it's on. A charm whose
-  purchase is still in training keeps its effects off, as now.
-- **B3 — "!" mark.** On the card and in the charm window, saying what to fix: "Bought 5×;
-  the limit is 3 (Essence)" or "A purchase is missing its choice". Checked from:
-  - each charm's purchase limit, set once in Admin → Charms (a fixed number, or "Essence",
-    or "Physique", etc.);
-  - any purchase whose choice isn't made yet (an Excellency's Ability, an Enhanced Senses
-    sense, Ox Body's health-level choice).
-- **B4 — Which charms have dots or an icon.** Set once per charm in Admin → Charms: how many
-  commit dots (forced or optional) and whether it has an in-use icon. That way it works for
-  every character, not just Kaien. Each sheet effect (Soak, Defend Other) is coded per
-  charm, like Ox Body is now. See **Q4**.
+- **B1 — Commit dots.** Empty dots on the card, one per mote the charm commits. Clicking an
+  empty dot does exactly what raising Committed by hand does: 1 mote from Current to
+  Committed, and anima +1 (it won't light if Current is 0). Clicking a lit dot does exactly
+  what lowering Committed by hand does: the mote goes back to Current.
+- **B2 — In-use icon.** Off by default; click to turn it on or off. A sheet effect applies only
+  while it's on (and never while that purchase is still in training). Fists of Iron's is
+  display only (see 2.1).
+- **B3 — "!" mark.** On the card and in the charm window, with what to fix: "Bought 5×; the
+  limit is 4" or "Choose the Intimacy it protects". The charm window offers the fix where
+  it's a choice (Righteous Lion Spirit's Intimacy, Unconquered Sun's Sight's allies).
+- **B4 — Set once per charm in Admin → Charms**, true for every character: how many commit
+  dots, whether it has the in-use icon, and its purchase limit.
 
-Modes: nothing to build. The charm window already greys out a mode whose requirements
-aren't met (e.g. Divine Army Supremacy needs War 5).
+## Still to confirm
 
-## Questions
+- **S1 — Purchase limits.** For Unconquered Sun's Sight, "a number of times equal to her
+  Essence" counts the *repurchases*: 1 purchase + Essence repurchases (Kaien: 1 + 3 = 4).
+  Do Ox Body Technique ("equal to the character's Physique") and Enhanced Senses ("equal to
+  the Exalt's Essence") count the same way: 1 + Physique and 1 + Essence?
+- **S2 — Arsenal-Summoning Gesture.** The sheet shows ×2 (Weapons, Armor), and the Dawn mode
+  is owned as a mode. So the "×" stays 2 and there's no "!", right? (The ledger also has its
+  own lines for Five-Direction Armaments and Perfected Panoply Selection.)
 
-- **Q1.** Clicking a *lit* dot: should it give the mote back, exactly like lowering
-  Committed by hand (1 mote back to Current, anima unchanged)?
-- **Q2.** A charm that both commits and has an ongoing effect (Ward of the Sun, Iron Kettle
-  Body's commit, Sun King Radiance, Unconquered Sun's Sight, League of Iron Preparation):
-  should its lit dots *be* the "in use" state, or should it also get a separate in-use icon?
-- **Q3.** Iron Kettle Body: 1 lit dot = +1 Soak and 2 lit dots = +2 Soak?
-- **Q4.** OK to set "commit dots / in-use icon / purchase limit" per charm in Admin →
-  Charms (B4), so all characters get them?
-- **Q5.** Endurance of a Thousand Cuts: the wound penalty is shown as −1, −2…; "add the
-  wound penalty to Soak" means Soak +1, +2…, right?
-- **Q6.** Fists of Iron already has its own on/off (the FoI button by the Weapons list).
-  Keep that, or replace it with the in-use icon on its card?
-- **Q7.** Ward of the Sun: while it's in use, should switching on Full Defense also switch
-  Defend Other on by itself, or just show a note?
-- **Q8.** Righteous Lion Spirit: should the sheet record which Major Intimacy it protects
-  (with the "!" until chosen) and mark that Intimacy as unbreakable in the Intimacies panel?
-  Or leave it alone?
-- **Q9.** Arsenal-Summoning Gesture: the sheet says ×2, and the ledger has 3 purchases
-  (Char. Creation + 2 repurchases). Is the third ledger line a mistake, or something else?
-- **Q10.** Unconquered Sun's Sight: how many does Kaien really have (sheet ×5, ledger 4,
-  limit 3)? And each repurchase names an ally: should the sheet record those names (with
-  the "!" until named), or not?
-- **Q11.** I earlier suggested some read-only hints: Glorious Presence showing "doubles 8s"
-  at Iconic anima, Excellency's dice on hover, Enhanced Senses on the Awareness row, and
-  Voice That Holds the Line's Resonant note at Bonfire. Want any of them, or none?
-- **Q12.** I left out Arsenal's "Elsewhere" (marking which weapons and armor are banished),
-  since it's tracking an action. Want it, or not?
+## At a glance
 
-## In short
-
-- **Commit dots:** League of Iron Preparation (2), Iron Kettle Body (2, optional), Ward of
+- **Commit dots + in-use icon:** League of Iron Preparation (2), Iron Kettle Body (2), Ward of
   the Sun (1), Sun King Radiance (1), Unconquered Sun's Sight (1).
-- **In-use with a sheet effect:** Endurance of a Thousand Cuts (Soak), Iron Kettle Body's
-  commit (Soak), Ward of the Sun (Defend Other). Fists of Iron already has its own.
-- **"!" today:** Unconquered Sun's Sight (×5 over a limit of 3).
-- **Nothing to build:** the other 15.
+- **In-use icon only:** Endurance of a Thousand Cuts; Fists of Iron (display only).
+- **Changes the sheet while in use:** Iron Kettle Body (Soak + lit dots), Endurance of a
+  Thousand Cuts (Soak + wound penalty).
+- **Choices:** Righteous Lion Spirit (an Intimacy), Unconquered Sun's Sight (an ally per
+  repurchase), Ward of the Sun (the ward's name while committed).
+- **"!" today:** Righteous Lion Spirit (no Intimacy chosen), Unconquered Sun's Sight (×5,
+  and allies not named).
+- **Nothing to build:** the other 13.
 
 ---
 
@@ -91,7 +66,7 @@ aren't met (e.g. Divine Army Supremacy needs War 5).
 > *Solar mode — Impediment to Opportunity:* Add any penalties ignored by this Charm as
 > bonuses to the attack instead.
 
-**Under your rules:** nothing to build. Its cost and step are yours to track, and its Solar mode already shows in the charm window.
+**Plan:** nothing to build.
 
 ## 2. Fists of Iron Technique ×1 — Universal, p. 192 — *already implemented*
 
@@ -104,7 +79,9 @@ aren't met (e.g. Divine Army Supremacy needs War 5).
 > *Solar mode — Adamantine Fists of Battle:* Spend an additional mote on activation to grant
 > the Exalt's unarmed attacks the artifact tag.
 
-**Under your rules:** it already has its own on/off: the FoI button on the Weapons list, which changes the unarmed weapon while on. See **Q6**.
+**Plan:** gets the in-use icon, display only: it lights up while FoI is on in the Inventory. FoI is still switched from the Inventory.
+
+- **2.1** In-use icon on the card, lit while Fists of Iron is active.
 
 ## 3. Glorious Presence Technique ×1 — Universal, p. 206
 
@@ -115,7 +92,7 @@ aren't met (e.g. Divine Army Supremacy needs War 5).
 > successfully influenced gain a two-dice bonus to resist fear while acting on the Solar's
 > orders.
 
-**Under your rules:** nothing to build. It is passive and changes nothing on the sheet.
+**Plan:** nothing to build.
 
 ## 4. Jade Leaves a Trail ×1 — Universal, p. 189
 
@@ -128,7 +105,7 @@ aren't met (e.g. Divine Army Supremacy needs War 5).
 > the target owe any large debts […]? • If the target keeps an accounting ledger, is there a
 > second one tucked away?
 
-**Under your rules:** nothing to build.
+**Plan:** nothing to build.
 
 ## 5. Righteous Lion Spirit ×1 — Universal, p. 199
 
@@ -138,7 +115,11 @@ aren't met (e.g. Divine Army Supremacy needs War 5).
 > changing the targeted Intimacy requires a dramatic action that qualifies as a major
 > Milestone.
 
-**Under your rules:** the book has you choose one Major Intimacy when you learn it, and the sheet doesn't record that choice yet. See **Q8**.
+**Plan:** choose which Intimacy it protects (Major or Defining only).
+
+- **5.1** Buying it opens a window to choose one of the character's Major or Defining Intimacies.
+- **5.2** Kaien bought it before this existed, so it shows the "!" until he chooses one. The charm window lets him choose (or change) it.
+- **5.3** The chosen Intimacy is highlighted gold in the Intimacies panel, the way Excellency marks its Abilities.
 
 ## 6. League of Iron Preparation ×1 — Universal, p. 216
 
@@ -150,9 +131,9 @@ aren't met (e.g. Divine Army Supremacy needs War 5).
 > unit once: • Increase their attack pool by two dice. • Gain one additional outnumber
 > quality. • Designate Loyalty to the Exalt or a target of her choosing as their Minor Virtue.
 
-**Under your rules:** commits 2 motes (forced). Its upgrade Divine Army Supremacy needs War 5; Kaien has War 4, so it stays locked (the charm window already greys it out).
+**Plan:** 2 commit dots and an in-use icon. No sheet effect. Its upgrade Divine Army Supremacy stays locked (needs War 5; Kaien has 4).
 
-- **6.1** Two commit dots on the card.
+- **6.1** Two commit dots and the in-use icon on the card.
 
 ## 7. Rally the Broken Company ×1 — Universal, p. 217
 
@@ -162,7 +143,7 @@ aren't met (e.g. Divine Army Supremacy needs War 5).
 > *Solar mode — Phoenix Banner Resurgence:* The Solar may spend extra successes to heal the
 > battle group, trading two successes for each level healed.
 
-**Under your rules:** nothing to build.
+**Plan:** nothing to build.
 
 ## 8. Arsenal-Summoning Gesture ×2 (Weapons, Armor) — Universal, p. 191
 
@@ -182,7 +163,7 @@ aren't met (e.g. Divine Army Supremacy needs War 5).
 > you have repurchased Arsenal Summoning Gesture, you can use this mode to replace the armor
 > you are currently wearing similarly.
 
-**Under your rules:** nothing to build. Two purchases is the most this charm allows (the repurchase covers both weapons and armor), and his Weapons/Armor picks are made. See **Q9**.
+**Plan:** nothing to build or mark. Per your homebrew, the purchases are weapons, armor and the Dawn mode (Perfected Panoply Selection). See **S2**.
 
 ## 9. Lightning Speed ×1 — Universal, p. 187
 
@@ -200,7 +181,7 @@ aren't met (e.g. Divine Army Supremacy needs War 5).
 > Lightning Speed, she may either activate Lightning Speed once again in the same scene at
 > no cost or gain 1 Power.
 
-**Under your rules:** nothing to build. Both upgrades are unlocked by his stats (Racing Hare Method: Athletics 4, Essence 2; Living Wind Approach: Athletics 5, Essence 3), so both count as owned.
+**Plan:** nothing to build. Both upgrades are unlocked by his stats, so they count as owned.
 
 ## 10. Bulwark Stance ×1 — Universal, p. 193
 
@@ -209,14 +190,14 @@ aren't met (e.g. Divine Army Supremacy needs War 5).
 >
 > *Solar mode — Dipping Swallow Defense:* Also increase Defense by 1 for this attack.
 
-**Under your rules:** nothing to build.
+**Plan:** nothing to build.
 
 ## 11. Portentous Warding Defense ×1 — Universal, p. 194
 
 > When attacked, spend 2 motes on Step 2. On Step 4, roll your choice of Attribute + Close
 > Combat, and add your successes to your Defense against the attack.
 
-**Under your rules:** nothing to build.
+**Plan:** nothing to build.
 
 ## 12. Iron Kettle Body ×2 — Universal, p. 204
 
@@ -229,10 +210,10 @@ aren't met (e.g. Divine Army Supremacy needs War 5).
 > *Solar mode — Adamant Skin Concentration:* The Exalt may apply her increased Soak against
 > any environmental damage regardless of source.
 
-**Under your rules:** the repurchase (which Kaien has) lets him *commit* 1 or 2 motes instead and keep the Soak bonus while it lasts. That's optional, and it changes the sheet.
+**Plan:** 2 commit dots and an in-use icon, with a sheet effect.
 
-- **12.1** Two optional commit dots on the card.
-- **12.2** While dots are lit, Soak gets its own breakdown line, "Iron Kettle Body +1" or "+2". See **Q3**.
+- **12.1** Two commit dots and the in-use icon on the card.
+- **12.2** While in use, Soak goes up by the number of lit dots (1 → +1, 2 → +2), with its own breakdown line, "Iron Kettle Body +2".
 
 ## 13. Heavenly Guardian Defense ×1 — Universal, p. 193
 
@@ -245,7 +226,7 @@ aren't met (e.g. Divine Army Supremacy needs War 5).
 > Special: may be used on any step, in response to any environmental damage, disease, poison,
 > trap, or similar hazard. It cannot be used against weapon damage or damage from attacks.
 
-**Under your rules:** nothing to build.
+**Plan:** nothing to build.
 
 ## 14. Evocation: Ward of the Sun ×1 — Solar
 
@@ -253,10 +234,10 @@ aren't met (e.g. Divine Army Supremacy needs War 5).
 > scene: choose an ally within Close Range. When using the Full Defense action, you also use
 > the Defend Other action on that ally.
 
-**Under your rules:** commits 1 mote (forced), and it changes the sheet: Full Defense also counts as Defend Other on an ally.
+**Plan:** 1 commit dot and an in-use icon. It does **not** touch Full Defense or Defend Other.
 
-- **14.1** One commit dot on the card.
-- **14.2** While it's in use, switching on Full Defense also switches on Defend Other, so the weapon's Defense bonus applies as the sheet already does. See **Q2** and **Q7**.
+- **14.1** One commit dot and the in-use icon on the card.
+- **14.2** Lighting the dot opens a small window to type who the ward is (free text). The name shows when you rest the mouse on the card, and is cleared when the dot is un-lit or the in-use icon is turned off.
 
 ## 15. Evocation: Voice That Holds the Line ×1 — Solar
 
@@ -272,7 +253,7 @@ aren't met (e.g. Divine Army Supremacy needs War 5).
 > defending a cause tied to one of his Major or Defining Intimacies, the protected battle
 > group also gains 1 Power.
 
-**Under your rules:** nothing to build.
+**Plan:** nothing to build.
 
 ## 16. Sun King Radiance ×1 — Solar, p. 274
 
@@ -284,9 +265,9 @@ aren't met (e.g. Divine Army Supremacy needs War 5).
 > *Upgrade — Sun's Rallied Might (not bought):* Allies in the same scene who share his intent
 > may add the Solar's Integrity bonus to their Resolve.
 
-**Under your rules:** commits 1 mote (forced). Its upgrade Sun's Rallied Might (Essence 2) is unlocked, so it counts as owned, but it helps allies' Resolve, not Kaien's sheet.
+**Plan:** 1 commit dot and an in-use icon. No sheet effect.
 
-- **16.1** One commit dot on the card.
+- **16.1** One commit dot and the in-use icon on the card.
 
 ## 17. Motive-Discerning Technique ×1 — Universal, p. 197
 
@@ -297,7 +278,7 @@ aren't met (e.g. Divine Army Supremacy needs War 5).
 > and I share a Virtue? • Do the character and I share an Intimacy? • What haven't I noticed
 > about the character? • How could I get the character to do what I want?
 
-**Under your rules:** nothing to build. Its upgrade Wise-Eyed Courtier Method (Embassy 4 or Integrity 4) is unlocked, so it counts as owned.
+**Plan:** nothing to build.
 
 ## 18. [Ability] Excellency ×8 — Universal, p. 185 — *partly implemented*
 
@@ -308,7 +289,7 @@ aren't met (e.g. Divine Army Supremacy needs War 5).
 > Special: This Charm may be applied to resistance rolls […] or to reflexively created
 > actions […], regardless of Step.
 
-**Under your rules:** already done. The 8 chosen Abilities get the gold Ex mark. It is "!" only if a purchase is missing its Ability (all 8 are chosen).
+**Plan:** already done (gold Ex marks). It would show the "!" only if a purchase were missing its Ability; all 8 are chosen.
 
 ## 19. Ox Body Technique ×3 — Universal, p. 204 — *already implemented*
 
@@ -318,7 +299,7 @@ aren't met (e.g. Divine Army Supremacy needs War 5).
 > The Soak increase only applies once.
 > *Solar mode:* The Exalt gains their choice of an additional 0 or two −1 Health levels.
 
-**Under your rules:** already done (+1 Soak once, and health levels per purchase). Limit: Physique (5); he has 3, and all three health-level choices are made.
+**Plan:** already done. Limit: Physique (see **S1**); he has 3, and all health-level choices are made.
 
 ## 20. Endurance of a Thousand Cuts ×2 — Solar, p. 275
 
@@ -329,10 +310,10 @@ aren't met (e.g. Divine Army Supremacy needs War 5).
 > accuracy or damage rating of her attacker's weapon by one. Artifacts are dulled until the
 > start of the Solar's next turn; mundane weapons are permanently damaged.
 
-**Under your rules:** an ongoing effect that changes the sheet. Blade-Cracking Attitude (the repurchase) is a one-off, so nothing there.
+**Plan:** an in-use icon with a sheet effect. Blade-Cracking Attitude needs nothing.
 
-- **20.1** An in-use icon on the card.
-- **20.2** While in use, Soak gets the line "Endurance of a Thousand Cuts +N", where N is the current wound penalty, and it updates by itself as damage changes. See **Q5**.
+- **20.1** In-use icon on the card.
+- **20.2** While in use, Soak goes up by the current wound penalty (−2 → +2), with its own breakdown line, and updates by itself as damage changes.
 
 ## 21. Enhanced Senses ×2 (Sight, Hearing) — Universal, p. 189
 
@@ -343,9 +324,9 @@ aren't met (e.g. Divine Army Supremacy needs War 5).
 > must be for a different sense each time. If two senses would apply to the same roll, double
 > 8s.
 
-**Under your rules:** nothing to build. Limit: Essence (3); he has 2, both senses chosen.
+**Plan:** nothing to build. Two senses chosen; within any limit.
 
-## 22. Unconquered Sun's Sight ×5 — Solar, p. 272
+## 22. Unconquered Sun's Sight ×5 (should be ×4) — Solar, p. 272
 
 > Commit 1 mote. For the scene, the Solar recognizes when someone uses deception to
 > masquerade as something toward which she has an Intimacy. When the player suspects
@@ -357,6 +338,8 @@ aren't met (e.g. Divine Army Supremacy needs War 5).
 > deceptions related to their Intimacies, as well. Whenever an ally benefits from this Charm,
 > gain 1 anima.
 
-**Under your rules:** commits 1 mote (forced). **It would get the "!" today:** the live sheet says ×5, but the limit is his Essence (3). The ledger shows 4 purchases.
+**Plan:** 1 commit dot and an in-use icon; each repurchase names an ally. Kaien should have it ×4 (1 purchase + 3 repurchases). **The live sheet says ×5, so it shows the "!" until that's fixed** (Undo last purchase in the charm window), as well as the extra ledger line you mentioned.
 
-- **22.1** One commit dot on the card. See **Q10** for the repurchases' named allies.
+- **22.1** One commit dot and the in-use icon on the card.
+- **22.2** Each repurchase asks for an ally's name (free text) when bought. The charm window lists the named allies.
+- **22.3** Repurchases without a name (all of Kaien's today) show the "!" until named in the charm window.
