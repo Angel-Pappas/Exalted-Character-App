@@ -84,13 +84,24 @@ describe('marking training done', function () {
         $this->actingAs(User::factory()->admin()->create())->putJson("/api/characters/{$kaien->id}/training/ox")->assertNoContent();
     });
 
-    it('keeps other players and strangers out', function (string $method) {
+    it('keeps other players and strangers from marking it', function (string $method) {
         [, , , $bob, $kaien] = trainingTable();
-        $uri = $method === 'GET' ? "/api/characters/{$kaien->id}/training" : "/api/characters/{$kaien->id}/training/ox";
+        $uri = "/api/characters/{$kaien->id}/training/ox";
 
         $this->actingAs($bob)->json($method, $uri)->assertForbidden();
         $this->actingAs(User::factory()->create())->json($method, $uri)->assertForbidden();
-    })->with(['GET', 'PUT', 'DELETE']);
+    })->with(['PUT', 'DELETE']);
+
+    it('shows what is done to whoever may open the sheet, and no one else', function () {
+        [$campaign, , $alice, $bob, $kaien] = trainingTable();
+        $this->actingAs($alice)->putJson("/api/characters/{$kaien->id}/training/ox")->assertNoContent();
+
+        $this->actingAs($bob)->getJson("/api/characters/{$kaien->id}/training")->assertOk()->assertJsonStructure(['ox']);
+        $this->actingAs(User::factory()->create())->getJson("/api/characters/{$kaien->id}/training")->assertForbidden();
+
+        $this->actingAs($alice)->putJson("/api/characters/{$kaien->id}/campaigns/{$campaign->id}", ['visibility' => 'private'])->assertNoContent();
+        $this->actingAs($bob)->getJson("/api/characters/{$kaien->id}/training")->assertForbidden();
+    });
 
     it('stops being Storyteller business once the character leaves the campaign', function () {
         [$campaign, $st, $alice, , $kaien] = trainingTable();

@@ -4,6 +4,7 @@ import { GridLayout, useContainerWidth, noCompactor } from 'react-grid-layout'
 // Override it so panels can freely overlap — no collision resolution, no compaction.
 const freeCompactor = { ...noCompactor, allowOverlap: true }
 import 'react-grid-layout/css/styles.css'
+import type { MilestoneTransaction, TrainingDone } from '../types/character'
 import type { SheetData, FoiState, AbilityData, MeritEntry, IntimacyEntry, OxBodyPick, PanelLayout, CharacterCharm, CharmGroup, LibraryCharm, EffectCategory, EffectEntry, InventoryItem, InventoryItemKind, WeaponWeight, ArtifactColor, GameData } from '../types/character'
 import { DEFAULT_GAME_DATA } from '../types/character'
 import {
@@ -16,7 +17,11 @@ import {
 import type { GroupColor } from '../lib/charmGroups'
 import { ALL, sameSelection, visibleSections } from '../lib/charmSelection'
 import type { CharmSelection } from '../lib/charmSelection'
-import { addPurchase, canBuyAgain, cardSummary, undoPurchase } from '../lib/charmPurchase'
+import { canBuyAgain, cardSummary } from '../lib/charmPurchase'
+import { buyCharm, charmsInEffect, removeCharm as removeCharmAndLines, trainingByCharm, undoCharmPurchase, type CharmCost, type CharmsAndLedger } from '../lib/charmTraining'
+import { trainedAbilities, trainedAttributes, traitTraining } from '../lib/traitTraining'
+import { formatDay, todayKey } from '../lib/milestones'
+import CharmCostModal from '../components/CharmCostModal'
 import type { ChoicePick } from '../lib/charmPurchase'
 import { sheetLibraryCharm } from '../lib/charmLibrary'
 import { ROW_HEIGHT, fitPanelHeight, rowsToFit } from '../lib/panelLayout'
@@ -116,6 +121,13 @@ interface Props {
   readOnly?: boolean
   onChange: (sheet: SheetData) => void
   gameData?: GameData
+  // The milestone ledger and which trainings are done: a charm purchase or dots
+  // still in training show on the sheet but count for nothing yet.
+  milestones: MilestoneTransaction[]
+  trainingDone: TrainingDone
+  // Charm purchases change the sheet and the ledger together.
+  onLedgerChange: (sheet: SheetData, milestones: MilestoneTransaction[]) => void
+  onTrainingDone: (lineId: string) => void
 }
 
 function SectionHeader({ title }: { title: string }) {
@@ -351,7 +363,8 @@ function ChoicePickerModal({ charm, existingPicks, existingTargets, purchaseInde
   )
 }
 
-function CharmBrowseModal({ library, loading, existing, exaltType, caste, abilities, attributes, essence, onAdd, onRemove, onClose }: {
+// Also used by the Milestones tab, to pick the charm an Expense bought (no onRemove there).
+export function CharmBrowseModal({ library, loading, existing, exaltType, caste, abilities, attributes, essence, onAdd, onRemove, onClose }: {
   library: LibraryCharm[]
   loading: boolean
   existing: import('../types/character').CharacterCharm[]
@@ -361,7 +374,7 @@ function CharmBrowseModal({ library, loading, existing, exaltType, caste, abilit
   attributes: Record<string, number>
   essence: number
   onAdd: (charm: import('../types/character').LibraryCharm, pick: ChoicePick | null) => void
-  onRemove: (charm: import('../types/character').LibraryCharm) => void
+  onRemove?: (charm: import('../types/character').LibraryCharm) => void
   onClose: () => void
 }) {
   const [type, setType] = useState('')
@@ -475,7 +488,7 @@ function CharmBrowseModal({ library, loading, existing, exaltType, caste, abilit
                       {owned && buyAgain && (
                         <button onClick={() => startPurchase(charm)} data-tip="Repurchase (buy again)" aria-label="Repurchase (buy again)" className="bg-amber-600 hover:bg-amber-500 text-white w-6 h-6 rounded transition-colors">↻</button>
                       )}
-                      {owned && (
+                      {owned && onRemove && (
                         <button onClick={() => onRemove(charm)} data-tip="Remove (undo a purchase)" aria-label="Remove (undo a purchase)" className="w-6 h-6 rounded border border-stone-600 text-stone-400 hover:border-stone-400 hover:text-stone-200 transition-colors">✕</button>
                       )}
                     </div>
@@ -624,8 +637,10 @@ function CharmTextEditor({ initial, rows, onSave, onCancel }: {
 // The charm window: opens over the sheet when a charm card is clicked. Everything
 // about the charm, and everything that can be done to it, lives here, so the cards
 // themselves carry no buttons.
-function CharmWindow({ charm, lib, groups, exaltType, caste, essence, abilities, attributes, onChange, onMoveToGroup, onRepurchase, onUndoPurchase, onRemove, onClose }: {
+function CharmWindow({ charm, lib, groups, exaltType, caste, essence, abilities, attributes, training, onTrainingDone, onChange, onMoveToGroup, onRepurchase, onUndoPurchase, onRemove, onClose }: {
   charm: CharacterCharm
+  training: MilestoneTransaction[]   // this charm's purchases still in training, longest-waiting first
+  onTrainingDone: (lineId: string) => void
   lib: LibraryCharm | undefined   // undefined while the library loads, or if the charm was deleted from it
   groups: CharmGroup[]
   exaltType: string
@@ -710,6 +725,21 @@ function CharmWindow({ charm, lib, groups, exaltType, caste, essence, abilities,
           </div>
 
           <div className="overflow-y-auto no-scrollbar px-4 py-3 space-y-4">
+            {training.length > 0 && (
+              <section className="rounded border border-amber-700/40 bg-amber-950/20 px-3 py-2 space-y-1">
+                {training.map(line => (
+                  <div key={line.id} className="flex items-center gap-3 text-xs">
+                    <span className="text-amber-300 flex-1">
+                      {training.length < count ? 'Repurchase in training' : 'In training'}
+                      {line.date && <span className="text-stone-400"> since {formatDay(line.date.slice(0, 10))}</span>}
+                      <span className="text-stone-500"> — {training.length < count ? 'only the trained purchases work' : 'its effects start when it is done'}</span>
+                    </span>
+                    <button onClick={() => onTrainingDone(line.id)}
+                      className="px-2 py-0.5 rounded border border-stone-600 text-stone-300 hover:text-amber-300 hover:border-amber-500 transition-colors">Done</button>
+                  </div>
+                ))}
+              </section>
+            )}
             <section className="space-y-1">
               <div className="flex items-center gap-2">
                 <span className={sectionLabel}>Summary</span>
@@ -785,8 +815,13 @@ function CharmWindow({ charm, lib, groups, exaltType, caste, essence, abilities,
   )
 }
 
-function CharmPanel({ charms, groups, onChange, onGroupsChange, onContentHeight, dragEnabled, exaltType, caste, abilities, attributes, essence }: {
+function CharmPanel({ charms, milestones, training, onLedgerChange, onTrainingDone, groups, onChange, onGroupsChange, onContentHeight, dragEnabled, exaltType, caste, abilities, attributes, essence }: {
   charms: CharacterCharm[]
+  milestones: MilestoneTransaction[]
+  training: Map<string, MilestoneTransaction[]>   // purchases still in training, by library id
+  // Buying, undoing or removing a charm also changes the ledger line that paid for it.
+  onLedgerChange: (next: CharmsAndLedger) => void
+  onTrainingDone: (lineId: string) => void
   groups: CharmGroup[]
   // Reports the natural height (px) of everything inside the panel, so the sheet
   // can size the panel to fit it and the panel never scrolls.
@@ -807,6 +842,7 @@ function CharmPanel({ charms, groups, onChange, onGroupsChange, onContentHeight,
   const [browsing, setBrowsing] = useState(false)
   const [openId, setOpenId] = useState<string | null>(null)
   const [picking, setPicking] = useState<LibraryCharm | null>(null)
+  const [paying, setPaying] = useState<{ lib: LibraryCharm; pick: ChoicePick | null } | null>(null)
   const [query, setQuery] = useState('')
   const [addingGroup, setAddingGroup] = useState(false)
   const [editingGroupId, setEditingGroupId] = useState<string | null>(null)
@@ -840,8 +876,19 @@ function CharmPanel({ charms, groups, onChange, onGroupsChange, onContentHeight,
     if (contentHeight > 0) onContentHeight(contentHeight)
   }, [contentHeight, onContentHeight])
 
+  // Every purchase first asks what paid for it (CharmCostModal), then lands with its ledger line.
   function addCharm(lib: LibraryCharm, pick: ChoicePick | null) {
-    onChange(addPurchase(charms, lib, pick, crypto.randomUUID()))
+    setPaying({ lib, pick })
+  }
+
+  function pay(cost: CharmCost) {
+    if (!paying) return
+    onLedgerChange(buyCharm({ charms, milestones }, paying.lib, paying.pick, cost, { charm: crypto.randomUUID(), line: crypto.randomUUID() }, todayKey()))
+    setPaying(null)
+  }
+
+  function undoLast(lib: LibraryCharm) {
+    onLedgerChange(undoCharmPurchase({ charms, milestones }, lib))
   }
 
   // Repurchase from the charm window: charms with a purchase choice ask for it first.
@@ -855,7 +902,7 @@ function CharmPanel({ charms, groups, onChange, onGroupsChange, onContentHeight,
   }
 
   function removeCharm(id: string) {
-    onChange(charms.filter(c => c.id !== id))
+    onLedgerChange(removeCharmAndLines({ charms, milestones }, id))
     if (openId === id) setOpenId(null)
   }
 
@@ -946,6 +993,8 @@ function CharmPanel({ charms, groups, onChange, onGroupsChange, onContentHeight,
     const summary = cardSummary(charm, libById.get(charm.libraryId)?.summary)
     const dropBefore = dropHint?.kind === 'card' && dropHint.id === charm.id
     const count = charm.count ?? 1
+    const waiting = training.get(charm.libraryId)?.length ?? 0
+    const allWaiting = waiting >= count
     return (
       <Tooltip key={charm.id} wide delayed content={
         <div className="space-y-1.5">
@@ -963,9 +1012,16 @@ function CharmPanel({ charms, groups, onChange, onGroupsChange, onContentHeight,
           onKeyDown={e => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); setOpenId(charm.id) } }}
           className={`h-full cursor-pointer rounded border border-t-[3px] bg-stone-800/60 hover:bg-stone-800 px-1.5 py-1 space-y-0.5 break-words transition-colors
             ${group ? groupColor(group).bar : 'border-t-stone-600'}
-            ${dropBefore ? 'border-amber-400/80 border-l-2' : 'border-stone-700'}`}>
+            ${dropBefore ? 'border-amber-400/80 border-l-2' : allWaiting ? 'border-dashed border-amber-700/60' : 'border-stone-700'}
+            ${allWaiting ? 'opacity-60' : ''}`}>
           <div className="flex items-start gap-1">
             <span className="text-xs font-semibold text-stone-100 leading-snug flex-1 min-w-0">{charm.name}</span>
+            {waiting > 0 && (
+              <span className="text-[10px] px-1 rounded bg-amber-950/60 border border-amber-700/60 text-amber-300 shrink-0"
+                data-tip={allWaiting ? 'In training — no effect until it is done' : `${waiting} purchase${waiting > 1 ? 's' : ''} in training`}>
+                {allWaiting ? 'Training' : `+${waiting} training`}
+              </span>
+            )}
             {count > 1 && <span className="text-[10px] px-1 rounded bg-stone-900 border border-stone-600 text-stone-300 shrink-0">×{count}</span>}
           </div>
           {/* The summary always shows in full — reading it at a glance is the card's job.
@@ -991,7 +1047,7 @@ function CharmPanel({ charms, groups, onChange, onGroupsChange, onContentHeight,
           attributes={attributes}
           essence={essence}
           onAdd={addCharm}
-          onRemove={lib => onChange(undoPurchase(charms, lib))}
+          onRemove={undoLast}
           onClose={() => setBrowsing(false)}
         />
       )}
@@ -1007,10 +1063,20 @@ function CharmPanel({ charms, groups, onChange, onGroupsChange, onContentHeight,
           attributes={attributes}
           onChange={updateCharm}
           onMoveToGroup={groupId => onChange(moveCharm(charms, openCharm.id, { groupId }))}
+          training={training.get(openCharm.libraryId) ?? []}
+          onTrainingDone={onTrainingDone}
           onRepurchase={repurchase}
-          onUndoPurchase={lib => onChange(undoPurchase(charms, lib))}
+          onUndoPurchase={undoLast}
           onRemove={() => removeCharm(openCharm.id)}
           onClose={() => setOpenId(null)}
+        />
+      )}
+      {paying && (
+        <CharmCostModal
+          charmName={paying.lib.name}
+          repurchase={charms.some(c => c.libraryId === paying.lib.id)}
+          onConfirm={pay}
+          onClose={() => setPaying(null)}
         />
       )}
       {picking && (
@@ -2097,7 +2163,7 @@ function Counter({ value, onStep, size = 'lg', valueCls = 'text-stone-100' }: {
   )
 }
 
-export default function SheetTab({ sheet, onChange, editMode, readOnly = false, gameData: gd }: Props) {
+export default function SheetTab({ sheet, onChange, editMode, readOnly = false, gameData: gd, milestones, trainingDone, onLedgerChange, onTrainingDone }: Props) {
   const gameData = gd ?? DEFAULT_GAME_DATA
   const dragEnabled = !editMode && !readOnly
   const def = defaultSheet()
@@ -2214,8 +2280,18 @@ export default function SheetTab({ sheet, onChange, editMode, readOnly = false, 
     update({ intimacies: data.intimacies.map(i => i.id === editingIntimacyId ? { ...i, intensity: editIntimacyIntensity, description: editIntimacyDesc.trim() } : i) })
     setEditingIntimacyId(null)
   }
+  // What is still in training shows on the sheet but counts for nothing: every
+  // calculation below reads these instead of the raw charms and ratings.
+  const charmTraining = trainingByCharm(milestones, trainingDone)
+  const traitsInTraining = traitTraining(milestones, trainingDone)
+  const effectCharms = charmsInEffect(data.charms, charmTraining)
+  const calcAttributes = trainedAttributes(data.attributes, traitsInTraining)
+  const calcAbilities = trainedAbilities(data.abilities, traitsInTraining)
+  const dotsTip = (n: number | undefined) => n ? `${n} dot${n > 1 ? 's' : ''} in training — not counted until done` : undefined
+  const trainingInput = (n: number | undefined) => n ? ' !border-dashed !border-amber-600' : ''
+
   // The track is rebuilt from Ox Body on every render, so it can't drift from the charm.
-  const oxBody = findOxBody(data.charms)
+  const oxBody = findOxBody(effectCharms)
   const healthTrack = buildHealthTrack(data.exaltType, data.caste, oxBody ? (oxBody.count ?? 1) : 0, oxBody?.oxBodyPicks ?? [])
   const damage = clampDamage(data.damage, healthTrack.length)
   const setDamage = (n: number) => update({ damage: clampDamage(n, healthTrack.length) })
@@ -2242,9 +2318,11 @@ export default function SheetTab({ sheet, onChange, editMode, readOnly = false, 
                 {group.attrs.map(attr => (
                   <div key={attr} className="flex items-center justify-between">
                     <span className="text-xs text-stone-200">{attr}</span>
-                    <input type="number" min={0} max={10} value={data.attributes[attr] ?? 0}
-                      onChange={e => setAttr(attr, parseInt(e.target.value) || 0)}
-                      className={numInput} />
+                    <span data-tip={dotsTip(traitsInTraining.attributes[attr])}>
+                      <input type="number" min={0} max={10} value={data.attributes[attr] ?? 0}
+                        onChange={e => setAttr(attr, parseInt(e.target.value) || 0)}
+                        className={numInput + trainingInput(traitsInTraining.attributes[attr])} />
+                    </span>
                   </div>
                 ))}
               </div>
@@ -2259,7 +2337,7 @@ export default function SheetTab({ sheet, onChange, editMode, readOnly = false, 
       // purchase; while its implementation is active, the Ex tags are derived
       // from those picks instead of being manually toggled — see CLAUDE.md /
       // the mechanicalKey gating pattern used by FoI in InventoryPanel above.
-      const excellencyCharms = data.charms.filter(c => activeKey(c) === 'excellency')
+      const excellencyCharms = effectCharms.filter(c => activeKey(c) === 'excellency')
       const excellencyManaged = excellencyCharms.length > 0
       const excellencyAbilities = new Set(excellencyCharms.flatMap(c => c.picks ?? []))
 
@@ -2282,16 +2360,17 @@ export default function SheetTab({ sheet, onChange, editMode, readOnly = false, 
                 return (
                   <tr key={ability} className={`border-b border-stone-800 transition-colors ${hasEx ? 'bg-amber-950/40' : 'hover:bg-stone-800/50'}`}>
                     <td className={`py-1 px-1 font-medium ${hasEx ? 'text-amber-300' : 'text-stone-200'}`}>{ability}</td>
-                    <td className="py-1 px-1 text-center">
+                    <td className="py-1 px-1 text-center" data-tip={dotsTip(traitsInTraining.abilities[ability])}>
                       <input type="number" min={0} max={10} value={ab.rating}
                         onChange={e => setAbility(ability, { rating: parseInt(e.target.value) || 0 })}
-                        className={numInput} />
+                        className={numInput + trainingInput(traitsInTraining.abilities[ability])} />
                     </td>
-                    <td className="py-1 px-1">
+                    <td className="py-1 px-1" data-tip={traitsInTraining.specialties.has(ability) ? 'Specialty in training — not counted until done' : undefined}>
                       <input type="text" value={ab.specialty}
                         onChange={e => setAbility(ability, { specialty: e.target.value })}
                         placeholder="—"
-                        className="w-full bg-transparent border-b border-stone-700 text-stone-300 placeholder-stone-600 text-xs focus:outline-none focus:border-amber-500 px-1 py-0.5" />
+                        className={`w-full bg-transparent border-b text-xs focus:outline-none focus:border-amber-500 px-1 py-0.5 placeholder-stone-600 ${
+                          traitsInTraining.specialties.has(ability) ? 'border-dashed border-amber-600 text-amber-200/70 italic' : 'border-stone-700 text-stone-300'}`} />
                     </td>
                     <td className="py-1 px-1 text-center">
                       {excellencyManaged ? (
@@ -2312,12 +2391,12 @@ export default function SheetTab({ sheet, onChange, editMode, readOnly = false, 
     })(),
 
     defenses: (() => {
-      const stamina = data.attributes['Stamina']   ?? 0
-      const dex     = data.attributes['Dexterity']  ?? 0
-      const cc      = data.abilities['Close Combat']?.rating ?? 0
-      const ath     = data.abilities['Athletics']?.rating    ?? 0
-      const phys    = data.abilities['Physique']?.rating     ?? 0
-      const integ   = data.abilities['Integrity']?.rating    ?? 0
+      const stamina = calcAttributes['Stamina']   ?? 0
+      const dex     = calcAttributes['Dexterity']  ?? 0
+      const cc      = calcAbilities['Close Combat']?.rating ?? 0
+      const ath     = calcAbilities['Athletics']?.rating    ?? 0
+      const phys    = calcAbilities['Physique']?.rating     ?? 0
+      const integ   = calcAbilities['Integrity']?.rating    ?? 0
       const bestWpnDef    = bestEquipped(data.inventory, 'weapon', 'defense')
       const bestArmorSoak = bestEquipped(data.inventory, 'armor', 'soak')
       const bestArmorHard = bestEquipped(data.inventory, 'armor', 'hardness')
@@ -2706,6 +2785,10 @@ export default function SheetTab({ sheet, onChange, editMode, readOnly = false, 
     charms: (
       <CharmPanel
         charms={data.charms}
+        milestones={milestones}
+        training={charmTraining}
+        onLedgerChange={next => onLedgerChange({ ...data, charms: next.charms }, next.milestones)}
+        onTrainingDone={onTrainingDone}
         groups={data.charmGroups}
         onContentHeight={fitCharmsPanel}
         onChange={c => update({ charms: c })}
@@ -2713,8 +2796,8 @@ export default function SheetTab({ sheet, onChange, editMode, readOnly = false, 
         dragEnabled={dragEnabled}
         exaltType={data.exaltType}
         caste={data.caste}
-        abilities={data.abilities}
-        attributes={data.attributes}
+        abilities={calcAbilities}
+        attributes={calcAttributes}
         essence={data.essence ?? 1}
       />
     ),
@@ -2737,7 +2820,7 @@ export default function SheetTab({ sheet, onChange, editMode, readOnly = false, 
         onFoiChange={(foi, foiOriginals, inventory) => update({ foi, foiOriginals, inventory })}
         dragEnabled={dragEnabled}
         gameData={gameData}
-        charms={data.charms}
+        charms={effectCharms}
       />
     ),
   }

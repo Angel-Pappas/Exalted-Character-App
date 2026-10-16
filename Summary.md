@@ -84,13 +84,31 @@ A campaign is one story a group plays. **Storyteller (ST) is a per-campaign role
 
 ## Milestones and training (training added 2026-10-16)
 The Milestones tab is a ledger of Income, Expense and Char. Creation lines (logic in
-`src/lib/milestones.ts`, tested). **Spending milestones starts a training:** a new
-Expense has "In training" ticked (untick it for something that needs none). Training
-time is entirely the Storyteller's call, so the app only records "started" (the line's
-date) and "done".
-- The player's Milestones tab lists what is in training between the totals and the
-  ledger, the longest-waiting first, each with a **Done** button. Ticking "In training"
-  again in a line's edit form puts it back (for a Done pressed by mistake).
+`src/lib/milestones.ts`, tested). The ledger fills the page from the top; beside it sit
+the four remaining/total tiles (hover one for what that type buys) and the **In
+training** list. **Spending milestones starts a training:** a new Expense has "In
+training" ticked (untick it for something that needs none). Training time is entirely
+the Storyteller's call, so the app only records "started" (the line's date) and "done".
+- The In training list shows the longest-waiting first, each with a **Done** button.
+  Ticking "In training" again in a line's edit form puts it back (for a Done pressed by
+  mistake).
+- **Charms and the ledger stay in step** (`src/lib/charmTraining.ts`, tested). Adding or
+  buying a charm again on the sheet asks what paid for it (Exalted / Minor / Personal
+  and how many, or Char. Creation) and logs that line, linked to the charm
+  (`MilestoneTransaction.charm`). The other way round, a new Expense or creation note
+  can pick "What it bought": a charm (from the Add Charm browser), which lands on the
+  sheet. Undo last purchase / Remove in the charm window take their linked lines with
+  them. Deleting a ledger line leaves the sheet alone.
+- **Dots and specialties** (`src/lib/traitTraining.ts`, tested): "What it bought" can
+  also be ability dots (+1 to +3), an attribute dot or a specialty. Saving raises the
+  rating (or sets the specialty) on the sheet at once (`MilestoneTransaction.trait`).
+- **On the sheet, what is in training counts for nothing yet:** a charm whose purchases
+  are all in training is dimmed with a dashed border and a "Training" tag, and has no
+  effect; a repurchase in training shows "+1 training" and only the trained purchases
+  work (Ox Body levels, Excellency picks). Ratings with dots in training and specialties
+  in training get a dashed amber outline (hover says how many dots), and defenses,
+  Ox Body, Excellency and charm prerequisites all use the ratings without them. The
+  charm window says since when it trains, with its own Done button.
 - The Storyteller sees an **In training** box at the top of the campaign page: every
   character in the campaign with trainings still going, with the same Done button.
 - Who may mark done or undo: the owner, admins, and the Storyteller of any campaign the
@@ -101,8 +119,6 @@ date) and "done".
   would overwrite a change the Storyteller made inside it. Expense lines logged before
   training existed have no flag and count as done. Server: `TrainingController`,
   tested in `tests/Feature/TrainingTest.php`.
-- Not yet: showing a charm or dot that is still in training on the sheet itself (see
-  `ROADMAP.md`).
 
 ## Character Sheet
 11 draggable/resizable panels on a 128-column grid. Layout saved per character in the database.

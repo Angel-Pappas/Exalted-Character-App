@@ -17,15 +17,12 @@ the priorities — the order under **Next** is a suggestion until he does.
 - [x] Summaries for every charm in the library (2026-10-16).
 - [x] Training, piece 1: spending milestones starts a training; player and
       Storyteller lists; either marks it done (2026-10-16).
+- [x] Training, pieces 2–3: charms, dots and specialties linked to their ledger line,
+      shown "in training" on the sheet with no effect until done; Milestones page
+      redesigned with the training list beside the ledger (2026-10-16).
 
 ## Next (suggested)
 
-- [ ] **Training, piece 2: charms on the sheet.** A charm bought with milestones
-      shows on the sheet dimmed, "in training", its effects off until done (Angel
-      chose "mark it on the sheet", 2026-10-16). Needs the Expense line linked to the
-      charm.
-- [ ] **Training, piece 3: dots and specialties on the sheet.** An ability/attribute
-      dot or specialty in training shows hollow; defenses ignore it until done (tests).
 
 - [ ] **Cut-off headings on the character sheet** — "Essence", "Anima" and "Power"
       show as "ESSE…", "ANI…", "PO…" at desktop width (found in the first screenshot

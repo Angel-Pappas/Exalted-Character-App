@@ -1,7 +1,7 @@
 // Screenshot app pages from the DEV checkout (dev database + the `demo` login from
 // DemoSeeder, never live), so a change can be looked at before it ships. Usage:
 //
-//   npm run shots -- / /characters "/character/<id>"   [--mobile] [--dark] [--wide] [--click=Milestones]
+//   npm run shots -- / /characters "/character/<id>"   [--mobile] [--dark] [--wide] [--click=Milestones] [--fill=Search=Ox]
 //
 // (the `--` matters: without it npm swallows the --flags itself)
 //
@@ -38,11 +38,17 @@ const args = process.argv.slice(2);
 const mobile = args.includes('--mobile');
 const dark = args.includes('--dark');
 const wide = args.includes('--wide');
-// --click=Text (repeatable) clicks the button with that text on each page, in
-// order, before the shot — e.g. --click=Milestones to open that tab.
-const clicks = args
-    .filter((a) => a.startsWith('--click='))
-    .map((a) => a.slice('--click='.length));
+// Steps run on each page before the shot, in the order given:
+//   --click=Text           clicks the button with that text (e.g. --click=Milestones)
+//   --fill=Placeholder=Val types Val into the field with that placeholder
+const steps = args
+    .filter((a) => a.startsWith('--click=') || a.startsWith('--fill='))
+    .map((a) => {
+        const [flag, ...rest] = a.slice(2).split('=');
+        return flag === 'click'
+            ? { click: rest.join('=') }
+            : { fill: rest[0], value: rest.slice(1).join('=') };
+    });
 const paths = args.filter((a) => !a.startsWith('--'));
 if (paths.length === 0) paths.push('/');
 
@@ -124,13 +130,19 @@ try {
     for (const path of paths) {
         await page.goto(`${BASE}${path}`);
         await page.waitForLoadState('networkidle');
-        for (const text of clicks) {
-            await page.getByRole('button', { name: text, exact: true }).first().click();
+        for (const step of steps) {
+            if (step.click) {
+                await page.getByRole('button', { name: step.click, exact: true }).first().click();
+            } else {
+                await page.getByPlaceholder(step.fill).first().fill(step.value);
+            }
             await page.waitForLoadState('networkidle');
         }
         const slug =
             path.replace(/[^a-z0-9]+/gi, '-').replace(/^-|-$/g, '') || 'home';
-        const clicked = clicks.map((c) => `-${c.replace(/[^a-z0-9]+/gi, '-')}`).join('');
+        const clicked = steps
+            .map((st) => `-${(st.click ?? st.value).replace(/[^a-z0-9]+/gi, '-')}`)
+            .join('');
         const file = `${OUT}/${slug}${clicked}${mobile ? '-mobile' : ''}${wide ? '-wide' : ''}${dark ? '-dark' : ''}.png`;
         await page.screenshot({ path: file, fullPage: wide });
         console.log(file);

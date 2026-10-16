@@ -1,10 +1,11 @@
-import { useState, useCallback, useRef } from 'react'
+import { useState, useCallback, useEffect, useRef } from 'react'
 import { useParams, useNavigate } from 'react-router-dom'
 import { api } from '../lib/api'
 import { useCharacter, useGameData } from '../hooks/useCharacter'
 import { useAuth } from '../contexts/AuthContext'
 import { canEditCharacter } from '../lib/characterAccess'
-import type { CharacterData } from '../types/character'
+import type { CharacterData, TrainingDone } from '../types/character'
+import { todayKey } from '../lib/milestones'
 import TabBar from '../components/TabBar'
 import SheetTab from '../tabs/SheetTab'
 import MilestonesTab from '../tabs/MilestonesTab'
@@ -21,6 +22,15 @@ export default function CharacterPage() {
   const [sheetEditMode, setSheetEditMode] = useState(false)
   const [saving, setSaving] = useState(false)
   const [saveTimeout, setSaveTimeout] = useState<ReturnType<typeof setTimeout> | null>(null)
+  // Which trainings are done. Kept on the server outside the sheet, so the
+  // Storyteller can mark them too; both tabs read it.
+  const [trainingDone, setTrainingDoneMap] = useState<TrainingDone>({})
+  const [trainingError, setTrainingError] = useState<string | null>(null)
+
+  useEffect(() => {
+    if (!id) return
+    api<TrainingDone>('GET', `characters/${id}/training`).then(({ data }) => setTrainingDoneMap(data ?? {}))
+  }, [id])
 
   // The latest data not yet sent, so flushSave can send it at once.
   const pending = useRef<CharacterData | null>(null)
@@ -39,6 +49,21 @@ export default function CharacterPage() {
     if (!pending.current) return
     if (saveTimeout) clearTimeout(saveTimeout)
     await save(pending.current)
+  }
+
+  // Marks a training done (or back in training). The sheet is saved first, so the
+  // server has the ledger line, which may have been logged a moment ago.
+  async function setTrainingDone(lineId: string, finished: boolean) {
+    setTrainingError(null)
+    await flushSave()
+    const { error } = await api(finished ? 'PUT' : 'DELETE', `characters/${id}/training/${lineId}`)
+    if (error) { setTrainingError(error); return }
+    setTrainingDoneMap(prev => {
+      const next = { ...prev }
+      if (finished) next[lineId] = todayKey()
+      else delete next[lineId]
+      return next
+    })
   }
 
   // Someone else's character (a Storyteller's view, or a public one in a shared
@@ -83,6 +108,7 @@ export default function CharacterPage() {
         <span className="w-px h-5 bg-stone-700 self-center shrink-0" />
         <TabBar active={readOnly ? 'sheet' : activeTab} onChange={setActiveTab} only={readOnly ? ['sheet'] : undefined} />
         <div className="flex items-center gap-3 ml-auto py-3">
+          {trainingError && <span className="text-xs text-red-400">{trainingError}</span>}
           {saving && <span className="text-xs text-stone-500">Saving…</span>}
           {readOnly && <span className="text-xs px-2 py-1 rounded border border-stone-600 text-stone-400">View only</span>}
           {!readOnly && (
@@ -119,15 +145,20 @@ export default function CharacterPage() {
               editMode={sheetEditMode && !readOnly}
               readOnly={readOnly}
               gameData={gameData}
+              milestones={data.milestones}
+              trainingDone={trainingDone}
+              onLedgerChange={(sheet, milestones) => updateData({ sheet, milestones })}
+              onTrainingDone={lineId => void setTrainingDone(lineId, true)}
             />
           </fieldset>
         )}
         {!readOnly && activeTab === 'milestones' && (
           <MilestonesTab
-            characterId={character.id}
             milestones={data.milestones}
-            onChange={milestones => updateData({ milestones })}
-            beforeTraining={flushSave}
+            sheet={data.sheet}
+            trainingDone={trainingDone}
+            onChange={(milestones, sheet) => updateData(sheet ? { milestones, sheet } : { milestones })}
+            onTrainingDone={(lineId, finished) => void setTrainingDone(lineId, finished)}
           />
         )}
         {!readOnly && activeTab === 'notes' && (

@@ -17,10 +17,14 @@ use Illuminate\Support\Facades\Gate;
  */
 class TrainingController extends Controller
 {
-    /** The character's finished trainings: entry id → the day it was marked done. */
+    /**
+     * The character's finished trainings: entry id → the day it was marked done.
+     * Anyone who may open the sheet reads it, since the sheet marks what is
+     * still in training; marking stays with the owner and Storyteller.
+     */
     public function index(Character $character): JsonResponse
     {
-        Gate::authorize('train', $character);
+        Gate::authorize('view', $character);
 
         return response()->json((object) $character->trainingCompletions()
             ->get()

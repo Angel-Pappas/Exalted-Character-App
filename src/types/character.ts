@@ -152,7 +152,17 @@ export interface MilestoneTransaction {
   // An Expense that starts a training (logged since 2026-10-16). Whether it is
   // done lives on the server (GET characters/:id/training), not in the sheet.
   training?: boolean
+  // The charm this line bought (one purchase of it), so the sheet can show that
+  // purchase as in training and keep its effects off until done. Since 2026-10-16.
+  charm?: { libraryId: string; name: string }
+  // The ability/attribute dots or specialty this line bought; while in training
+  // the sheet marks them and leaves them out of every calculation. Since 2026-10-16.
+  trait?: TraitPurchase
 }
+
+export type TraitPurchase =
+  | { kind: 'ability' | 'attribute'; name: string; dots: number }
+  | { kind: 'specialty'; name: string; specialty: string }  // name = the ability
 
 // Finished trainings: Expense entry id → the day it was marked done (YYYY-MM-DD).
 export type TrainingDone = Record<string, string>

@@ -4,6 +4,14 @@ One entry per shipped change, newest first: what changed and **why**. How things
 now is in `Summary.md`; plans in `ROADMAP.md`. Entries before 2026-10-15 were rebuilt
 from the git history (one per day, its commits listed).
 
+- **2026-10-16** — **Training on the sheet, and a tidier Milestones page.** Angel
+  wanted charms to work both ways: adding a charm asks what milestones paid for it and
+  logs the Expense (in training); logging an Expense for a charm puts it on the sheet.
+  The same "What it bought" also covers ability dots, attribute dots and specialties.
+  Anything still in training shows on the sheet, marked, and counts for nothing until
+  done (tested: Ox Body levels, Excellency, defenses). The training list moved beside
+  the ledger instead of above it, which pushed the ledger down; the totals went there
+  too, so the ledger starts at the top. The screenshot script gained `--fill=` steps.
 - **2026-10-16** — **Training.** Angel: spending milestones starts a training, and
   the Storyteller decides when it is complete. New Expenses start "In training"; the
   player's Milestones tab and the Storyteller's campaign page list what is in
