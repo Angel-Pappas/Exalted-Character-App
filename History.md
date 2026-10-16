@@ -4,6 +4,10 @@ One entry per shipped change, newest first: what changed and **why**. How things
 now is in `Summary.md`; plans in `ROADMAP.md`. Entries before 2026-10-15 were rebuilt
 from the git history (one per day, its commits listed).
 
+- **2026-10-16** — **No Expense without a milestone.** Angel: an Expense must note the
+  milestones spent. Saving an Expense (or paying for a charm) now needs at least one;
+  something free is logged as Char. Creation. Existing zero-cost lines were left
+  untouched (two on Kaien).
 - **2026-10-16** — **Training on the sheet, and a tidier Milestones page.** Angel
   wanted charms to work both ways: adding a charm asks what milestones paid for it and
   logs the Expense (in training); logging an Expense for a charm puts it on the sheet.

@@ -23,7 +23,11 @@ export default function CharmCostModal({ charmName, repurchase, onConfirm, onClo
   const [amount, setAmount] = useState('1')
   const [training, setTraining] = useState(true)
 
+  // An Expense always spends something; a free charm is a Char. Creation note.
+  const spendsNothing = choice !== 'creation' && parseAmount(amount) === 0
+
   function confirm() {
+    if (spendsNothing) return
     if (choice === 'creation') { onConfirm({ kind: 'creation' }); return }
     const amounts = { personal: 0, exalted: 0, minor: 0, major: 0 }
     amounts[choice] = parseAmount(amount)
@@ -66,9 +70,10 @@ export default function CharmCostModal({ charmName, repurchase, onConfirm, onClo
               </label>
             </div>
           )}
-          <div className="flex justify-end gap-2 pt-1">
+          <div className="flex items-center justify-end gap-2 pt-1">
+            {spendsNothing && <span className="mr-auto text-xs text-stone-500">Enter the milestones spent.</span>}
             <button type="button" onClick={onClose} className="text-stone-400 hover:text-stone-200 text-sm px-2">Cancel</button>
-            <button type="submit" autoFocus className="bg-amber-600 hover:bg-amber-500 text-white rounded px-4 py-1.5 text-sm transition-colors">
+            <button type="submit" autoFocus disabled={spendsNothing} className="bg-amber-600 hover:bg-amber-500 disabled:opacity-40 disabled:hover:bg-amber-600 text-white rounded px-4 py-1.5 text-sm transition-colors">
               {repurchase ? 'Buy again' : 'Add charm'}
             </button>
           </div>

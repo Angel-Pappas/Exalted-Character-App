@@ -47,13 +47,18 @@ export function parseAmount(raw: string): number {
 }
 
 /**
- * Whether an entry is worth saving. Income must award something. Expenses
- * need a description but may cost 0 (free charms from downtime, etc.).
- * Creation notes are description-only.
+ * Whether an entry is worth saving. Income must award something, and an
+ * Expense must spend something (Angel, 2026-10-16: no Expense without a
+ * milestone; something free is a Char. Creation note). Expenses and creation
+ * notes need a description, unless `named`: what they bought on the sheet
+ * (a charm, dots, a specialty) names them.
  */
-export function isValidEntry(kind: MilestoneKind, amounts: MilestoneAmounts, description: string): boolean {
-  if (kind === 'gain') return MILESTONE_TYPES.some(t => amounts[t] > 0)
-  return description.trim() !== ''
+export function isValidEntry(kind: MilestoneKind, amounts: MilestoneAmounts, description: string, named = false): boolean {
+  const spends = MILESTONE_TYPES.some(t => amounts[t] > 0)
+  const described = named || description.trim() !== ''
+  if (kind === 'gain') return spends
+  if (kind === 'purchase') return spends && described
+  return described
 }
 
 /**

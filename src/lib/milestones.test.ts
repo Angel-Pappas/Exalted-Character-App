@@ -56,9 +56,16 @@ describe('Entry validation', () => {
     expect(isValidEntry('gain', { ...none, minor: 1 }, '')).toBe(true)
   })
 
-  it('an expense needs a description but may cost nothing (free charms)', () => {
-    expect(isValidEntry('purchase', none, 'Racing Hare Method')).toBe(true)
+  it('an expense must spend at least one milestone, and say what on', () => {
+    expect(isValidEntry('purchase', none, 'Racing Hare Method')).toBe(false)
+    expect(isValidEntry('purchase', { ...none, exalted: 1 }, 'Racing Hare Method')).toBe(true)
     expect(isValidEntry('purchase', { ...none, personal: 1 }, '   ')).toBe(false)
+  })
+
+  it('something bought on the sheet names the entry, but an expense still has to spend', () => {
+    expect(isValidEntry('purchase', { ...none, minor: 1 }, '', true)).toBe(true)
+    expect(isValidEntry('purchase', none, '', true)).toBe(false)
+    expect(isValidEntry('creation', none, '', true)).toBe(true)
   })
 
   it('a creation note needs only a description', () => {

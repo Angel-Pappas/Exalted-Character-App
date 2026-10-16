@@ -89,6 +89,10 @@ the four remaining/total tiles (hover one for what that type buys) and the **In
 training** list. **Spending milestones starts a training:** a new Expense has "In
 training" ticked (untick it for something that needs none). Training time is entirely
 the Storyteller's call, so the app only records "started" (the line's date) and "done".
+- **An Expense must spend at least one milestone** (Angel, 2026-10-16); something free
+  is a Char. Creation note. Save (and the charm payment prompt) stays disabled until
+  a milestone is entered, with a note saying why. Two older zero-cost Expenses on
+  Kaien were left as they are; editing one asks for a milestone.
 - The In training list shows the longest-waiting first, each with a **Done** button.
   Ticking "In training" again in a line's edit form puts it back (for a Done pressed by
   mistake).

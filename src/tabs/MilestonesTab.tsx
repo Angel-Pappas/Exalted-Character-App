@@ -70,7 +70,7 @@ const inputClass = 'w-full bg-stone-800 border border-stone-600 text-stone-100 r
 const labelClass = 'block text-[11px] text-stone-400 mb-1'
 const smallBtn = 'text-xs px-2 py-0.5 rounded border border-stone-600 text-stone-300 hover:text-amber-300 hover:border-amber-500 transition-colors'
 
-// A new Expense starts a training unless the player unticks it (e.g. a free charm).
+// A new Expense starts a training unless the player unticks it (e.g. a reward the Storyteller grants at once).
 function newDraft(kind: MilestoneKind): Draft {
   return { kind, amounts: blankAmounts, description: '', date: kind === 'creation' ? '' : todayKey(), training: true, bought: { kind: 'none' } }
 }
@@ -318,9 +318,9 @@ export default function MilestonesTab({ milestones, sheet, trainingDone, onChang
   const training = inTraining(milestones, trainingDone)
   const isRepurchase = (bought: Bought) => bought.kind === 'charm' && bought.lib !== null && charms.some(c => c.libraryId === bought.lib?.id)
   // Something bought on the sheet names itself, so its description may stay blank.
-  const addValid = adding !== null && boughtComplete(adding.bought) && (
-    adding.kind !== 'gain' && adding.bought.kind !== 'none'
-      || isValidEntry(adding.kind, parsedAmounts(adding), adding.description))
+  const addValid = adding !== null && boughtComplete(adding.bought)
+    && isValidEntry(adding.kind, parsedAmounts(adding), adding.description, adding.kind !== 'gain' && adding.bought.kind !== 'none')
+  const spendsNothing = (d: Draft) => d.kind === 'purchase' && MILESTONE_TYPES.every(t => parsedAmounts(d)[t] === 0)
   const editValid = isValidEntry(editDraft.kind, parsedAmounts(editDraft), editDraft.description)
 
   function saveAdd() {
@@ -430,6 +430,7 @@ export default function MilestonesTab({ milestones, sheet, trainingDone, onChang
                 Save
               </button>
               <button type="button" onClick={() => setAdding(null)} className="text-stone-400 hover:text-stone-200 text-sm px-2">Cancel</button>
+              {spendsNothing(adding) && <span className="self-center text-xs text-stone-500">An Expense needs the milestones it spent.</span>}
             </div>
           </form>
         )}
@@ -498,6 +499,7 @@ export default function MilestonesTab({ milestones, sheet, trainingDone, onChang
                               Save
                             </button>
                             <button onClick={() => setEditingId(null)} className="text-stone-400 hover:text-stone-200 text-sm px-2">Cancel</button>
+                            {spendsNothing(editDraft) && <span className="self-center text-xs text-stone-500">An Expense needs the milestones it spent.</span>}
                           </div>
                         </td>
                       </tr>
