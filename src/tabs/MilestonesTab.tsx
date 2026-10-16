@@ -411,7 +411,7 @@ export default function MilestonesTab({ milestones, sheet, trainingDone, onChang
   const actionBtn = 'font-semibold rounded px-3 py-1.5 text-sm transition-colors'
 
   return (
-    <div className="px-4 py-4 max-w-[96rem] mx-auto grid gap-4 grid-cols-[minmax(0,1fr)_20rem] items-start">
+    <div className="px-4 py-4 max-w-[96rem] mx-auto grid gap-4 grid-cols-1 lg:grid-cols-[minmax(0,1fr)_20rem] items-start">
       {browsing && (
         <CharmBrowseModal
           library={library ?? []}
@@ -482,9 +482,10 @@ export default function MilestonesTab({ milestones, sheet, trainingDone, onChang
             <table className="w-full text-sm">
               <thead>
                 <tr className="text-[11px] uppercase tracking-wider text-stone-500 bg-stone-900/80 border-b border-stone-800">
-                  <th className="text-left py-2 pl-3 pr-2 font-medium w-32">Type</th>
-                  {MILESTONE_TYPES.map(t => <th key={t} className="text-center py-2 px-1 font-medium w-20">{t}</th>)}
-                  <th className="text-left py-2 pl-3 font-medium">Description</th>
+                  <th className="text-left py-2 pl-3 pr-2 font-medium md:w-32">Type</th>
+                  {/* Phones get the first three letters (Per, Exa, Min, Maj), so the row keeps its edit and delete buttons. */}
+                  {MILESTONE_TYPES.map(t => <th key={t} className="text-center py-2 px-1 font-medium md:w-20"><span className="md:hidden">{t.slice(0, 3)}</span><span className="hidden md:inline">{t}</span></th>)}
+                  <th className="hidden md:table-cell text-left py-2 pl-3 font-medium">Description</th>
                   <th className="py-2 w-14"></th>
                 </tr>
               </thead>
@@ -496,6 +497,8 @@ export default function MilestonesTab({ milestones, sheet, trainingDone, onChang
                         <span className={`text-[11px] font-semibold px-1.5 py-px rounded border whitespace-nowrap ${KIND_BADGE[tx.kind]}`}>
                           {KIND_LABELS[tx.kind]}
                         </span>
+                        {/* Phones have no room for a description column: it sits under the type. */}
+                        <div className="md:hidden mt-1 text-xs text-stone-300">{tx.description}</div>
                       </td>
                       {MILESTONE_TYPES.map(type => (
                         <td key={type} className="text-center py-1.5 px-1 font-mono">
@@ -508,7 +511,7 @@ export default function MilestonesTab({ milestones, sheet, trainingDone, onChang
                           )}
                         </td>
                       ))}
-                      <td className="py-1.5 pl-3 text-stone-300">{tx.description}</td>
+                      <td className="hidden md:table-cell py-1.5 pl-3 text-stone-300">{tx.description}</td>
                       <td className="py-1.5 pr-3">
                         <div className="flex items-center justify-end gap-2 opacity-40 group-hover:opacity-100 transition-opacity">
                           <button
@@ -557,7 +560,7 @@ export default function MilestonesTab({ milestones, sheet, trainingDone, onChang
       </main>
 
       {/* Beside the ledger: what is left to spend, and what is in training. */}
-      <aside className="space-y-3 sticky top-4">
+      <aside className="space-y-3 order-first lg:order-none lg:sticky lg:top-4">
         <div className="grid grid-cols-2 gap-2">
           {MILESTONE_TYPES.map(type => {
             const left = remaining(milestones, type)

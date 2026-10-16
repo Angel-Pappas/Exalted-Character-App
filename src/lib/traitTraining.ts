@@ -56,3 +56,18 @@ export function trainedAttributes(attributes: Record<string, number>, training: 
 export function trainedAbilities(abilities: Record<string, AbilityData>, training: TraitTraining): Record<string, AbilityData> {
   return Object.fromEntries(Object.entries(abilities).map(([name, a]) => [name, { ...a, rating: Math.max(0, a.rating - (training.abilities[name] ?? 0)) }]))
 }
+
+/**
+ * The hint on a rating with dots in training. The box shows the rating as it is
+ * now (without those dots), so the hint says where the training takes it
+ * (Angel, 2026-10-16: showing the future rating was confusing).
+ */
+export function trainingHint(trained: number, dots: number | undefined): string | undefined {
+  if (!dots) return undefined
+  return `In training: goes to ${trained + dots} when done (+${dots})`
+}
+
+/** The rating to store when the player types `shown` into a box showing the trained rating. */
+export function ratingToStore(shown: number, dots: number | undefined): number {
+  return shown + (dots ?? 0)
+}

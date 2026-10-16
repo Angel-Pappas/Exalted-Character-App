@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest'
-import { applyTrait, traitDescription, trainedAbilities, trainedAttributes, traitTraining } from './traitTraining'
+import { applyTrait, ratingToStore, trainingHint, traitDescription, trainedAbilities, trainedAttributes, traitTraining } from './traitTraining'
 import type { MilestoneTransaction, TraitPurchase } from '../types/character'
 
 // Angel, 2026-10-16: dots and specialties bought with milestones go on the sheet
@@ -67,5 +67,19 @@ describe('dots in training do not count yet', () => {
     const t = traitTraining(ledger, { a: 'x', b: 'x', c: 'x', d: 'x' })
     expect(t.abilities).toEqual({})
     expect(t.specialties.size).toBe(0)
+  })
+})
+
+describe('ratings with dots in training (Angel, 2026-10-16)', () => {
+  it('says where the training takes the rating, and nothing when none is in training', () => {
+    expect(trainingHint(3, 1)).toBe('In training: goes to 4 when done (+1)')
+    expect(trainingHint(2, 3)).toBe('In training: goes to 5 when done (+3)')
+    expect(trainingHint(3, undefined)).toBeUndefined()
+    expect(trainingHint(3, 0)).toBeUndefined()
+  })
+
+  it('keeps the training dots on top of a rating the player types in', () => {
+    expect(ratingToStore(4, 1)).toBe(5)
+    expect(ratingToStore(4, undefined)).toBe(4)
   })
 })

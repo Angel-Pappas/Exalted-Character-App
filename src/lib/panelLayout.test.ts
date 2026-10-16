@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest'
-import { ROW_HEIGHT, fitPanelHeight, gridLayoutChange, rowsToFit } from './panelLayout'
+import { ROW_HEIGHT, fitPanelHeight, gridLayoutChange, rowsToFit, stackOrder } from './panelLayout'
 import type { PanelLayout } from '../types/character'
 
 const p = (i: string, x: number, y: number, w: number, h: number): PanelLayout => ({ i, x, y, w, h })
@@ -66,5 +66,12 @@ describe('gridLayoutChange', () => {
   it('drops the grid’s extra fields', () => {
     const next = gridLayoutChange(layout, [{ ...p('charms', 60, 0, 40, 115), moved: false } as never, p('effects', 60, 116, 40, 40)], 'charms')
     expect(next[0]).toEqual(p('charms', 60, 0, 40, 115))
+  })
+})
+
+describe('stackOrder — the phone view reads the desktop layout top to bottom', () => {
+  it('orders panels by row, then left to right', () => {
+    const layout = [p('charms', 76, 0, 52, 90), p('defenses', 0, 53, 13, 28), p('attributes', 0, 0, 14, 34), p('essence', 13, 53, 12, 28)]
+    expect(stackOrder(layout)).toEqual(['attributes', 'charms', 'defenses', 'essence'])
   })
 })

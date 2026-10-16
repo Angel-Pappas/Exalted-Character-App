@@ -27,7 +27,7 @@ export default function TabBar({ active, onChange, only }: TabBarProps) {
           key={tab.id}
           onClick={() => onChange(tab.id)}
           aria-current={active === tab.id ? 'page' : undefined}
-          className={`flex items-center px-3 text-sm font-medium whitespace-nowrap transition-colors border-b-2 -mb-px ${
+          className={`flex items-center px-2 md:px-3 text-xs md:text-sm font-medium whitespace-nowrap transition-colors border-b-2 -mb-px ${
             active === tab.id
               ? 'border-amber-400 text-amber-400'
               : 'border-transparent text-stone-400 hover:text-stone-200'

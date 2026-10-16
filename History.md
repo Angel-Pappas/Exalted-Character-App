@@ -4,6 +4,13 @@ One entry per shipped change, newest first: what changed and **why**. How things
 now is in `Summary.md`; plans in `ROADMAP.md`. Entries before 2026-10-15 were rebuilt
 from the git history (one per day, its commits listed).
 
+- **2026-10-16** — **Phone layouts; ratings in training show today's value.** Angel
+  asked for the sheet and Milestones page to be usable on a phone: the sheet's panels
+  now stack in one column there, the header's tabs get their own row, and the
+  Milestones page stacks with descriptions under each line's type, so nothing runs off
+  the side. A rating with dots in training showed the value it would have after
+  training, which Angel found confusing: it now shows today's value with the dashed
+  outline, and hovering says what it goes to when done.
 - **2026-10-16** — **Charm removal sticks, a steady Charms panel, and deleting ledger
   lines.** Angel couldn't remove Integrity-Protecting Principle: the line went, the charm
   came back. Cause: the sheet saved a whole copy of itself on every change, and the

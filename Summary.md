@@ -114,7 +114,10 @@ the Storyteller's call, so the app only records "started" (the line's date) and 
   are all in training is dimmed with a dashed border and a "Training" tag, and has no
   effect; a repurchase in training shows "+1 training" and only the trained purchases
   work (Ox Body levels, Excellency picks). Ratings with dots in training and specialties
-  in training get a dashed amber outline (hover says how many dots), and defenses,
+  in training get a dashed amber outline. A rating shows its value **without** the dots
+  in training (Angel: the future value was confusing); hover says what it goes to when
+  done, and typing a new value keeps the training dots on top (`trainingHint`,
+  `ratingToStore` in `src/lib/traitTraining.ts`, tested). Defenses,
   Ox Body, Excellency and charm prerequisites all use the ratings without them. The
   charm window says since when it trains, with its own Done button.
 - The Storyteller sees an **In training** box at the top of the campaign page: every
@@ -130,6 +133,8 @@ the Storyteller's call, so the app only records "started" (the line's date) and 
 
 ## Character Sheet
 11 draggable/resizable panels on a 128-column grid. Layout saved per character in the database.
+
+**On a phone** (sheet narrower than 768px, `STACK_BELOW_PX`) the panels stack in one column in the desktop layout's reading order (`stackOrder`, tested), each as tall as its content; the saved layout is never changed there, and Edit Layout is hidden. The page header puts the tabs on a row of their own. The Milestones page stacks too (totals and training first), and its ledger shows each description under its type, with three-letter column headings.
 
 The **Essence** panel holds every pool in one box: an Essence | Anima row on top,
 then Motes (Current | Committed), then a Power | Will row. Power and Will are 0–10; Essence is 1–5 and has no reset

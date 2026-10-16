@@ -19,12 +19,12 @@ import { ALL, sameSelection, visibleSections } from '../lib/charmSelection'
 import type { CharmSelection } from '../lib/charmSelection'
 import { canBuyAgain, cardSummary } from '../lib/charmPurchase'
 import { buyCharm, charmsInEffect, removeCharm as removeCharmAndLines, trainingByCharm, undoCharmPurchase, type CharmCost, type CharmsAndLedger } from '../lib/charmTraining'
-import { trainedAbilities, trainedAttributes, traitTraining } from '../lib/traitTraining'
+import { ratingToStore, trainedAbilities, trainedAttributes, trainingHint, traitTraining } from '../lib/traitTraining'
 import { formatDay, todayKey } from '../lib/milestones'
 import CharmCostModal from '../components/CharmCostModal'
 import type { ChoicePick } from '../lib/charmPurchase'
 import { cachedCharmLibrary, loadCharmLibrary } from '../lib/charmLibrary'
-import { ROW_HEIGHT, fitPanelHeight, gridLayoutChange, rowsToFit } from '../lib/panelLayout'
+import { ROW_HEIGHT, STACK_BELOW_PX, fitPanelHeight, gridLayoutChange, rowsToFit, stackOrder } from '../lib/panelLayout'
 import { bestEquipped, calculateDefenses, STATIC_BONUS_CAP } from '../lib/defenses'
 import {
   DEFAULT_OX_BODY_PICK, LEVEL_NAMES, buildHealthTrack, clampDamage, currentWound, damageAfterClick,
@@ -64,6 +64,8 @@ const LEGACY_ESSENCE_H = 34
 // panel's 8px padding and 1px border, each top and bottom.
 const CHARMS_CHROME_PX = 2 * (2 + 8 + 1)
 const CHARMS_MIN_ROWS = 8
+// Stacked on a phone, panels take their natural height; nothing to fit or save.
+const noFit = () => {}
 
 const DEFAULT_LAYOUT: PanelLayout[] = [
   { i: 'attributes', x: 0,  y: 0,  w: 16, h: 22, minW: 4, minH: 8 },
@@ -2293,7 +2295,6 @@ export default function SheetTab({ sheet, onChange, editMode, readOnly = false, 
   const effectCharms = charmsInEffect(data.charms, charmTraining)
   const calcAttributes = trainedAttributes(data.attributes, traitsInTraining)
   const calcAbilities = trainedAbilities(data.abilities, traitsInTraining)
-  const dotsTip = (n: number | undefined) => n ? `${n} dot${n > 1 ? 's' : ''} in training — not counted until done` : undefined
   const trainingInput = (n: number | undefined) => n ? ' !border-dashed !border-amber-600' : ''
 
   // The track is rebuilt from Ox Body on every render, so it can't drift from the charm.
@@ -2312,6 +2313,12 @@ export default function SheetTab({ sheet, onChange, editMode, readOnly = false, 
     if (next !== data.layout) update({ layout: next })
   }
 
+  // Measure the grid container's exact pixel width so GridLayout snap points line up.
+  // Measured before the grid mounts, so panels open at their real width instead of
+  // animating from a default one (which made the Charms panel resize as it opened).
+  const { width, containerRef, mounted } = useContainerWidth({ measureBeforeMount: true })
+  const stacked = width < STACK_BELOW_PX
+
   const panels: Record<string, React.ReactNode> = {
     attributes: (
       <div className={panelBase}>
@@ -2324,9 +2331,10 @@ export default function SheetTab({ sheet, onChange, editMode, readOnly = false, 
                 {group.attrs.map(attr => (
                   <div key={attr} className="flex items-center justify-between">
                     <span className="text-xs text-stone-200">{attr}</span>
-                    <span data-tip={dotsTip(traitsInTraining.attributes[attr])}>
-                      <input type="number" min={0} max={10} value={data.attributes[attr] ?? 0}
-                        onChange={e => setAttr(attr, parseInt(e.target.value) || 0)}
+                    {/* Dots in training aren't shown until done; the hint says where they lead. */}
+                    <span data-tip={trainingHint(calcAttributes[attr] ?? 0, traitsInTraining.attributes[attr])}>
+                      <input type="number" min={0} max={10} value={calcAttributes[attr] ?? 0}
+                        onChange={e => setAttr(attr, ratingToStore(parseInt(e.target.value) || 0, traitsInTraining.attributes[attr]))}
                         className={numInput + trainingInput(traitsInTraining.attributes[attr])} />
                     </span>
                   </div>
@@ -2366,9 +2374,9 @@ export default function SheetTab({ sheet, onChange, editMode, readOnly = false, 
                 return (
                   <tr key={ability} className={`border-b border-stone-800 transition-colors ${hasEx ? 'bg-amber-950/40' : 'hover:bg-stone-800/50'}`}>
                     <td className={`py-1 px-1 font-medium ${hasEx ? 'text-amber-300' : 'text-stone-200'}`}>{ability}</td>
-                    <td className="py-1 px-1 text-center" data-tip={dotsTip(traitsInTraining.abilities[ability])}>
-                      <input type="number" min={0} max={10} value={ab.rating}
-                        onChange={e => setAbility(ability, { rating: parseInt(e.target.value) || 0 })}
+                    <td className="py-1 px-1 text-center" data-tip={trainingHint(calcAbilities[ability]?.rating ?? 0, traitsInTraining.abilities[ability])}>
+                      <input type="number" min={0} max={10} value={calcAbilities[ability]?.rating ?? 0}
+                        onChange={e => setAbility(ability, { rating: ratingToStore(parseInt(e.target.value) || 0, traitsInTraining.abilities[ability]) })}
                         className={numInput + trainingInput(traitsInTraining.abilities[ability])} />
                     </td>
                     <td className="py-1 px-1" data-tip={traitsInTraining.specialties.has(ability) ? 'Specialty in training — not counted until done' : undefined}>
@@ -2796,7 +2804,7 @@ export default function SheetTab({ sheet, onChange, editMode, readOnly = false, 
         onLedgerChange={next => onLedgerChange({ charms: next.charms }, next.milestones)}
         onTrainingDone={onTrainingDone}
         groups={data.charmGroups}
-        onContentHeight={fitCharmsPanel}
+        onContentHeight={stacked ? noFit : fitCharmsPanel}
         onChange={c => update({ charms: c })}
         onGroupsChange={(charmGroups, charms) => update(charms ? { charmGroups, charms } : { charmGroups })}
         dragEnabled={dragEnabled}
@@ -2831,14 +2839,16 @@ export default function SheetTab({ sheet, onChange, editMode, readOnly = false, 
     ),
   }
 
-  // Measure the grid container's exact pixel width so GridLayout snap points
-  // Measured before the grid mounts, so panels open at their real width instead of
-  // animating from a default one (which made the Charms panel resize as it opened).
-  const { width, containerRef, mounted } = useContainerWidth({ measureBeforeMount: true })
-
   return (
     <div className="relative" ref={containerRef}>
-      {mounted && (
+      {/* Phones: one column, each panel as tall as its content; the saved desktop
+          layout is only read for the order, never changed. */}
+      {mounted && stacked && (
+        <div className="flex flex-col gap-1 pb-4 [&>div>*]:!h-auto">
+          {stackOrder(data.layout).filter(key => key in panels).map(key => <div key={key}>{panels[key]}</div>)}
+        </div>
+      )}
+      {mounted && !stacked && (
         <GridLayout
           width={width}
           gridConfig={{ cols: 128, rowHeight: ROW_HEIGHT, margin: [0, 0], containerPadding: [0, 0] }}

@@ -95,9 +95,10 @@ export default function CharacterPage() {
 
   return (
     <div className="min-h-screen bg-stone-950 text-stone-100 flex flex-col">
-      {/* One row: who this is, the tabs, then the page's own actions. */}
-      <header className="flex items-stretch gap-6 px-4 border-b border-stone-700 shrink-0">
-        <div className="flex items-center gap-3 min-w-0 py-3">
+      {/* One row: who this is, the tabs, then the page's own actions. On a phone
+          the tabs drop to a row of their own underneath. */}
+      <header className="flex flex-wrap md:flex-nowrap items-stretch gap-x-6 px-4 border-b border-stone-700 shrink-0">
+        <div className="flex items-center gap-3 min-w-0 flex-1 md:flex-none py-3">
           <button onClick={() => navigate('/characters')} className="text-stone-400 hover:text-stone-200 text-sm shrink-0">← Back</button>
           <h1 className="text-amber-400 font-semibold shrink-0">{character.name}</h1>
           {identity && (
@@ -107,8 +108,10 @@ export default function CharacterPage() {
             </>
           )}
         </div>
-        <span className="w-px h-5 bg-stone-700 self-center shrink-0" />
-        <TabBar active={readOnly ? 'sheet' : activeTab} onChange={setActiveTab} only={readOnly ? ['sheet'] : undefined} />
+        <span className="hidden md:block w-px h-5 bg-stone-700 self-center shrink-0" />
+        <div className="order-last md:order-none w-full md:w-auto h-10 md:h-auto flex">
+          <TabBar active={readOnly ? 'sheet' : activeTab} onChange={setActiveTab} only={readOnly ? ['sheet'] : undefined} />
+        </div>
         <div className="flex items-center gap-3 ml-auto py-3">
           {trainingError && <span className="text-xs text-red-400">{trainingError}</span>}
           {saving && <span className="text-xs text-stone-500">Saving…</span>}
@@ -119,10 +122,11 @@ export default function CharacterPage() {
               ⚙ Options
             </button>
           )}
+          {/* Phones show the sheet in one column, so there is no layout to edit there. */}
           {activeTab === 'sheet' && !readOnly && (
             <button
               onClick={() => setSheetEditMode(v => !v)}
-              className={`flex items-center gap-1.5 px-3 py-1.5 rounded text-xs font-medium transition-colors ${
+              className={`hidden md:flex items-center gap-1.5 px-3 py-1.5 rounded text-xs font-medium transition-colors ${
                 sheetEditMode
                   ? 'bg-amber-500 text-stone-950 hover:bg-amber-400'
                   : 'bg-stone-800 text-stone-400 hover:text-stone-200 border border-stone-600'
