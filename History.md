@@ -4,6 +4,8 @@ One entry per shipped change, newest first: what changed and **why**. How things
 now is in `Summary.md`; plans in `ROADMAP.md`. Entries before 2026-10-15 were rebuilt
 from the git history (one per day, its commits listed).
 
+- **2026-10-16** — **No ⚙ on charm cards.** Angel doesn't need to see on the card
+  whether a charm's implementation is on; it's shown and switched in the charm window.
 - **2026-10-16** — **Charm window: every control in the header, as icons.** Angel
   wanted all of a charm's info and controls up top instead of a text-button footer.
   The footer is gone; icon buttons (new dependency `lucide-react`, pinned to 1.49.0)

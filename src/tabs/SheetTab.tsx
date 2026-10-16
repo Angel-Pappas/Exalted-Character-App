@@ -951,13 +951,11 @@ function CharmPanel({ charms, groups, onChange, onGroupsChange, onContentHeight,
     )
   }
 
-  // A card: colour bar, name, purchase count, ⚙ when its implementation is on, and
+  // A card: colour bar, name, purchase count and
   // the summary (or the start of the text). Hover shows the full text; a click
   // opens the charm window.
   function card(charm: CharacterCharm, group: CharmGroup | null) {
     const summary = cardSummary(charm, libById.get(charm.libraryId)?.summary)
-    const key = activeKey(charm)
-    const lit = key !== null && AUTOMATED_KEYS.has(key) && charm.mechanicalEnabled
     const dropBefore = dropHint?.kind === 'card' && dropHint.id === charm.id
     const count = charm.count ?? 1
     return (
@@ -981,7 +979,6 @@ function CharmPanel({ charms, groups, onChange, onGroupsChange, onContentHeight,
           <div className="flex items-start gap-1">
             <span className="text-xs font-semibold text-stone-100 leading-snug flex-1 min-w-0">{charm.name}</span>
             {count > 1 && <span className="text-[10px] px-1 rounded bg-stone-900 border border-stone-600 text-stone-300 shrink-0">×{count}</span>}
-            {lit && <span className="text-xs leading-none text-amber-400 shrink-0">⚙</span>}
           </div>
           {/* The summary always shows in full — reading it at a glance is the card's job.
               Without one, the start of the charm text stands in, cut to two lines. */}
