@@ -1,8 +1,7 @@
 import { describe, it, expect } from 'vitest'
 import {
   abilityRank, baseAbility, exaltTypeBase, isModeInScope, isTypeInScope,
-  modeIcon, modeLockReasons, parsePrereqAbility, sortAbilities, sortModes,
-} from './charmRules'
+  modeIcon, modeLockReasons, parsePrereqAbility, sortAbilities, sortModes, isUnpickedChoiceMode } from './charmRules'
 import type { AbilityData, CharmMode } from '../types/character'
 
 // These tests exist to pin down the game rules, not to describe the code. Each one
@@ -12,6 +11,18 @@ import type { AbilityData, CharmMode } from '../types/character'
 const ability = (rating: number): AbilityData => ({ rating, specialty: '', excellency: false })
 const mode = (over: Partial<CharmMode> = {}): CharmMode => ({
   label: 'Solar', text: null, prerequisiteAbilities: [], prerequisiteEssence: null, ...over,
+})
+
+describe('isUnpickedChoiceMode — Sharpshooter shows only the tricks it picked', () => {
+  const options = ["Archer's Keen Eye: Reduce all penalties…", 'Trick Arrow Shot: The Exalt may enact…']
+  it('hides a mode that is an unpicked choice', () => {
+    expect(isUnpickedChoiceMode('Trick Arrow Shot', options, ["Archer's Keen Eye: Reduce all penalties…"])).toBe(true)
+    expect(isUnpickedChoiceMode("Archer's Keen Eye", options, ["Archer's Keen Eye: Reduce all penalties…"])).toBe(false)
+  })
+  it('never hides a mode that is not a choice', () => {
+    expect(isUnpickedChoiceMode('Sidereal', options, [])).toBe(false)
+    expect(isUnpickedChoiceMode('Repurchase', [], [])).toBe(false)
+  })
 })
 
 describe('exaltTypeBase', () => {

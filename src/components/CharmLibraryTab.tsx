@@ -13,6 +13,7 @@ interface CharmModeRow {
   label: string
   mode_text: string | null
   prerequisite_essence: number | null
+  commit_motes?: number
   charm_mode_prerequisite_abilities: CharmModePrereqAbilityRow[]
 }
 interface CharmPrereqAbilityRow { text: string }

@@ -27,6 +27,8 @@ export interface HealthLevel {
   level: WoundLevel
   /** Granted by Ox Body Technique rather than part of the starting seven. */
   oxBody: boolean
+  /** A temporary level from a charm in use (e.g. Heartless Maiden Trance): its name. */
+  charm?: string
 }
 
 export const BASE_LEVELS: WoundLevel[] = [0, 0, -1, -1, -2, -2, 'incap']
@@ -65,18 +67,24 @@ export function oxBodyGrant(exaltType: string, caste: string, pick: OxBodyPick):
 }
 
 /**
- * The full track, left to right: the starting seven plus every Ox Body level,
- * grouped Bruised → Injured → Critical → Incapacitated. Within a group the starting
- * boxes come first, then the Ox Body ones.
+ * The full track, left to right: the starting seven plus every Ox Body level and
+ * any charm's temporary levels, grouped Bruised → Injured → Critical →
+ * Incapacitated. Within a group the starting boxes come first, then Ox Body's,
+ * then the charms'.
  */
 export function buildHealthTrack(
   exaltType: string, caste: string, oxBodyPurchases: number, picks: OxBodyPick[],
+  charmLevels: { name: string; count: number }[] = [],
 ): HealthLevel[] {
   const levels: HealthLevel[] = BASE_LEVELS.map(level => ({ level, oxBody: false }))
   for (let p = 0; p < oxBodyPurchases; p++) {
     for (const level of oxBodyGrant(exaltType, caste, picks[p] ?? DEFAULT_OX_BODY_PICK)) {
       levels.push({ level, oxBody: true })
     }
+  }
+  // Charms in use add Bruised levels ("temporary Bruised Health level").
+  for (const { name, count } of charmLevels) {
+    for (let n = 0; n < count; n++) levels.push({ level: 0, oxBody: false, charm: name })
   }
   // Array sort is stable, so starting boxes stay ahead of Ox Body ones in each group.
   return levels.sort((a, b) => ORDER.indexOf(a.level) - ORDER.indexOf(b.level))

@@ -10,18 +10,34 @@ export type ChoicePick = string | string[] | { target: string; selected: string[
 // Choice charms depend on the options still unchosen, not on a Repurchase mode, so
 // Excellency-style charms can be rebought without one; a pick schedule is a hard cap
 // on purchases even if options remain (Sharpshooter's Clever Tricks always leaves
-// one of its four unpicked). Other charms need a Repurchase mode.
+// one of its four unpicked). Other charms need a Repurchase mode, or a purchase
+// limit above 1 (Phase Shifting Apparatus: "you may buy this Charm a second
+// time"); a numeric limit stops further purchases, a rating-based one ("essence")
+// is left to the "!" mark.
 export function canBuyAgain(lib: LibraryCharm, owned: CharacterCharm | undefined, abilityNames: string[], attributeNames: string[]): boolean {
   if (!owned) return false
   const count = owned.count ?? 1
   if (lib.pickCounts && count >= lib.pickCounts.length) return false
-  if (!lib.choiceType) return lib.modes.some(m => m.label.toLowerCase() === 'repurchase')
+  if (!lib.choiceType) {
+    const limit = lib.purchaseLimit?.trim() ?? ''
+    if (/^\d+$/.test(limit)) return count < Number(limit)
+    return limit !== '' || lib.modes.some(m => m.label.toLowerCase() === 'repurchase')
+  }
   const picks = owned.picks ?? []
   const pool = lib.choiceType === 'custom' ? lib.choiceOptions
     : lib.choiceType === 'ability' ? abilityNames
     : lib.choiceType === 'attribute' ? attributeNames
     : null // freetext and multiselect: unlimited
   return pool === null || pool.some(o => !picks.includes(o))
+}
+
+// Whether buying `lib` now asks for a choice. A pick schedule can skip a
+// purchase (0 picks): Technique-from-Taste Approach names its discipline only
+// when first bought, Unfettered Sun Evasion names a gambit only on its repurchase.
+export function asksForChoice(lib: LibraryCharm, owned: CharacterCharm | undefined): boolean {
+  if (!lib.choiceType) return false
+  const purchaseIndex = owned ? (owned.count ?? 1) : 0
+  return (lib.pickCounts?.[purchaseIndex] ?? 1) > 0
 }
 
 // Buys `lib` once more: the first purchase adds a new entry (id `newId`); buying an

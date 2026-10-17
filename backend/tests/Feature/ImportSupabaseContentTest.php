@@ -66,8 +66,8 @@ it('imports the export so the app reads it back exactly, ids and order kept', fu
         ->charm_prerequisite_charms->toBe([['charm_name' => 'Trance of Unhesitating Speed']])
         ->charm_choice_options->toBe([['option' => 'Mode A', 'sort_order' => 0], ['option' => 'Mode B', 'sort_order' => 1]])
         ->charm_modes->toBe([
-            ['label' => 'Second', 'mode_text' => 'B', 'prerequisite_essence' => null, 'charm_mode_prerequisite_abilities' => []],
-            ['label' => 'Repurchase', 'mode_text' => 'A', 'prerequisite_essence' => 3, 'charm_mode_prerequisite_abilities' => [['text' => 'Ranged Combat 4']]],
+            ['label' => 'Second', 'mode_text' => 'B', 'prerequisite_essence' => null, 'commit_motes' => 0, 'charm_mode_prerequisite_abilities' => []],
+            ['label' => 'Repurchase', 'mode_text' => 'A', 'prerequisite_essence' => 3, 'commit_motes' => 0, 'charm_mode_prerequisite_abilities' => [['text' => 'Ranged Combat 4']]],
         ]);
 
     expect(Charm::first()->created_at->toIso8601String())->toBe('2026-06-12T13:51:12+00:00')

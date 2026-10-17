@@ -25,6 +25,14 @@ describe('the charm library cache', () => {
     expect(cachedCharmLibrary()?.[0].summary).toBe('Two')
   })
 
+  it("maps a mode's commit dots, leaving them out where there are none", async () => {
+    const { loadCharmLibrary } = await import('./charmLibrary')
+    const mode = (label: string, commit_motes: number) => ({ label, mode_text: '', prerequisite_essence: null, commit_motes, charm_mode_prerequisite_abilities: [] })
+    api.mockResolvedValueOnce({ data: [{ ...row('crow', 'One'), charm_modes: [mode('Liminal', 1), mode('Solar', 0)] }], error: null })
+    const [crow] = await loadCharmLibrary()
+    expect(crow.modes.map(m => m.commitMotes)).toEqual([1, undefined])
+  })
+
   it('keeps the last good copy when a load fails', async () => {
     const { cachedCharmLibrary, loadCharmLibrary } = await import('./charmLibrary')
     api.mockResolvedValueOnce({ data: [row('ox', 'One')], error: null })

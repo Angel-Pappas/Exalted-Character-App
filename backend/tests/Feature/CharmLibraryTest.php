@@ -58,7 +58,7 @@ it('replaces the lists on save and leaves modes alone', function () {
     $admin = User::factory()->admin()->create();
     $id = $this->actingAs($admin)->postJson('/api/charms', charmPayload())->json('id');
     $modeId = (string) str()->uuid();
-    DB::table('charm_modes')->insert(['id' => $modeId, 'charm_id' => $id, 'label' => 'Repurchase', 'mode_text' => 'Again', 'prerequisite_essence' => 2, 'position' => 0]);
+    DB::table('charm_modes')->insert(['id' => $modeId, 'charm_id' => $id, 'label' => 'Repurchase', 'mode_text' => 'Again', 'prerequisite_essence' => 2, 'position' => 0, 'commit_motes' => 1]);
     DB::table('charm_mode_prerequisite_abilities')->insert(['id' => (string) str()->uuid(), 'mode_id' => $modeId, 'text' => 'Archery 4', 'position' => 0]);
 
     $this->actingAs($admin)->putJson("/api/charms/{$id}", charmPayload([
@@ -73,7 +73,7 @@ it('replaces the lists on save and leaves modes alone', function () {
         ->charm_prerequisite_charms->toBe([])
         ->charm_choice_options->toBe([['option' => 'Only', 'sort_order' => 0]])
         ->charm_modes->toBe([[
-            'label' => 'Repurchase', 'mode_text' => 'Again', 'prerequisite_essence' => 2,
+            'label' => 'Repurchase', 'mode_text' => 'Again', 'prerequisite_essence' => 2, 'commit_motes' => 1,
             'charm_mode_prerequisite_abilities' => [['text' => 'Archery 4']],
         ]]);
 });

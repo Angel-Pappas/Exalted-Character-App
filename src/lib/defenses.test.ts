@@ -6,7 +6,8 @@ import type { InventoryItem } from '../types/character'
 
 const base: DefenseInputs = {
   stamina: 0, dexterity: 0, closeCombat: 0, athletics: 0, physique: 0, integrity: 0,
-  essence: 1, bestWeaponDefense: 0, bestArmorSoak: 0, bestArmorHardness: 0, oxBody: false, charmSoak: 0,
+  essence: 1, bestWeaponDefense: 0, bestArmorSoak: 0, bestArmorHardness: 0, oxBody: false,
+  charmBonus: { parry: 0, evasion: 0, soak: 0, hardness: 0, resolve: 0 },
   fullDefense: false, defendOther: false,
   bonus: { parry: 0, evasion: 0, soak: 0, hardness: 0, resolve: 0 },
 }
@@ -282,14 +283,25 @@ describe('bestEquipped — only equipped gear counts, and only the best of it', 
   })
 })
 
-describe('Soak from charms in use (Iron Kettle Body, Endurance of a Thousand Cuts)', () => {
+describe('bonuses from charms in use (Iron Kettle Body, Mantis Form, Undying Body…)', () => {
+  const charmBonus = (over: Partial<DefenseInputs['charmBonus']>) => ({ ...base.charmBonus, ...over })
+
   it('adds to Soak like Ox Body does, on top of armor', () => {
-    expect(calculateDefenses(inputs({ physique: 5, bestArmorSoak: 3, charmSoak: 2 })).soak).toBe(2 + 3 + 2)
+    expect(calculateDefenses(inputs({ physique: 5, bestArmorSoak: 3, charmBonus: charmBonus({ soak: 2 }) })).soak).toBe(2 + 3 + 2)
   })
 
   it('is not gear, so the +5 gear cap never trims it', () => {
-    const r = calculateDefenses(inputs({ physique: 5, bestArmorSoak: 5, charmSoak: 4 }))
+    const r = calculateDefenses(inputs({ physique: 5, bestArmorSoak: 5, charmBonus: charmBonus({ soak: 4 }) }))
     expect(r.soak).toBe(2 + 5 + 4)
     expect(r.capped.soak).toBe(false)
+  })
+
+  it('reaches every defence, and the base each reports stays the book formula', () => {
+    const r = calculateDefenses(inputs({
+      stamina: 2, closeCombat: 2, dexterity: 2, athletics: 2, integrity: 3,
+      charmBonus: { parry: 1, evasion: 2, soak: 3, hardness: 4, resolve: 5 },
+    }))
+    expect([r.parry, r.evasion, r.soak, r.hardness, r.resolve]).toEqual([2 + 1, 2 + 2, 1 + 3, 3 + 4, 4 + 5])
+    expect([r.parryBase, r.evasionBase, r.soakBase, r.hardnessBase, r.resolveBase]).toEqual([2, 2, 1, 3, 4])
   })
 })

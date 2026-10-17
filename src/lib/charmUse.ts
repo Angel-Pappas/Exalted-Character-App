@@ -1,4 +1,5 @@
-import type { AbilityData, CharacterCharm, IntimacyEntry, LibraryCharm, SheetData } from '../types/character'
+import type { AbilityData, CharacterCharm, CharmMode, IntimacyEntry, LibraryCharm, SheetData } from '../types/character'
+import { isModeInScope, modeLockReasons } from './charmRules'
 
 // Using charms on the sheet (Angel, 2026-10-16). No costs or steps are tracked:
 // only commit dots (each one a mote committed in the Essence panel), an in-use
@@ -10,8 +11,6 @@ export function charmKey(charm: CharacterCharm, lib: LibraryCharm | undefined): 
   return charm.mechanicalKeyOverride ?? lib?.mechanicalKey ?? charm.libraryMechanicalKey
 }
 
-export const IRON_KETTLE = 'iron_kettle'
-export const ENDURANCE = 'endurance_cuts'
 export const WARD_OF_THE_SUN = 'ward_of_sun'
 export const RIGHTEOUS_LION = 'righteous_lion'
 export const UNCONQUERED_SIGHT = 'unconquered_sight'
@@ -35,16 +34,45 @@ export function commitMote(pools: Pools, delta: 1 | -1): Pools | null {
   return { motes: { ...pools.motes, committed, current }, anima }
 }
 
-/** How many commit dots the charm shows. Some only commit through a repurchase. */
-export function dotCount(charm: CharacterCharm, lib: LibraryCharm | undefined): number {
-  if (!lib || lib.commitMotes <= 0) return 0
-  if (lib.commitNeedsRepurchase && (charm.count ?? 1) < 2) return 0
-  return lib.commitMotes
+/** Who the character is, for deciding which of a charm's modes it owns. */
+export interface ModeContext {
+  exaltType: string
+  caste: string
+  essence: number
+  abilities: Record<string, AbilityData>
+}
+
+/**
+ * The modes this character owns (Angel, 2026-10-16: every mode is owned except
+ * other Exalt types' modes and upgrades or repurchases the character hasn't
+ * unlocked). Read from the live library.
+ */
+export function ownedModes(lib: LibraryCharm, count: number, ctx: ModeContext): CharmMode[] {
+  return lib.modes.filter(m => isModeInScope(m.label, ctx.exaltType, ctx.caste, false)
+    && modeLockReasons(m, lib.modes, count, ctx.essence, ctx.abilities).length === 0)
+}
+
+/**
+ * How many commit dots the charm shows: its own (some only from the second
+ * purchase, like Iron Kettle Body), plus those of every mode the character owns
+ * that commits motes (e.g. As the Crow Flies' Liminal mode, Mind-Hand
+ * Manipulation's upgrades).
+ */
+export function dotCount(charm: CharacterCharm, lib: LibraryCharm | undefined, ctx: ModeContext): number {
+  if (!lib) return 0
+  const count = charm.count ?? 1
+  const own = lib.commitNeedsRepurchase && count < 2 ? 0 : Math.max(0, lib.commitMotes)
+  return own + ownedModes(lib, count, ctx).reduce((sum, m) => sum + (m.commitMotes ?? 0), 0)
+}
+
+/** Whether the card shows the in-use icon: an ongoing effect, or motes it commits. */
+export function hasInUseIcon(charm: CharacterCharm, lib: LibraryCharm | undefined, ctx: ModeContext): boolean {
+  return !!lib && (lib.ongoing || dotCount(charm, lib, ctx) > 0)
 }
 
 /** Dots lit, never more than the charm has. */
-export function litDots(charm: CharacterCharm, lib: LibraryCharm | undefined): number {
-  return Math.min(charm.litDots ?? 0, dotCount(charm, lib))
+export function litDots(charm: CharacterCharm, lib: LibraryCharm | undefined, ctx: ModeContext): number {
+  return Math.min(charm.litDots ?? 0, dotCount(charm, lib, ctx))
 }
 
 /**
@@ -52,10 +80,10 @@ export function litDots(charm: CharacterCharm, lib: LibraryCharm | undefined): n
  * one releases a mote and un-lights the last. Un-lighting the last dot also clears
  * a ward's name. Null when the mote can't be committed or released.
  */
-export function clickDot(charm: CharacterCharm, lib: LibraryCharm | undefined, index: number, pools: Pools): { charm: CharacterCharm; pools: Pools } | null {
-  const lit = litDots(charm, lib)
+export function clickDot(charm: CharacterCharm, lib: LibraryCharm | undefined, index: number, pools: Pools, ctx: ModeContext): { charm: CharacterCharm; pools: Pools } | null {
+  const lit = litDots(charm, lib, ctx)
   const lighting = index >= lit
-  if (lighting && lit >= dotCount(charm, lib)) return null
+  if (lighting && lit >= dotCount(charm, lib, ctx)) return null
   const next = commitMote(pools, lighting ? 1 : -1)
   if (!next) return null
   const nowLit = lit + (lighting ? 1 : -1)
@@ -150,33 +178,7 @@ export function charmProblems(charm: CharacterCharm, lib: LibraryCharm | undefin
   return problems
 }
 
-// ── Sheet effects while in use ──────────────────────────────────────────────
-
-export interface SoakBonus {
-  name: string
-  value: number
-}
-
-/**
- * Soak added by charms in use, each on its own line. `charms` are the charms as
- * their effects see them (purchases in training left out), so a charm still in
- * training adds nothing. `woundPenalty` is the health track's (−1, −2…).
- *  - Iron Kettle Body: +1 per lit dot (its commit, from the repurchase).
- *  - Endurance of a Thousand Cuts: + the wound penalty, as a positive number.
- */
-export function charmSoakBonuses(charms: CharacterCharm[], libById: Map<string, LibraryCharm>, woundPenalty: number): SoakBonus[] {
-  const bonuses: SoakBonus[] = []
-  for (const charm of charms) {
-    if (!charm.inUse) continue
-    const lib = libById.get(charm.libraryId)
-    const key = charmKey(charm, lib)
-    const value = key === IRON_KETTLE ? litDots(charm, lib)
-      : key === ENDURANCE ? Math.abs(woundPenalty)
-      : 0
-    if (value > 0) bonuses.push({ name: charm.name, value })
-  }
-  return bonuses
-}
+// ── Righteous Lion Spirit ─────────────────────────────────────────────────
 
 /** The Intimacies protected by Righteous Lion Spirit (in effect), for the gold mark in the Intimacies panel. */
 export function protectedIntimacies(charms: CharacterCharm[], libById: Map<string, LibraryCharm>): Set<string> {

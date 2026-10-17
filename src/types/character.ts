@@ -5,6 +5,9 @@ export interface CharmMode {
   text: string | null
   prerequisiteAbilities: string[]
   prerequisiteEssence: number | null
+  // Extra commit dots while the character owns this mode (e.g. an Exalt type's
+  // mode that commits a mote); absent = none. Copies saved on older sheets lack it.
+  commitMotes?: number
 }
 
 // A charm that requires a choice at purchase time (e.g. "choose an Ability",

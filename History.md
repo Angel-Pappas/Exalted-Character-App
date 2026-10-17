@@ -4,6 +4,18 @@ One entry per shipped change, newest first: what changed and **why**. How things
 now is in `Summary.md`; plans in `ROADMAP.md`. Entries before 2026-10-15 were rebuilt
 from the git history (one per day, its commits listed).
 
+- **2026-10-17** — **Every charm in the library implemented.** Angel asked for every charm
+  without an implementation to be reviewed by the rules agreed for Kaien's, then built.
+  All 484 were read: 231 need nothing (spent on a roll, a step or a question), 215 got
+  settings (commit dots, in-use icons, purchase limits and choices), and 16 wait on 12
+  questions (`CHARM_QUESTIONS.md`). New on the sheet: dots that come with a mode show
+  only for characters who own it (an Exalt type's mode, an unlocked upgrade); charms in
+  use now reach Parry, Evasion, Hardness and Resolve too (Mantis Form, Undying Body, Void
+  Avatar…), can make Parry/Evasion use another Ability (Streaming Arrow Stance, Ebon
+  Shadow Form), lower the wound penalty, or add temporary health levels; a charm with a
+  limit above 1 can be rebought, and a choice can be asked only on the first purchase or
+  only on the repurchase. Sharpshooter's Clever Tricks shows only the tricks picked. List:
+  `info/charm-implementation.md`.
 - **2026-10-16** — **Using charms on the sheet: commit dots, in-use icons and "!".** After
   reviewing Kaien's 22 charms with Angel (`info/kaien-charms-review.md`): charms that commit
   motes get dots that commit them as if by hand; charms with an ongoing effect get an

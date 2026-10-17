@@ -198,7 +198,12 @@ Angel's rules: no "Use" buttons and no tracking of costs or combat steps (the ta
 those). Set once per charm in Admin → Charms, for every character (`charm_library`
 `commit_motes`, `commit_needs_repurchase`, `ongoing`, `purchase_limit`). Logic in
 `src/lib/charmUse.ts`, tested.
-- **Commit dots** on the card, one per mote the charm commits. Clicking an empty dot does
+- **Every charm is set up** (2026-10-17): the list, charm by charm, is
+  `info/charm-implementation.md`; open questions in `CHARM_QUESTIONS.md`.
+- **Commit dots** on the card, one per mote the charm commits, plus those of any mode the
+  character owns that commits (`charm_modes.commit_motes`, set by migration — modes aren't
+  edited in Admin): its own Exalt type's mode, an unlocked upgrade or repurchase. Dots
+  imply the in-use icon. Clicking an empty dot does
   what raising Committed by hand does (a mote from Current to Committed, anima +1; not with
   Current at 0); clicking a lit one gives the mote back (`CharacterCharm.litDots`). Iron
   Kettle Body's dots only appear from its repurchase.
@@ -206,8 +211,19 @@ those). Set once per charm in Admin → Charms, for every character (`charm_libr
   (`CharacterCharm.inUse`). Dots and icon are independent. Sheet effects apply only while
   it's on, and never for a purchase still in training: **Iron Kettle Body** adds Soak equal
   to its lit dots, **Endurance of a Thousand Cuts** adds the current wound penalty to
-  Soak; each gets its own line in the Soak breakdown and counts like Ox Body's +1 (base,
-  not gear). Fists of Iron's icon is display only: lit while FoI is on in the Inventory.
+  Soak. Since 2026-10-17 all sheet effects live in `src/lib/charmEffects.ts` (tested),
+  keyed by mechanical key: flat bonuses to Parry, Evasion, Soak, Hardness or Resolve
+  (Mantis, Wood Dragon, Crane and Earth Dragon Forms, Root-and-Hand Merging, Skin-Flaying
+  Wind Dance, Undying Body, Viridian Rust Defense, Void Avatar Embodiment, Soul Fire
+  Shaper Form, Loyal Guardian Approach's Alchemical/Janest modes with Defend Other);
+  Parry/Evasion from another Ability (Streaming Arrow Stance, Games of Divinity Form,
+  Ebon Shadow Form, and Defense of Shining Joy — always on, used when higher); wound
+  penalty −1 (Undying Body, Relentless Lunar Fury; Earth Dragon Form ignores it for a
+  Dragon-Blood), shown on the Health badge with a hint; temporary Bruised levels
+  (Heartless Maiden Trance, Undying Body at Essence 3/5), marked with a blue dot. Each
+  gets its own breakdown line and counts like Ox Body's +1 (base, not gear). A charm
+  with a key but no icon applies always. Fists of Iron's icon is display only: lit while
+  FoI is on in the Inventory.
 - **"!" mark** on the card (and in the charm window, saying what to fix) when a charm is
   bought more times than its limit (a number, or a trait's rating: Essence, Physique… —
   every purchase counts) or a purchase is missing its choice.
@@ -218,6 +234,11 @@ those). Set once per charm in Admin → Charms, for every character (`charm_libr
   the Sun's dot asks who is warded (`wardName`), shown on hover, cleared when the dot or
   the icon goes off; it doesn't touch Full Defense or Defend Other. "Later" leaves a
   choice open, and the "!" shows until it's made.
+- **Purchases:** a charm with Repurchase modes has a limit of one more per mode; a limit
+  above 1 also allows rebuying a charm without a Repurchase mode (numeric limits stop
+  there). A pick schedule with 0 skips the choice for that purchase (Technique-from-Taste
+  asks only when first bought, Unfettered Sun Evasion only on its repurchase).
+  Sharpshooter's Clever Tricks shows only the tricks picked (`isUnpickedChoiceMode`).
 - Arsenal-Summoning Gesture: per Angel's homebrew its Dawn mode, Perfected Panoply
   Selection, is a third purchase (a third choice, limit 3).
 

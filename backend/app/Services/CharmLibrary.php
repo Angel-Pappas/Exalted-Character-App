@@ -130,7 +130,7 @@ class CharmLibrary
         $modes = DB::table('charm_modes')
             ->orderBy('charm_id')
             ->orderBy('position')
-            ->get(['id', 'charm_id', 'label', 'mode_text', 'prerequisite_essence']);
+            ->get(['id', 'charm_id', 'label', 'mode_text', 'prerequisite_essence', 'commit_motes']);
 
         $grouped = [];
         foreach ($modes as $mode) {
@@ -138,6 +138,7 @@ class CharmLibrary
                 'label' => $mode->label,
                 'mode_text' => $mode->mode_text,
                 'prerequisite_essence' => $mode->prerequisite_essence === null ? null : (int) $mode->prerequisite_essence,
+                'commit_motes' => (int) $mode->commit_motes,
                 'charm_mode_prerequisite_abilities' => $prereqs[(string) $mode->id] ?? [],
             ];
         }

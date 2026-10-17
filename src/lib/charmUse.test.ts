@@ -1,8 +1,8 @@
 import { describe, expect, it } from 'vitest'
 import type { CharacterCharm, IntimacyEntry, LibraryCharm } from '../types/character'
 import {
-  charmKey, charmProblems, charmSoakBonuses, clickDot, commitMote, dotCount, protectedIntimacies, purchaseLimit, toggleInUse,
-  type ProblemContext,
+  charmKey, charmProblems, clickDot, commitMote, dotCount, hasInUseIcon, ownedModes, protectedIntimacies, purchaseLimit, toggleInUse,
+  type ModeContext, type ProblemContext,
 } from './charmUse'
 
 // Angel, 2026-10-16: commit dots on the card work like committing a mote by hand;
@@ -21,6 +21,7 @@ const charm = (overrides: Partial<CharacterCharm> = {}): CharacterCharm => ({
   customDescription: null, mechanicalKeyOverride: null, mechanicalEnabled: true, ...overrides,
 })
 const pools = (current: number, committed = 0, anima = 0) => ({ motes: { current, committed, total: 10 }, anima })
+const solar: ModeContext = { exaltType: 'Solar Exalted', caste: 'Dawn', essence: 2, abilities: { Athletics: { rating: 4, specialty: '', excellency: false } } }
 const ctx = (overrides: Partial<ProblemContext> = {}): ProblemContext => ({
   essence: 3, attributes: { Stamina: 5 }, abilities: { Physique: { rating: 5, specialty: '', excellency: false } },
   intimacies: [], oxBodyHasChoice: false, ...overrides,
@@ -49,39 +50,61 @@ describe('commit dots', () => {
   const league = lib({ commitMotes: 2 })
 
   it('shows one dot per mote the charm commits', () => {
-    expect(dotCount(charm(), league)).toBe(2)
-    expect(dotCount(charm(), lib())).toBe(0)
+    expect(dotCount(charm(), league, solar)).toBe(2)
+    expect(dotCount(charm(), lib(), solar)).toBe(0)
   })
 
   it('Iron Kettle Body commits only through its repurchase', () => {
     const kettle = lib({ commitMotes: 2, commitNeedsRepurchase: true })
-    expect(dotCount(charm({ count: 1 }), kettle)).toBe(0)
-    expect(dotCount(charm({ count: 2 }), kettle)).toBe(2)
+    expect(dotCount(charm({ count: 1 }), kettle, solar)).toBe(0)
+    expect(dotCount(charm({ count: 2 }), kettle, solar)).toBe(2)
+  })
+
+  it("adds the dots of modes the character owns: its own Exalt type's, and unlocked upgrades", () => {
+    const crow = lib({ modes: [
+      { label: 'Liminal', text: 'Commit 1 mote…', prerequisiteAbilities: [], prerequisiteEssence: null, commitMotes: 1 },
+      { label: 'Sidereal', text: 'Commit 1 mote…', prerequisiteAbilities: [], prerequisiteEssence: null, commitMotes: 1 },
+    ] })
+    expect(dotCount(charm(), crow, solar)).toBe(0)
+    expect(dotCount(charm(), crow, { ...solar, exaltType: 'Liminal Exalted' })).toBe(1)
+    const leap = lib({ modes: [
+      { label: 'Upgrade', text: 'Soaring Crane Leap…', prerequisiteAbilities: ['Athletics 4'], prerequisiteEssence: 2, commitMotes: 1 },
+    ] })
+    expect(dotCount(charm(), leap, solar)).toBe(1)
+    expect(dotCount(charm(), leap, { ...solar, essence: 1 })).toBe(0)
+    expect(ownedModes(leap, 1, { ...solar, abilities: {} })).toHaveLength(1) // an Ability the sheet lacks never locks
+  })
+
+  it('shows the in-use icon for an ongoing charm or one with dots', () => {
+    expect(hasInUseIcon(charm(), lib({ ongoing: true }), solar)).toBe(true)
+    expect(hasInUseIcon(charm(), league, solar)).toBe(true)
+    expect(hasInUseIcon(charm(), lib(), solar)).toBe(false)
+    expect(hasInUseIcon(charm(), undefined, solar)).toBe(false)
   })
 
   it('an empty dot lights and commits a mote', () => {
-    const result = clickDot(charm(), league, 0, pools(10))
+    const result = clickDot(charm(), league, 0, pools(10), solar)
     expect(result?.charm.litDots).toBe(1)
     expect(result?.pools).toEqual(pools(9, 1, 1))
   })
 
   it('a lit dot un-lights and releases its mote', () => {
-    const result = clickDot(charm({ litDots: 2 }), league, 1, pools(8, 2, 2))
+    const result = clickDot(charm({ litDots: 2 }), league, 1, pools(8, 2, 2), solar)
     expect(result?.charm.litDots).toBe(1)
     expect(result?.pools).toEqual(pools(9, 1, 2))
   })
 
   it("won't light without a mote to commit", () => {
-    expect(clickDot(charm(), league, 0, pools(0))).toBeNull()
+    expect(clickDot(charm(), league, 0, pools(0), solar)).toBeNull()
   })
 
   it("won't light past the charm's dots", () => {
-    expect(clickDot(charm({ litDots: 2 }), league, 2, pools(8, 2))).toBeNull()
+    expect(clickDot(charm({ litDots: 2 }), league, 2, pools(8, 2), solar)).toBeNull()
   })
 
   it("un-lighting the last dot clears Ward of the Sun's ward", () => {
     const ward = lib({ commitMotes: 1 })
-    const result = clickDot(charm({ litDots: 1, wardName: 'Veyra' }), ward, 0, pools(9, 1))
+    const result = clickDot(charm({ litDots: 1, wardName: 'Veyra' }), ward, 0, pools(9, 1), solar)
     expect(result?.charm.wardName).toBeUndefined()
   })
 })
@@ -166,31 +189,6 @@ describe('missing choices', () => {
   it('reads the key from the library, so charms bought before it had one are covered', () => {
     expect(charmKey(charm({ libraryMechanicalKey: null }), lib({ mechanicalKey: 'righteous_lion' }))).toBe('righteous_lion')
     expect(charmKey(charm({ mechanicalKeyOverride: 'foi' }), lib({ mechanicalKey: 'righteous_lion' }))).toBe('foi')
-  })
-})
-
-describe('Soak from charms in use', () => {
-  const kettle = lib({ id: 'kettle', mechanicalKey: 'iron_kettle', commitMotes: 2, commitNeedsRepurchase: true })
-  const endurance = lib({ id: 'endurance', mechanicalKey: 'endurance_cuts' })
-  const libs = new Map([[kettle.id, kettle], [endurance.id, endurance]])
-  const kettleCharm = (o: Partial<CharacterCharm>) => charm({ libraryId: 'kettle', name: 'Iron Kettle Body', count: 2, ...o })
-  const enduranceCharm = (o: Partial<CharacterCharm>) => charm({ libraryId: 'endurance', name: 'Endurance of a Thousand Cuts', ...o })
-
-  it('Iron Kettle Body: +1 per lit dot, only while in use', () => {
-    expect(charmSoakBonuses([kettleCharm({ inUse: true, litDots: 2 })], libs, 0)).toEqual([{ name: 'Iron Kettle Body', value: 2 }])
-    expect(charmSoakBonuses([kettleCharm({ inUse: true, litDots: 1 })], libs, 0)).toEqual([{ name: 'Iron Kettle Body', value: 1 }])
-    expect(charmSoakBonuses([kettleCharm({ inUse: false, litDots: 2 })], libs, 0)).toEqual([])
-    expect(charmSoakBonuses([kettleCharm({ inUse: true, litDots: 0 })], libs, 0)).toEqual([])
-  })
-
-  it('Endurance of a Thousand Cuts: the wound penalty, as a bonus, while in use', () => {
-    expect(charmSoakBonuses([enduranceCharm({ inUse: true })], libs, -2)).toEqual([{ name: 'Endurance of a Thousand Cuts', value: 2 }])
-    expect(charmSoakBonuses([enduranceCharm({ inUse: true })], libs, 0)).toEqual([])
-    expect(charmSoakBonuses([enduranceCharm({ inUse: false })], libs, -4)).toEqual([])
-  })
-
-  it('a charm left out because it is in training adds nothing (the caller passes charms in effect)', () => {
-    expect(charmSoakBonuses([], libs, -4)).toEqual([])
   })
 })
 

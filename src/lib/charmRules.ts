@@ -64,6 +64,14 @@ export function isModeInScope(label: string, exaltType: string, caste: string, s
   return true
 }
 
+// A mode that is one of the charm's purchase choices, which this character didn't
+// pick. Sharpshooter's Clever Tricks lists its four tricks as modes and as choices
+// ("Archer's Keen Eye: Reduce all penalties…"); only the picked ones are its own.
+export function isUnpickedChoiceMode(label: string, choiceOptions: string[], picks: string[]): boolean {
+  const prefix = `${label}:`
+  return choiceOptions.some(o => o.startsWith(prefix)) && !picks.some(p => p.startsWith(prefix))
+}
+
 // ── Gating ─────────────────────────────────────────────────────────────────
 
 // Parses admin-authored prerequisite strings like "Integrity 2" or "Ranged Combat 4"

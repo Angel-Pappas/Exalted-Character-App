@@ -16,6 +16,7 @@ export function sheetLibraryCharm(r: CharmLibraryRow): LibraryCharm {
     modes: (r.charm_modes ?? []).map(m => ({
       label: m.label, text: m.mode_text, prerequisiteEssence: m.prerequisite_essence,
       prerequisiteAbilities: (m.charm_mode_prerequisite_abilities ?? []).map(p => p.text),
+      ...(m.commit_motes ? { commitMotes: m.commit_motes } : {}),
     })),
     choiceType: r.choice_type ?? null,
     choiceOptions: (r.charm_choice_options ?? []).sort((a, b) => a.sort_order - b.sort_order).map(o => o.option),

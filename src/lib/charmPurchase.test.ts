@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest'
-import { addPurchase, canBuyAgain, cardSummary, undoPurchase } from './charmPurchase'
+import { addPurchase, asksForChoice, canBuyAgain, cardSummary, undoPurchase } from './charmPurchase'
 import type { CharacterCharm, LibraryCharm } from '../types/character'
 
 const lib = (overrides: Partial<LibraryCharm> = {}): LibraryCharm => ({
@@ -23,6 +23,14 @@ describe('canBuyAgain', () => {
   it('needs a Repurchase mode when the charm has no purchase choice', () => {
     expect(canBuyAgain(lib(), owned(), [], [])).toBe(false)
     expect(canBuyAgain(lib({ modes: [repurchase] }), owned(), [], [])).toBe(true)
+  })
+
+  it('a purchase limit above 1 allows buying again without a Repurchase mode, up to a numeric limit', () => {
+    const phase = lib({ purchaseLimit: '2' })
+    expect(canBuyAgain(phase, owned({ count: 1 }), [], [])).toBe(true)
+    expect(canBuyAgain(phase, owned({ count: 2 }), [], [])).toBe(false)
+    expect(canBuyAgain(lib({ purchaseLimit: 'essence' }), owned({ count: 4 }), [], [])).toBe(true) // the "!" catches the excess
+    expect(canBuyAgain(lib({ purchaseLimit: '1' }), owned(), [], [])).toBe(false)
   })
 
   it('allows another choice purchase while unchosen options remain', () => {
@@ -83,5 +91,22 @@ describe('cardSummary', () => {
     expect(cardSummary(owned(), 'Suggested')).toBe('Suggested')
     expect(cardSummary(owned({ customSummary: '  ' }), '  ')).toBeNull()
     expect(cardSummary(owned(), null)).toBeNull()
+  })
+})
+
+describe('asksForChoice', () => {
+  it('asks on every purchase of a choice charm, and never for one without a choice', () => {
+    expect(asksForChoice(lib({ choiceType: 'ability' }), undefined)).toBe(true)
+    expect(asksForChoice(lib({ choiceType: 'ability' }), owned({ count: 3 }))).toBe(true)
+    expect(asksForChoice(lib(), undefined)).toBe(false)
+  })
+
+  it('skips a purchase its pick schedule gives no pick', () => {
+    const taste = lib({ choiceType: 'freetext', pickCounts: [1, 0] })   // Technique-from-Taste: the discipline, once
+    expect(asksForChoice(taste, undefined)).toBe(true)
+    expect(asksForChoice(taste, owned({ count: 1 }))).toBe(false)
+    const unfettered = lib({ choiceType: 'freetext', pickCounts: [0, 1] }) // Unfettered Sun Evasion: a gambit on repurchase
+    expect(asksForChoice(unfettered, undefined)).toBe(false)
+    expect(asksForChoice(unfettered, owned({ count: 1 }))).toBe(true)
   })
 })

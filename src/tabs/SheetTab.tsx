@@ -8,7 +8,7 @@ import type { MilestoneTransaction, TrainingDone } from '../types/character'
 import type { SheetData, FoiState, AbilityData, MeritEntry, IntimacyEntry, OxBodyPick, PanelLayout, CharacterCharm, CharmGroup, LibraryCharm, EffectCategory, EffectEntry, InventoryItem, InventoryItemKind, WeaponWeight, ArtifactColor, GameData } from '../types/character'
 import { DEFAULT_GAME_DATA } from '../types/character'
 import {
-  abilityRank, baseAbility, isModeInScope, isTypeInScope, modeIcon, modeLockReasons,
+  abilityRank, baseAbility, isModeInScope, isTypeInScope, isUnpickedChoiceMode, modeIcon, modeLockReasons,
   sortAbilities, sortModes, typeRank,
 } from '../lib/charmRules'
 import {
@@ -17,15 +17,16 @@ import {
 import type { GroupColor } from '../lib/charmGroups'
 import { ALL, sameSelection, visibleSections } from '../lib/charmSelection'
 import type { CharmSelection } from '../lib/charmSelection'
-import { canBuyAgain, cardSummary } from '../lib/charmPurchase'
+import { asksForChoice, canBuyAgain, cardSummary } from '../lib/charmPurchase'
 import { buyCharm, charmsInEffect, removeCharm as removeCharmAndLines, trainingByCharm, undoCharmPurchase, type CharmCost, type CharmsAndLedger } from '../lib/charmTraining'
 import { ratingToStore, trainedAbilities, trainedAttributes, trainingHint, traitTraining } from '../lib/traitTraining'
 import { formatDay, todayKey } from '../lib/milestones'
 import CharmCostModal from '../components/CharmCostModal'
 import {
-  FISTS_OF_IRON, RIGHTEOUS_LION, UNCONQUERED_SIGHT, WARD_OF_THE_SUN, charmKey, charmProblems, charmSoakBonuses, clickDot, dotCount, litDots,
-  protectable, protectedIntimacies, toggleInUse, type Pools, type ProblemContext,
+  FISTS_OF_IRON, RIGHTEOUS_LION, UNCONQUERED_SIGHT, WARD_OF_THE_SUN, charmKey, charmProblems, clickDot, dotCount, hasInUseIcon, litDots,
+  protectable, protectedIntimacies, toggleInUse, type ModeContext, type Pools, type ProblemContext,
 } from '../lib/charmUse'
+import { charmHealthLevels, charmStatLines, defenseAbilities, statTotal, woundPenaltyAfterCharms, type DefenseStat } from '../lib/charmEffects'
 import { IntimacyPickModal, NamePromptModal } from '../components/CharmChoiceModals'
 import type { ChoicePick } from '../lib/charmPurchase'
 import { cachedCharmLibrary, loadCharmLibrary } from '../lib/charmLibrary'
@@ -393,7 +394,7 @@ export function CharmBrowseModal({ library, loading, existing, exaltType, caste,
   const existingByLib = new Map(existing.map(c => [c.libraryId, c]))
 
   function startPurchase(charm: import('../types/character').LibraryCharm) {
-    if (charm.choiceType) {
+    if (asksForChoice(charm, existingByLib.get(charm.id))) {
       setPickingCharm(charm)
     } else {
       onAdd(charm, null)
@@ -582,14 +583,16 @@ function CharmGroupForm({ initial, submitLabel, onSubmit, onCancel }: {
 // A charm's full text: its choices, text (the player's edit if any), and the modes
 // in scope for this character, locked ones dimmed with the reason. Shown in the
 // card's hover pop-up and in the charm window.
-function CharmText({ charm, exaltType, caste, essence, abilities }: {
+function CharmText({ charm, choiceOptions, exaltType, caste, essence, abilities }: {
   charm: CharacterCharm
+  choiceOptions: string[]   // the library's purchase choices: modes that are choices show only if picked
   exaltType: string
   caste: string
   essence: number
   abilities: Record<string, AbilityData>
 }) {
-  const modes = sortModes((charm.libraryModes ?? []).filter(m => isModeInScope(m.label, exaltType, caste, false)))
+  const modes = sortModes((charm.libraryModes ?? []).filter(m => isModeInScope(m.label, exaltType, caste, false)
+    && !isUnpickedChoiceMode(m.label, choiceOptions, charm.picks ?? [])))
   return (
     <div className="space-y-1.5">
       {charm.picks && charm.picks.length > 0 && (
@@ -815,7 +818,7 @@ function CharmWindow({ charm, lib, groups, exaltType, caste, essence, abilities,
                   onSave={text => { onChange({ ...charm, customDescription: text.trim() || null }); setEditing(null) }}
                   onCancel={() => setEditing(null)} />
               ) : (
-                <CharmText charm={charm} exaltType={exaltType} caste={caste} essence={essence} abilities={abilities} />
+                <CharmText charm={charm} choiceOptions={lib?.choiceOptions ?? []} exaltType={exaltType} caste={caste} essence={essence} abilities={abilities} />
               )}
             </section>
 
@@ -904,6 +907,7 @@ function CharmPanel({ library, libraryLoaded, charms, milestones, training, onLe
   const [contentHeight, setContentHeight] = useState(0)
 
   const libById = new Map(library.map(l => [l.id, l]))
+  const modeCtx: ModeContext = { exaltType, caste, essence, abilities }
 
   // Watch the content's natural height; it changes with charms, filtering, the
   // chosen group, and the panel's width (cards wrap onto more rows when narrower).
@@ -951,10 +955,10 @@ function CharmPanel({ library, libraryLoaded, charms, milestones, training, onLe
   // Committed counter does by hand. Lighting Ward of the Sun asks who is warded.
   function clickCharmDot(charm: CharacterCharm, index: number) {
     const lib = libById.get(charm.libraryId)
-    const result = clickDot(charm, lib, index, pools)
+    const result = clickDot(charm, lib, index, pools, modeCtx)
     if (!result) return
     onSheetChange({ charms: charms.map(c => c.id === charm.id ? result.charm : c), motes: result.pools.motes, anima: result.pools.anima })
-    if (charmKey(charm, lib) === WARD_OF_THE_SUN && litDots(charm, lib) === 0) setWardFor(charm.id)
+    if (charmKey(charm, lib) === WARD_OF_THE_SUN && litDots(charm, lib, modeCtx) === 0) setWardFor(charm.id)
   }
 
   function setAlly(charmId: string, index: number, name: string) {
@@ -972,7 +976,7 @@ function CharmPanel({ library, libraryLoaded, charms, milestones, training, onLe
 
   // Repurchase from the charm window: charms with a purchase choice ask for it first.
   function repurchase(lib: LibraryCharm) {
-    if (lib.choiceType) setPicking(lib)
+    if (asksForChoice(lib, charms.find(c => c.libraryId === lib.id))) setPicking(lib)
     else addCharm(lib, null)
   }
 
@@ -1075,8 +1079,8 @@ function CharmPanel({ library, libraryLoaded, charms, milestones, training, onLe
     const waiting = training.get(charm.libraryId)?.length ?? 0
     const allWaiting = waiting >= count
     const lib = libById.get(charm.libraryId)
-    const dots = dotCount(charm, lib)
-    const lit = litDots(charm, lib)
+    const dots = dotCount(charm, lib, modeCtx)
+    const lit = litDots(charm, lib, modeCtx)
     const isFoi = charmKey(charm, lib) === FISTS_OF_IRON
     const inUse = isFoi ? foiActive : !!charm.inUse
     const problems = charmProblems(charm, lib, problemContext)
@@ -1087,7 +1091,7 @@ function CharmPanel({ library, libraryLoaded, charms, milestones, training, onLe
         <div className="space-y-1.5">
           <p className="font-semibold text-stone-100">{charm.name}{count > 1 ? ` ×${count}` : ''}</p>
           {charm.wardName && <p className="text-amber-300">Ward: {charm.wardName}</p>}
-          <CharmText charm={charm} exaltType={exaltType} caste={caste} essence={essence} abilities={abilities} />
+          <CharmText charm={charm} choiceOptions={lib?.choiceOptions ?? []} exaltType={exaltType} caste={caste} essence={essence} abilities={abilities} />
         </div>
       }>
         <div role="button" tabIndex={0}
@@ -1120,7 +1124,7 @@ function CharmPanel({ library, libraryLoaded, charms, milestones, training, onLe
                 ))}
               </span>
             )}
-            {lib?.ongoing && (isFoi ? (
+            {hasInUseIcon(charm, lib, modeCtx) && (isFoi ? (
               <span data-tip={inUse ? 'In use: Fists of Iron is on (switched in the Inventory)' : 'Not in use: switch Fists of Iron on in the Inventory'}
                 className={`shrink-0 h-4 inline-flex items-center ${inUse ? 'text-amber-400' : 'text-stone-600'}`}>
                 <Zap size={13} aria-hidden fill={inUse ? 'currentColor' : 'none'} />
@@ -2441,10 +2445,19 @@ export default function SheetTab({ sheet, onChange, editMode, readOnly = false, 
   const trainingInput = (n: number | undefined) => n ? ' !border-dashed !border-amber-600' : ''
 
   // The track is rebuilt from Ox Body on every render, so it can't drift from the charm.
+  // Charms change the track, the wound penalty and the Defenses in that order: the
+  // penalty depends on the track, and Endurance of a Thousand Cuts on the penalty.
+  const effectCtx: ModeContext = { exaltType: data.exaltType, caste: data.caste, essence: data.essence ?? 1, abilities: calcAbilities }
   const oxBody = findOxBody(effectCharms)
-  const healthTrack = buildHealthTrack(data.exaltType, data.caste, oxBody ? (oxBody.count ?? 1) : 0, oxBody?.oxBodyPicks ?? [])
+  const healthTrack = buildHealthTrack(data.exaltType, data.caste, oxBody ? (oxBody.count ?? 1) : 0, oxBody?.oxBodyPicks ?? [],
+    charmHealthLevels(effectCharms, libById, effectCtx))
   const damage = clampDamage(data.damage, healthTrack.length)
-  const charmSoak = charmSoakBonuses(effectCharms, libById, woundPenalty(healthTrack, damage))
+  const wound = woundPenaltyAfterCharms(woundPenalty(healthTrack, damage), effectCharms, libById, effectCtx)
+  const charmLines = charmStatLines(effectCharms, libById, {
+    ...effectCtx, woundPenalty: wound.penalty, defendOther: data.defenseOther,
+    armorEquipped: data.inventory.some(i => i.kind === 'armor' && i.equipped),
+  })
+  const defenseAbility = defenseAbilities(effectCharms, libById, effectCtx, calcAbilities)
   const unbreakableIntimacies = protectedIntimacies(effectCharms, libById)
   const setDamage = (n: number) => update({ damage: clampDamage(n, healthTrack.length) })
 
@@ -2552,8 +2565,6 @@ export default function SheetTab({ sheet, onChange, editMode, readOnly = false, 
     defenses: (() => {
       const stamina = calcAttributes['Stamina']   ?? 0
       const dex     = calcAttributes['Dexterity']  ?? 0
-      const cc      = calcAbilities['Close Combat']?.rating ?? 0
-      const ath     = calcAbilities['Athletics']?.rating    ?? 0
       const phys    = calcAbilities['Physique']?.rating     ?? 0
       const integ   = calcAbilities['Integrity']?.rating    ?? 0
       const bestWpnDef    = bestEquipped(data.inventory, 'weapon', 'defense')
@@ -2564,11 +2575,14 @@ export default function SheetTab({ sheet, onChange, editMode, readOnly = false, 
         parry, evasion, soak, hardness, resolve,
         parryBase, evasionBase, soakBase, hardnessBase, resolveBase, oxBodySoak, weaponBonus: wpnBonus, capped,
       } = calculateDefenses({
-        stamina, dexterity: dex, closeCombat: cc, athletics: ath, physique: phys,
+        stamina, dexterity: dex, closeCombat: defenseAbility.parry.rating, athletics: defenseAbility.evasion.rating, physique: phys,
         integrity: integ, essence: data.essence ?? 1,
         bestWeaponDefense: bestWpnDef, bestArmorSoak, bestArmorHardness: bestArmorHard,
         oxBody: !!oxBody,
-        charmSoak: charmSoak.reduce((sum, b) => sum + b.value, 0),
+        charmBonus: {
+          parry: statTotal(charmLines, 'parry'), evasion: statTotal(charmLines, 'evasion'), soak: statTotal(charmLines, 'soak'),
+          hardness: statTotal(charmLines, 'hardness'), resolve: statTotal(charmLines, 'resolve'),
+        },
         fullDefense: data.fullDefense, defendOther: data.defenseOther,
         bonus: {
           parry: db.parry ?? 0, evasion: db.evasion ?? 0, soak: db.soak ?? 0,
@@ -2594,6 +2608,11 @@ export default function SheetTab({ sheet, onChange, editMode, readOnly = false, 
       const weaponLine = (key: 'parry' | 'evasion'): BreakdownLine => wpnBonus
         ? gearLine('Weapon', 'Best equipped weapon', bestWpnDef, capped[key])
         : { label: 'Weapon', value: 0, signed: true, muted: true, detail: 'Only with Full Defense or Defend Other' }
+      // Each charm in use on its own line, after gear and Ox Body, before the manual bonus.
+      const charmLinesFor = (stat: DefenseStat): BreakdownLine[] => charmLines.filter(l => l.stat === stat)
+        .map(l => ({ label: l.name, value: l.value, signed: true, detail: 'In use' }))
+      // A charm can make Parry or Evasion use another Ability; Base names it.
+      const abilityText = (a: typeof defenseAbility.parry) => `${a.ability} ${a.rating}${a.by ? ` (${a.by})` : ''}`
       const bonusLine = (key: keyof typeof db): BreakdownLine =>
         ({ label: 'Manual bonus', value: db[key] ?? 0, signed: true, muted: !db[key], detail: 'Typed into the box beside it' })
       const calcRow = (label: string, total: number, lines: BreakdownLine[], bonus: ReturnType<typeof bonusInput>) => (
@@ -2608,27 +2627,27 @@ export default function SheetTab({ sheet, onChange, editMode, readOnly = false, 
           <SectionHeader title="Defenses" />
           <div className="space-y-1.5">
             {calcRow('Parry', parry, [
-              { label: 'Base', value: parryBase, detail: `Stamina ${stamina} + Close Combat ${cc}, halved, rounded up` },
-              weaponLine('parry'), bonusLine('parry'),
+              { label: 'Base', value: parryBase, detail: `Stamina ${stamina} + ${abilityText(defenseAbility.parry)}, halved, rounded up` },
+              weaponLine('parry'), ...charmLinesFor('parry'), bonusLine('parry'),
             ], bonusInput('parry'))}
             {calcRow('Evasion', evasion, [
-              { label: 'Base', value: evasionBase, detail: `Dexterity ${dex} + Athletics ${ath}, halved, rounded up` },
-              weaponLine('evasion'), bonusLine('evasion'),
+              { label: 'Base', value: evasionBase, detail: `Dexterity ${dex} + ${abilityText(defenseAbility.evasion)}, halved, rounded up` },
+              weaponLine('evasion'), ...charmLinesFor('evasion'), bonusLine('evasion'),
             ], bonusInput('evasion'))}
             {calcRow('Soak', soak, [
               { label: 'Base', value: soakBase, detail: `1, plus 1 at Physique 3+ (you have ${phys})` },
               gearLine('Armor', 'Best equipped armor', bestArmorSoak, capped.soak),
               ...(oxBodySoak ? [{ label: 'Ox Body', value: oxBodySoak, signed: true, detail: 'Ox Body Technique, counted once' }] : []),
-              ...charmSoak.map(b => ({ label: b.name, value: b.value, signed: true, detail: 'In use' })),
+              ...charmLinesFor('soak'),
               bonusLine('soak'),
             ], bonusInput('soak'))}
             {calcRow('Hardness', hardness, [
               { label: 'Base', value: hardnessBase, detail: `2 + Essence ${data.essence ?? 1}` },
-              gearLine('Armor', 'Best equipped armor', bestArmorHard, capped.hardness), bonusLine('hardness'),
+              gearLine('Armor', 'Best equipped armor', bestArmorHard, capped.hardness), ...charmLinesFor('hardness'), bonusLine('hardness'),
             ], bonusInput('hardness'))}
             {calcRow('Resolve', resolve, [
               { label: 'Base', value: resolveBase, detail: `From Integrity ${integ}` },
-              bonusLine('resolve'),
+              ...charmLinesFor('resolve'), bonusLine('resolve'),
             ], bonusInput('resolve'))}
             <div className="border-t border-stone-700 pt-1 mt-1 space-y-1">
               {([['defenseOther', 'Defend Other'], ['fullDefense', 'Full Defense']] as const).map(([key, label]) => (
@@ -2758,13 +2777,15 @@ export default function SheetTab({ sheet, onChange, editMode, readOnly = false, 
     })(),
 
     health: (() => {
-      const wound = currentWound(healthTrack, damage)
-      const penalty = woundPenalty(healthTrack, damage)
-      // No badge while unhurt; otherwise the rightmost filled level's name and penalty.
-      const status = wound === null ? null
-        : wound === 'incap' ? { text: 'Incapacitated', cls: 'bg-red-950 text-red-300 border-red-700' }
-        : penalty === 0 ? { text: 'Bruised', cls: 'bg-amber-950 text-amber-300 border-amber-800' }
-        : { text: `${LEVEL_NAMES[String(wound)]} −${-penalty}`, cls: 'bg-red-950 text-red-300 border-red-800' }
+      const level = currentWound(healthTrack, damage)
+      const penalty = wound.penalty
+      // No badge while unhurt; otherwise the rightmost filled level's name and the
+      // penalty after charms (Undying Body…), which its hint names.
+      const status = level === null ? null
+        : level === 'incap' ? { text: 'Incapacitated', cls: 'bg-red-950 text-red-300 border-red-700' }
+        : level === 0 ? { text: 'Bruised', cls: 'bg-amber-950 text-amber-300 border-amber-800' }
+        : { text: `${LEVEL_NAMES[String(level)]}${penalty < 0 ? ` −${-penalty}` : ', no penalty'}`, cls: 'bg-red-950 text-red-300 border-red-800' }
+      const statusTip = wound.lines.length ? wound.lines.map(l => `${l.name}: ${l.text}`).join('. ') : undefined
       // Consecutive levels of the same kind form one labelled group.
       const groups: { level: typeof healthTrack[number]['level']; start: number; boxes: typeof healthTrack }[] = []
       healthTrack.forEach((box, idx) => {
@@ -2779,7 +2800,7 @@ export default function SheetTab({ sheet, onChange, editMode, readOnly = false, 
             <span className="text-xs text-stone-500 font-mono" data-tip="Damage taken / health levels">
               <span className="text-stone-200">{damage}</span>/{healthTrack.length}
             </span>
-            {status && <span className={`ml-auto text-[10px] font-semibold px-1.5 py-0.5 rounded border whitespace-nowrap ${status.cls}`}>{status.text}</span>}
+            {status && <span data-tip={statusTip} className={`ml-auto text-[10px] font-semibold px-1.5 py-0.5 rounded border whitespace-nowrap ${status.cls}`}>{status.text}</span>}
             {damage > 0 && (
               <button onClick={() => setDamage(0)} data-tip="Heal all" aria-label="Heal all"
                 className="text-stone-500 hover:text-emerald-400 transition-colors text-sm leading-none">↺</button>
@@ -2798,13 +2819,13 @@ export default function SheetTab({ sheet, onChange, editMode, readOnly = false, 
                     return (
                       <button key={idx} onClick={() => setDamage(damageAfterClick(damage, idx))}
                         aria-label={`${LEVEL_NAMES[String(box.level)]} level ${idx + 1}${filled ? ', damaged' : ''}`}
-                        data-tip={box.oxBody ? 'From Ox Body Technique' : undefined}
+                        data-tip={box.oxBody ? 'From Ox Body Technique' : box.charm ? `From ${box.charm}, while in use` : undefined}
                         className={`relative w-5 h-5 rounded border-2 transition-colors ${
                           filled
                             ? (box.level === 'incap' ? 'bg-red-800 border-red-600' : 'bg-red-600 border-red-500')
                             : 'bg-transparent border-stone-600 hover:border-red-400'
                         }`}>
-                        {box.oxBody && <span className="absolute top-0.5 right-0.5 w-1 h-1 rounded-full bg-amber-500" />}
+                        {(box.oxBody || box.charm) && <span className={`absolute top-0.5 right-0.5 w-1 h-1 rounded-full ${box.oxBody ? 'bg-amber-500' : 'bg-sky-400'}`} />}
                       </button>
                     )
                   })}

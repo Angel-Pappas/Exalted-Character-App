@@ -27,6 +27,9 @@ the priorities — the order under **Next** is a suggestion until he does.
 - [x] Phone layouts for the sheet and Milestones page; ratings in training show
       today's value (2026-10-16).
 
+- [x] Every charm in the library reviewed and implemented by the rules agreed for
+      Kaien's; sheet effects reach all five Defenses, health and wound penalty (2026-10-17).
+
 ## Next (suggested)
 
 
@@ -34,8 +37,7 @@ the priorities — the order under **Next** is a suggestion until he does.
       show as "ESSE…", "ANI…", "PO…" at desktop width (found in the first screenshot
       review, 2026-10-15).
 - [ ] **Light mode** CSS theming pass.
-- [ ] **Charm mechanics** charm by charm, as needed — the list is in
-      `CHARMS_NEEDING_IMPLEMENTATION.md`.
+- [ ] **Charm questions** — 12 open questions for Angel in `CHARM_QUESTIONS.md`.
 
 ## Ideas / later
 

@@ -81,6 +81,16 @@ describe('Building the track with Ox Body', () => {
   })
 })
 
+describe('Temporary levels from charms in use (Heartless Maiden Trance, Undying Body)', () => {
+  it('adds Bruised levels after the starting and Ox Body ones', () => {
+    const track = buildHealthTrack('Solar Exalted', 'Dawn', 1, ['zero'], [{ name: 'Heartless Maiden Trance', count: 1 }])
+    const bruised = track.filter(l => l.level === 0)
+    expect(bruised).toHaveLength(4)
+    expect(bruised[3]).toEqual({ level: 0, oxBody: false, charm: 'Heartless Maiden Trance' })
+    expect(track).toHaveLength(9)
+  })
+})
+
 describe('Wound penalty — "the rightmost filled health level ... and just that number"', () => {
   const track = buildHealthTrack('Solar Exalted', 'Dawn', 0, [])
 
