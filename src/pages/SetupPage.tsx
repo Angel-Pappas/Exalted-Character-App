@@ -1,5 +1,5 @@
 import { useEffect, useState, useCallback } from 'react'
-import { useNavigate } from 'react-router-dom'
+import PageHeader from '../components/PageHeader'
 import { api } from '../lib/api'
 import { useAuth } from '../contexts/AuthContext'
 import type { GameData, WeaponTableRow, ArmorTableRow, TagEntry, EssenceMoteRow, AnimaStateRow, ExaltType, ExaltTypeRow } from '../types/character'
@@ -93,7 +93,6 @@ function EditExaltRow({ et, onSave, onCancel, saving, textInput }: {
 
 export default function SetupPage() {
   const { user, role } = useAuth()
-  const navigate = useNavigate()
   const [activeTab, setActiveTab] = useState<Tab>('Tables')
   const [data, setData] = useState<GameData>(DEFAULT_GAME_DATA)
   const [saving, setSaving] = useState(false)
@@ -320,13 +319,9 @@ export default function SetupPage() {
       <datalist id="charm-type-options">
         {CHARM_TYPE_OPTIONS.map(t => <option key={t} value={t} />)}
       </datalist>
-      <header className="flex items-center justify-between px-4 py-3 border-b border-stone-700 shrink-0">
-        <div className="flex items-center gap-3">
-          <button onClick={() => navigate(-1)} className="text-stone-400 hover:text-stone-200 text-sm">← Back</button>
-          <h1 className="text-amber-400 font-semibold">Admin</h1>
-        </div>
-        {saving && <span className="text-xs text-stone-500">Saving…</span>}
-      </header>
+      <PageHeader title="Admin">
+        {saving && <div className="flex items-center ml-auto py-2.5"><span className="text-xs text-stone-500" role="status">Saving…</span></div>}
+      </PageHeader>
 
       <div className="flex flex-1 overflow-hidden">
         <nav className="w-44 shrink-0 border-r border-stone-700 py-4 px-2 space-y-0.5">

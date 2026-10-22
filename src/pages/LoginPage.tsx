@@ -1,5 +1,6 @@
 import { useState, type FormEvent } from 'react'
 import { useNavigate } from 'react-router-dom'
+import { useDocumentTitle } from '../components/PageHeader'
 import { useAuth } from '../contexts/AuthContext'
 
 type Mode = 'signin' | 'signup'
@@ -46,6 +47,7 @@ function PasswordInput({ value, onChange, placeholder, autoComplete }: {
 export default function LoginPage() {
   const { signIn, signUp } = useAuth()
   const navigate = useNavigate()
+  useDocumentTitle('Sign in')
   const [mode, setMode] = useState<Mode>('signin')
   const [username, setUsername] = useState('')
   const [password, setPassword] = useState('')

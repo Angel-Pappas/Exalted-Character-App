@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useState } from 'react'
 import { useNavigate, useParams } from 'react-router-dom'
+import PageHeader from '../components/PageHeader'
 import { api } from '../lib/api'
 import { useAuth } from '../contexts/AuthContext'
 import { canEditCharacter } from '../lib/characterAccess'
@@ -93,13 +94,9 @@ export default function CharacterOptionsPage() {
 
   return (
     <div className="min-h-screen bg-stone-950 text-stone-100">
-      <header className="flex items-center gap-3 px-6 py-4 border-b border-stone-700">
-        <button onClick={() => navigate(`/character/${character.id}`)} className="text-stone-400 hover:text-stone-200 text-sm shrink-0">← Sheet</button>
-        <h1 className="text-xl font-bold text-amber-400 truncate">{character.name}</h1>
-        <span className="text-sm text-stone-500">Options</span>
-        <span className="flex-1" />
-        {saved && <span className="text-xs text-emerald-400">Saved</span>}
-      </header>
+      <PageHeader crumbs={[{ label: 'Characters', to: '/characters' }, { label: character.name, to: `/character/${character.id}` }]} title="Options">
+        {saved && <div className="flex items-center ml-auto py-2.5"><span className="text-xs text-emerald-400" role="status">Saved</span></div>}
+      </PageHeader>
 
       <div className="max-w-2xl mx-auto px-4 py-6 space-y-4">
         {error && <p className="text-sm text-red-400">{error}</p>}

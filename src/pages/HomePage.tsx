@@ -1,18 +1,19 @@
-import { useNavigate } from 'react-router-dom'
+import { Link } from 'react-router-dom'
+import PageHeader from '../components/PageHeader'
 import { useAuth } from '../contexts/AuthContext'
 
 function HubCard({
-  onClick,
+  to,
   icon,
   label,
 }: {
-  onClick: () => void
+  to: string
   icon: React.ReactNode
   label: string
 }) {
   return (
-    <button
-      onClick={onClick}
+    <Link
+      to={to}
       className="flex flex-col items-center justify-center gap-3 bg-stone-900 hover:bg-stone-800 border border-stone-700 hover:border-amber-500 rounded-2xl p-8 transition-all group"
     >
       <div className="text-stone-400 group-hover:text-amber-400 transition-colors">
@@ -21,12 +22,11 @@ function HubCard({
       <span className="text-sm font-medium text-stone-300 group-hover:text-stone-100 transition-colors tracking-wide">
         {label}
       </span>
-    </button>
+    </Link>
   )
 }
 
 export default function HomePage() {
-  const navigate = useNavigate()
   const { signOut, role } = useAuth()
 
   const isAdmin = role === 'admin'
@@ -34,7 +34,7 @@ export default function HomePage() {
   const cards = [
     {
       label: 'Characters',
-      onClick: () => navigate('/characters'),
+      to: '/characters',
       icon: (
         <svg xmlns="http://www.w3.org/2000/svg" className="w-10 h-10" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
           <path strokeLinecap="round" strokeLinejoin="round" d="M17 20h5v-2a4 4 0 00-5.477-3.75M9 20H4v-2a4 4 0 015.477-3.75M15 7a4 4 0 11-8 0 4 4 0 018 0zm6 3a3 3 0 11-6 0 3 3 0 016 0zm-18 0a3 3 0 116 0 3 3 0 01-6 0z" />
@@ -43,7 +43,7 @@ export default function HomePage() {
     },
     {
       label: 'Campaigns',
-      onClick: () => navigate('/campaigns'),
+      to: '/campaigns',
       icon: (
         <svg xmlns="http://www.w3.org/2000/svg" className="w-10 h-10" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
           <path strokeLinecap="round" strokeLinejoin="round" d="M9 20l-5.447-2.724A1 1 0 013 16.382V5.618a1 1 0 011.447-.894L9 7m0 13l6-3m-6 3V7m6 10l4.553 2.276A1 1 0 0021 18.382V7.618a1 1 0 00-.553-.894L15 4m0 13V4m0 0L9 7" />
@@ -52,7 +52,7 @@ export default function HomePage() {
     },
     {
       label: 'Settings',
-      onClick: () => navigate('/options'),
+      to: '/options',
       icon: (
         <svg xmlns="http://www.w3.org/2000/svg" className="w-10 h-10" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
           <path strokeLinecap="round" strokeLinejoin="round" d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z" />
@@ -62,7 +62,7 @@ export default function HomePage() {
     },
     ...(isAdmin ? [{
       label: 'Admin',
-      onClick: () => navigate('/setup'),
+      to: '/setup',
       icon: (
         <svg xmlns="http://www.w3.org/2000/svg" className="w-10 h-10" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
           <path strokeLinecap="round" strokeLinejoin="round" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
@@ -73,12 +73,13 @@ export default function HomePage() {
 
   return (
     <div className="min-h-screen bg-stone-950 text-stone-100 flex flex-col">
-      <header className="flex items-center justify-between px-6 py-4 border-b border-stone-700">
-        <h1 className="text-2xl font-bold text-amber-400">Exalted</h1>
-        <button onClick={signOut} className="text-sm text-stone-400 hover:text-stone-200 transition-colors">
-          Sign out
-        </button>
-      </header>
+      <PageHeader title="Exalted">
+        <div className="flex items-center ml-auto py-2.5">
+          <button onClick={signOut} className="text-sm text-stone-400 hover:text-stone-100 transition-colors">
+            Sign out
+          </button>
+        </div>
+      </PageHeader>
 
       <div className="flex-1 flex items-center justify-center p-8">
         <div className={`grid gap-4 w-full max-w-sm ${cards.length === 4 ? 'grid-cols-2' : 'grid-cols-2 sm:grid-cols-3'}`}>

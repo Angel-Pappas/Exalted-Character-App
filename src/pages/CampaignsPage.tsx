@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react'
-import { useNavigate } from 'react-router-dom'
+import { Link, useNavigate } from 'react-router-dom'
+import PageHeader from '../components/PageHeader'
 import { api } from '../lib/api'
 import type { CampaignSummary } from '../types/campaign'
 import ModalPortal from '../components/ModalPortal'
@@ -33,18 +34,16 @@ export default function CampaignsPage() {
 
   return (
     <div className="min-h-screen bg-stone-950 text-stone-100">
-      <header className="flex items-center justify-between px-6 py-4 border-b border-stone-700">
-        <div className="flex items-center gap-3">
-          <button onClick={() => navigate('/')} className="text-stone-400 hover:text-stone-200 text-sm">← Back</button>
-          <h1 className="text-xl font-bold text-amber-400">Campaigns</h1>
+      <PageHeader title="Campaigns">
+        <div className="flex items-center ml-auto py-2.5">
+          <button
+            onClick={() => { setNewName(''); setError(null); setModalOpen(true) }}
+            className="bg-amber-600 hover:bg-amber-500 text-stone-950 font-semibold rounded px-4 py-2 text-sm transition-colors"
+          >
+            + New Campaign
+          </button>
         </div>
-        <button
-          onClick={() => { setNewName(''); setError(null); setModalOpen(true) }}
-          className="bg-amber-600 hover:bg-amber-500 text-white font-semibold rounded px-4 py-2 text-sm transition-colors"
-        >
-          + New Campaign
-        </button>
-      </header>
+      </PageHeader>
 
       <div className="max-w-2xl mx-auto px-4 py-8">
         {loading ? (
@@ -54,7 +53,7 @@ export default function CampaignsPage() {
         ) : (
           <div className="space-y-2">
             {campaigns.map(c => (
-              <button key={c.id} onClick={() => navigate(`/campaign/${c.id}`)}
+              <Link key={c.id} to={`/campaign/${c.id}`}
                 className="w-full text-left flex items-center justify-between bg-stone-900 border border-stone-700 hover:border-amber-500 rounded-lg px-4 py-3 transition-colors group">
                 <div className="min-w-0">
                   <div className="text-stone-100 group-hover:text-amber-400 font-medium transition-colors">{c.name}</div>
@@ -63,7 +62,7 @@ export default function CampaignsPage() {
                   </div>
                 </div>
                 {c.is_storyteller && <span className="text-[11px] px-2 py-0.5 rounded border border-amber-600/60 text-amber-400 shrink-0">ST</span>}
-              </button>
+              </Link>
             ))}
           </div>
         )}

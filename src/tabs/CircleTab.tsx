@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from 'react'
-import { useNavigate } from 'react-router-dom'
+import { Link } from 'react-router-dom'
 import { api } from '../lib/api'
 import type { CircleCampaign } from '../types/campaign'
 
@@ -43,7 +43,6 @@ function NotesBox({ characterId, subjectId, initial }: { characterId: string; su
 // The other players' PCs in each campaign this character is in, with notes
 // only this character's owner can read.
 export default function CircleTab({ characterId }: { characterId: string }) {
-  const navigate = useNavigate()
   const [circle, setCircle] = useState<CircleCampaign[] | null>(null)
 
   useEffect(() => {
@@ -74,7 +73,7 @@ export default function CircleTab({ characterId }: { characterId: string }) {
                 <div key={pc.id} className="bg-stone-900 border border-stone-700 rounded-lg p-3 space-y-2">
                   <div className="flex items-baseline gap-2">
                     {pc.can_view ? (
-                      <button onClick={() => navigate(`/character/${pc.id}`)} className="text-sm font-semibold text-stone-100 hover:text-amber-400 transition-colors text-left">{pc.name}</button>
+                      <Link to={`/character/${pc.id}`} className="text-sm font-semibold text-stone-100 hover:text-amber-400 transition-colors text-left">{pc.name}</Link>
                     ) : (
                       <span className="text-sm font-semibold text-stone-300">{pc.name}</span>
                     )}

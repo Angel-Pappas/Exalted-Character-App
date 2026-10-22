@@ -34,7 +34,8 @@ A web-based interactive character sheet for a **custom version of the Exalted ta
 |---|---|---|
 | `/` | HomePage (hub) | all |
 | `/characters` | CharactersPage | all |
-| `/character/:id` | CharacterPage | all |
+| `/character/:id` | CharacterPage (sheet) | all |
+| `/character/:id/milestones` · `/notes` · `/circle` | CharacterPage, that tab | owner / admin |
 | `/options` | SettingsPage | all |
 | `/character/:id/options` | CharacterOptionsPage | owner / admin |
 | `/campaigns` | CampaignsPage | all |
@@ -42,9 +43,22 @@ A web-based interactive character sheet for a **custom version of the Exalted ta
 | `/setup` | SetupPage (Admin) | admin only |
 | `/login` | LoginPage | unauthenticated |
 
-**HomePage** (`/`): hub with Cards — Characters, Settings, Admin (admin only). Sign Out button in header.
+**Page header and navigation (2026-10-22, Angel: "feels off compared to usual apps").**
+Every page uses `src/components/PageHeader.tsx`: it stays at the top while the page
+scrolls, starts with a breadcrumb trail of real links ("Exalted / Characters /
+Kaien", on a phone just "‹" to the parent) and sets the browser tab's title
+("Kaien · Exalted"). Everything that goes to another page is a link (`<Link>`), never a
+button with a click handler, so middle-click / Ctrl-click opens it in a new tab and the
+browser's Back button works. The character page's tabs have their own addresses
+(`src/lib/characterTabs.ts`, tested), so Back steps between tabs and a reload keeps
+the tab. Someone else's character (opened from a campaign) has "Campaigns" as its parent.
+Closing the browser tab within the second before a sheet save goes out sends the save
+at once and lets the browser ask "Leave site?". Buttons show the hand cursor, and the
+keyboard focus gets an amber outline.
 
-**CharactersPage** (`/characters`): list of the current user's characters with ExaltType·Caste subtitle. "+ New Character" button opens modal requiring all 3 fields (name, exalt type, caste/aspect) before enabling Create. Delete button on hover.
+**HomePage** (`/`): hub with Cards — Characters, Campaigns, Settings, Admin (admin only). Sign Out button in header.
+
+**CharactersPage** (`/characters`): list of the current user's characters with ExaltType·Caste subtitle. "+ New Character" button opens modal requiring all 3 fields (name, exalt type, caste/aspect) before enabling Create. Delete (shown on hover on a desktop) asks for a second click — it used to delete at once.
 
 **SettingsPage** (`/options`): left sidebar → Account (username read-only with Change button, role read-only, Change Password modal with eye-icon fields + current-password re-auth) + Appearance (light/dark theme toggle).
 - Display name has been removed — username is the only identity.

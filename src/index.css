@@ -14,6 +14,22 @@ input[type=number] {
   -moz-appearance: textfield;
 }
 
+/* Tailwind 4 leaves buttons with the arrow cursor; every other site shows a hand
+   on anything clickable, so the app does too. */
+button:not(:disabled),
+[role="button"]:not([aria-disabled="true"]),
+summary,
+select:not(:disabled),
+label:has(> input[type="checkbox"]:not(:disabled)) {
+  cursor: pointer;
+}
+
+/* A visible outline for whatever the keyboard is on (never shown for mouse clicks). */
+:focus-visible {
+  outline: 2px solid var(--color-amber-400);
+  outline-offset: 2px;
+}
+
 body {
   margin: 0;
   font-family: system-ui, 'Segoe UI', Roboto, sans-serif;

@@ -1,5 +1,7 @@
 import { useEffect, useState } from 'react'
-import { useNavigate } from 'react-router-dom'
+import { Link, useNavigate } from 'react-router-dom'
+import PageHeader from '../components/PageHeader'
+import ConfirmButton from '../components/ConfirmButton'
 import { api } from '../lib/api'
 import { useAuth } from '../contexts/AuthContext'
 import { exaltTypeFromRow } from '../types/character'
@@ -71,18 +73,16 @@ export default function CharactersPage() {
 
   return (
     <div className="min-h-screen bg-stone-950 text-stone-100">
-      <header className="flex items-center justify-between px-6 py-4 border-b border-stone-700">
-        <div className="flex items-center gap-3">
-          <button onClick={() => navigate('/')} className="text-stone-400 hover:text-stone-200 text-sm">← Back</button>
-          <h1 className="text-xl font-bold text-amber-400">Characters</h1>
+      <PageHeader title="Characters">
+        <div className="flex items-center ml-auto py-2.5">
+          <button
+            onClick={openModal}
+            className="bg-amber-600 hover:bg-amber-500 text-stone-950 font-semibold rounded px-4 py-2 text-sm transition-colors"
+          >
+            + New Character
+          </button>
         </div>
-        <button
-          onClick={openModal}
-          className="bg-amber-600 hover:bg-amber-500 text-white font-semibold rounded px-4 py-2 text-sm transition-colors"
-        >
-          + New Character
-        </button>
-      </header>
+      </PageHeader>
 
       <div className="max-w-2xl mx-auto px-4 py-8">
         {loading ? (
@@ -97,14 +97,14 @@ export default function CharactersPage() {
               return (
                 <div
                   key={c.id}
-                  className="flex items-center justify-between bg-stone-900 border border-stone-700 rounded-lg px-4 py-3 group"
+                  className="flex items-center justify-between bg-stone-900 border border-stone-700 hover:border-amber-500/70 rounded-lg transition-colors group"
                 >
-                  <button
-                    onClick={() => navigate(`/character/${c.id}`)}
-                    className="text-left flex-1 min-w-0"
+                  <Link
+                    to={`/character/${c.id}`}
+                    className="text-left flex-1 min-w-0 px-4 py-3"
                   >
                     <div className="flex items-center gap-2">
-                      <span className="text-stone-100 hover:text-amber-400 font-medium transition-colors">{c.name}</span>
+                      <span className="text-stone-100 group-hover:text-amber-400 font-medium transition-colors">{c.name}</span>
                       <span className={`text-[10px] px-1.5 rounded border ${c.kind === 'npc' ? 'border-sky-700/60 text-sky-400' : 'border-amber-700/60 text-amber-400'}`}>{KIND_LABEL[c.kind ?? 'pc']}</span>
                     </div>
                     {(exaltType || caste) && (
@@ -112,13 +112,9 @@ export default function CharactersPage() {
                         {[exaltType, caste].filter(Boolean).join(' · ')}
                       </div>
                     )}
-                  </button>
-                  <button
-                    onClick={() => deleteCharacter(c.id)}
-                    className="text-stone-600 hover:text-red-400 text-sm opacity-0 group-hover:opacity-100 transition-all ml-4 shrink-0"
-                  >
-                    Delete
-                  </button>
+                  </Link>
+                  <ConfirmButton label="Delete" confirmLabel="Delete for good?" onConfirm={() => void deleteCharacter(c.id)}
+                    className="text-xs px-2 py-0.5 mr-4 rounded border border-transparent text-stone-500 hover:text-red-400 md:opacity-0 md:group-hover:opacity-100 focus:opacity-100 transition-all shrink-0" />
                 </div>
               )
             })}

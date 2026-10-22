@@ -1,5 +1,5 @@
 import { useState, useCallback, useEffect, useRef } from 'react'
-import { useParams, useNavigate } from 'react-router-dom'
+import { Link, useParams } from 'react-router-dom'
 import { api } from '../lib/api'
 import { useCharacter, useGameData } from '../hooks/useCharacter'
 import { useAuth } from '../contexts/AuthContext'
@@ -8,18 +8,19 @@ import type { CharacterData, TrainingDone } from '../types/character'
 import { todayKey } from '../lib/milestones'
 import { applyChange, type CharacterChange } from '../lib/characterData'
 import TabBar from '../components/TabBar'
+import PageHeader from '../components/PageHeader'
+import { tabFromPath } from '../lib/characterTabs'
 import SheetTab from '../tabs/SheetTab'
 import MilestonesTab from '../tabs/MilestonesTab'
 import NotesTab from '../tabs/NotesTab'
 import CircleTab from '../tabs/CircleTab'
 
 export default function CharacterPage() {
-  const { id } = useParams<{ id: string }>()
-  const navigate = useNavigate()
+  const { id, tab } = useParams<{ id: string; tab?: string }>()
   const { user, role } = useAuth()
   const { character, data, setData } = useCharacter(id)
   const gameData = useGameData()
-  const [activeTab, setActiveTab] = useState('sheet')
+  const activeTab = tabFromPath(tab)
   const [sheetEditMode, setSheetEditMode] = useState(false)
   const [saving, setSaving] = useState(false)
   const [saveTimeout, setSaveTimeout] = useState<ReturnType<typeof setTimeout> | null>(null)
@@ -51,6 +52,19 @@ export default function CharacterPage() {
     if (saveTimeout) clearTimeout(saveTimeout)
     await save(pending.current)
   }
+
+  // Closing or reloading the browser tab within the second before a save goes out
+  // would lose that change: the save is sent at once, and the browser asks
+  // "Leave site?" so it has time to arrive.
+  useEffect(() => {
+    function onBeforeUnload(e: BeforeUnloadEvent) {
+      if (!pending.current) return
+      void save(pending.current)
+      e.preventDefault()
+    }
+    window.addEventListener('beforeunload', onBeforeUnload)
+    return () => window.removeEventListener('beforeunload', onBeforeUnload)
+  }, [save])
 
   // Marks a training done (or back in training). The sheet is saved first, so the
   // server has the ledger line, which may have been logged a moment ago.
@@ -92,35 +106,26 @@ export default function CharacterPage() {
   }
 
   const identity = [data.sheet.exaltType, data.sheet.caste].filter(Boolean).join(' · ')
+  // Someone else's character is reached through a campaign, not your own list.
+  const parent = readOnly ? { label: 'Campaigns', to: '/campaigns' } : { label: 'Characters', to: '/characters' }
 
   return (
     <div className="min-h-screen bg-stone-950 text-stone-100 flex flex-col">
-      {/* One row: who this is, the tabs, then the page's own actions. On a phone
-          the tabs drop to a row of their own underneath. */}
-      <header className="flex flex-wrap md:flex-nowrap items-stretch gap-x-6 px-4 border-b border-stone-700 shrink-0">
-        <div className="flex items-center gap-3 min-w-0 flex-1 md:flex-none py-3">
-          <button onClick={() => navigate('/characters')} className="text-stone-400 hover:text-stone-200 text-sm shrink-0">← Back</button>
-          <h1 className="text-amber-400 font-semibold shrink-0">{character.name}</h1>
-          {identity && (
-            <>
-              <span className="w-px h-4 bg-stone-700 shrink-0" />
-              <span className="text-sm text-stone-400 truncate">{identity}</span>
-            </>
-          )}
+      {/* One row: who this is, the tabs, then the page's own actions. It stays on
+          screen while the page scrolls; on a phone the tabs get a row of their own. */}
+      <PageHeader crumbs={[parent]} title={character.name} subtitle={identity}>
+        <div className="order-last md:order-none w-full md:w-auto h-10 md:h-auto flex md:border-l md:border-stone-700 md:pl-3 -mx-1.5 md:mx-0">
+          <TabBar characterId={character.id} active={readOnly ? 'sheet' : activeTab} only={readOnly ? ['sheet'] : undefined} />
         </div>
-        <span className="hidden md:block w-px h-5 bg-stone-700 self-center shrink-0" />
-        <div className="order-last md:order-none w-full md:w-auto h-10 md:h-auto flex">
-          <TabBar active={readOnly ? 'sheet' : activeTab} onChange={setActiveTab} only={readOnly ? ['sheet'] : undefined} />
-        </div>
-        <div className="flex items-center gap-3 ml-auto py-3">
+        <div className="flex items-center gap-3 ml-auto py-2.5">
           {trainingError && <span className="text-xs text-red-400">{trainingError}</span>}
-          {saving && <span className="text-xs text-stone-500">Saving…</span>}
+          {saving && <span className="text-xs text-stone-500" role="status">Saving…</span>}
           {readOnly && <span className="text-xs px-2 py-1 rounded border border-stone-600 text-stone-400">View only</span>}
           {!readOnly && (
-            <button onClick={() => navigate(`/character/${character.id}/options`)}
-              className="flex items-center gap-1.5 px-3 py-1.5 rounded text-xs font-medium bg-stone-800 text-stone-400 hover:text-stone-200 border border-stone-600 transition-colors">
-              ⚙ Options
-            </button>
+            <Link to={`/character/${character.id}/options`} aria-label="Character options"
+              className="flex items-center gap-1.5 px-3 py-1.5 rounded text-xs font-medium bg-stone-800 text-stone-300 hover:text-stone-100 border border-stone-600 transition-colors">
+              <span aria-hidden>⚙</span><span className="hidden sm:inline">Options</span>
+            </Link>
           )}
           {/* Phones show the sheet in one column, so there is no layout to edit there. */}
           {activeTab === 'sheet' && !readOnly && (
@@ -129,19 +134,19 @@ export default function CharacterPage() {
               className={`hidden md:flex items-center gap-1.5 px-3 py-1.5 rounded text-xs font-medium transition-colors ${
                 sheetEditMode
                   ? 'bg-amber-500 text-stone-950 hover:bg-amber-400'
-                  : 'bg-stone-800 text-stone-400 hover:text-stone-200 border border-stone-600'
+                  : 'bg-stone-800 text-stone-300 hover:text-stone-100 border border-stone-600'
               }`}
             >
-              <svg xmlns="http://www.w3.org/2000/svg" className="w-3 h-3" viewBox="0 0 20 20" fill="currentColor">
+              <svg xmlns="http://www.w3.org/2000/svg" className="w-3 h-3" viewBox="0 0 20 20" fill="currentColor" aria-hidden>
                 <path d="M5 3a2 2 0 00-2 2v2a2 2 0 002 2h2a2 2 0 002-2V5a2 2 0 00-2-2H5zM5 11a2 2 0 00-2 2v2a2 2 0 002 2h2a2 2 0 002-2v-2a2 2 0 00-2-2H5zM11 5a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2h-2a2 2 0 01-2-2V5zM11 13a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2h-2a2 2 0 01-2-2v-2z" />
               </svg>
               {sheetEditMode ? 'Done' : 'Edit Layout'}
             </button>
           )}
         </div>
-      </header>
+      </PageHeader>
 
-      <div className="flex-1 overflow-auto">
+      <main className="flex-1">
         {(activeTab === 'sheet' || readOnly) && (
           // A disabled fieldset switches off every input and button inside the sheet at once.
           <fieldset disabled={readOnly} className="contents">
@@ -174,7 +179,7 @@ export default function CharacterPage() {
           />
         )}
         {!readOnly && activeTab === 'circle' && <CircleTab characterId={character.id} />}
-      </div>
+      </main>
     </div>
   )
 }

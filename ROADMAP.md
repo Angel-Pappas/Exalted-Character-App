@@ -31,6 +31,8 @@ the priorities — the order under **Next** is a suggestion until he does.
       Kaien's; sheet effects reach all five Defenses, health and wound penalty (2026-10-17).
 - [x] Free and Char. Creation as toggles on an Expense; Kaien's ledger checked and
       corrected (2026-10-22).
+- [x] UI/UX pass, part 1: header that stays on top, breadcrumbs, links everywhere
+      (middle-click, Back), tab addresses, page titles (2026-10-22).
 
 ## Next (suggested)
 

@@ -23,6 +23,7 @@ export default function App() {
             <Route path="/characters" element={<ProtectedRoute><CharactersPage /></ProtectedRoute>} />
             <Route path="/character/:id" element={<ProtectedRoute><CharacterPage /></ProtectedRoute>} />
             <Route path="/character/:id/options" element={<ProtectedRoute><CharacterOptionsPage /></ProtectedRoute>} />
+            <Route path="/character/:id/:tab" element={<ProtectedRoute><CharacterPage /></ProtectedRoute>} />
             <Route path="/campaigns" element={<ProtectedRoute><CampaignsPage /></ProtectedRoute>} />
             <Route path="/campaign/:id" element={<ProtectedRoute><CampaignPage /></ProtectedRoute>} />
             <Route path="/options" element={<ProtectedRoute><SettingsPage /></ProtectedRoute>} />

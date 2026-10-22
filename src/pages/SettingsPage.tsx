@@ -1,5 +1,6 @@
 import { useState } from 'react'
-import { useNavigate, useLocation } from 'react-router-dom'
+import { Link, useLocation } from 'react-router-dom'
+import PageHeader from '../components/PageHeader'
 import { useTheme } from '../contexts/ThemeContext'
 import { useAuth } from '../contexts/AuthContext'
 import ModalPortal from '../components/ModalPortal'
@@ -52,7 +53,6 @@ function PasswordInput({
 }
 
 export default function SettingsPage() {
-  const navigate = useNavigate()
   const location = useLocation()
   const { role, username, changeUsername, changePassword } = useAuth()
   const { theme, setTheme } = useTheme()
@@ -129,17 +129,13 @@ export default function SettingsPage() {
 
   return (
     <div className="min-h-screen bg-stone-950 text-stone-100 flex flex-col">
-      <header className="flex items-center justify-between px-4 py-3 border-b border-stone-700 shrink-0">
-        <div className="flex items-center gap-3">
-          <button onClick={() => navigate(-1)} className="text-stone-400 hover:text-stone-200 text-sm">← Back</button>
-          <h1 className="text-amber-400 font-semibold">Settings</h1>
-        </div>
+      <PageHeader title="Settings">
         {role === 'admin' && (
-          <button onClick={() => navigate('/setup')} className="text-xs text-stone-400 hover:text-stone-200 transition-colors">
-            Setup
-          </button>
+          <div className="flex items-center ml-auto py-2.5">
+            <Link to="/setup" className="text-xs text-stone-400 hover:text-stone-100 transition-colors">Admin</Link>
+          </div>
         )}
-      </header>
+      </PageHeader>
 
       <div className="flex flex-1 overflow-hidden">
         {/* Sidebar */}

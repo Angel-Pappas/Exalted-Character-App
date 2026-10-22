@@ -4,6 +4,14 @@ One entry per shipped change, newest first: what changed and **why**. How things
 now is in `Summary.md`; plans in `ROADMAP.md`. Entries before 2026-10-15 were rebuilt
 from the git history (one per day, its commits listed).
 
+- **2026-10-22** — **Navigation that behaves like other web apps.** Angel: the Back
+  button was clunky, a middle-click couldn't open Notes in one browser tab and the sheet
+  in another, and the header scrolled away. Every page now has one header that stays at
+  the top, with a breadcrumb trail of real links; every way to another page is a link;
+  the character tabs have their own addresses, so Back, reloads and middle-clicks work;
+  browser tabs show the page's name. Deleting a character from the list now asks for a
+  second click (it used to delete at once). Buttons show the hand cursor; the keyboard
+  focus is outlined; a save still waiting when the tab closes is sent before leaving.
 - **2026-10-22** — **Free and Char. Creation are now marks on an Expense; Kaien's ledger
   corrected.** Angel checked Kaien's ledger against the sheet: a gift from the
   Storyteller had no honest way in (the only free option was Char. Creation). An

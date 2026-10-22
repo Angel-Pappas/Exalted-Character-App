@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useState } from 'react'
-import { useNavigate, useParams } from 'react-router-dom'
+import { Link, useNavigate, useParams } from 'react-router-dom'
+import PageHeader from '../components/PageHeader'
 import { api } from '../lib/api'
 import { useAuth } from '../contexts/AuthContext'
 import { TooltipLayer } from '../components/Tooltip'
@@ -66,7 +67,7 @@ export default function CampaignPage() {
     return (
       <div key={ch.id} className="flex items-center gap-2 py-1.5 border-b border-stone-800 last:border-0">
         {ch.can_view ? (
-          <button onClick={() => navigate(`/character/${ch.id}`)} className="text-sm text-stone-100 hover:text-amber-400 transition-colors text-left truncate">{ch.name}</button>
+          <Link to={`/character/${ch.id}`} className="text-sm text-stone-100 hover:text-amber-400 transition-colors text-left truncate">{ch.name}</Link>
         ) : (
           <span className="text-sm text-stone-400 truncate" data-tip="Its owner keeps this sheet private">{ch.name}</span>
         )}
@@ -109,23 +110,22 @@ export default function CampaignPage() {
 
   return (
     <div className="min-h-screen bg-stone-950 text-stone-100">
-      <header className="flex items-center gap-3 px-6 py-4 border-b border-stone-700">
-        <button onClick={() => navigate('/campaigns')} className="text-stone-400 hover:text-stone-200 text-sm shrink-0">← Campaigns</button>
-        {renaming ? (
+      <PageHeader crumbs={[{ label: 'Campaigns', to: '/campaigns' }]} title={campaign.name}
+        titleSlot={renaming ? (
           <form className="flex items-center gap-2" onSubmit={e => { e.preventDefault(); if (name.trim()) void act('PUT', `campaigns/${c}`, { name: name.trim() }, () => { setRenaming(false); void load() }) }}>
             <input autoFocus value={name} onChange={e => setName(e.target.value)} onKeyDown={e => { if (e.key === 'Escape') setRenaming(false) }} className={input} aria-label="Campaign name" />
-            <button type="submit" className="bg-amber-600 hover:bg-amber-500 text-white rounded px-2 py-1 text-xs">Save</button>
-            <button type="button" onClick={() => setRenaming(false)} className="text-stone-500 hover:text-stone-300 text-xs">Cancel</button>
+            <button type="submit" className="bg-amber-600 hover:bg-amber-500 text-stone-950 rounded px-2 py-1 text-xs">Save</button>
+            <button type="button" onClick={() => setRenaming(false)} className="text-stone-400 hover:text-stone-200 text-xs">Cancel</button>
           </form>
-        ) : (
-          <h1 className="text-xl font-bold text-amber-400 truncate">{campaign.name}</h1>
-        )}
-        {st && !renaming && (
-          <button onClick={() => { setName(campaign.name); setRenaming(true) }} data-tip="Rename" aria-label="Rename campaign" className="text-stone-500 hover:text-amber-400 text-sm">✎</button>
-        )}
-        <span className="flex-1" />
-        <span className="text-xs text-stone-500">Storyteller: <span className="text-stone-300">{campaign.storyteller.username}</span></span>
-      </header>
+        ) : undefined}>
+        <div className="flex items-center gap-3 flex-1 py-2.5 min-w-0">
+          {st && !renaming && (
+            <button onClick={() => { setName(campaign.name); setRenaming(true) }} data-tip="Rename" aria-label="Rename campaign" className="text-stone-400 hover:text-amber-400 text-sm -ml-3">✎</button>
+          )}
+          <span className="flex-1" />
+          <span className="text-xs text-stone-500 truncate">Storyteller: <span className="text-stone-300">{campaign.storyteller.username}</span></span>
+        </div>
+      </PageHeader>
 
       <div className="max-w-4xl mx-auto px-4 py-6 space-y-4">
         {error && <p className="text-sm text-red-400">{error}</p>}
@@ -137,7 +137,7 @@ export default function CampaignPage() {
               {campaign.training.map(t => (
                 <div key={t.character_id}>
                   <div className="flex items-baseline gap-2 mb-1">
-                    <button onClick={() => navigate(`/character/${t.character_id}`)} className="text-sm font-semibold text-stone-100 hover:text-amber-400 transition-colors">{t.character_name}</button>
+                    <Link to={`/character/${t.character_id}`} className="text-sm font-semibold text-stone-100 hover:text-amber-400 transition-colors">{t.character_name}</Link>
                     <span className="text-xs text-stone-500">{t.owner}</span>
                   </div>
                   <ul>
