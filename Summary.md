@@ -271,6 +271,7 @@ those). Set once per charm in Admin → Charms, for every character (`charm_libr
 - FoI state (`foi` + `foiOriginals`) is **persisted in SheetData** (survives refresh)
 
 ### Health track and Ox Body Technique
+- A level's boxes wrap onto another row when the panel is too narrow, never past its edge
 - Damage is one number (`SheetData.damage`), filled left to right; the track itself is rebuilt each render from the starting seven plus Ox Body levels (`src/lib/health.ts`, tested)
 - Ox Body is recognised by mechanical key `ox_body`: +1 base Soak once (`defenses.ts`), and per-purchase health levels by Exalt type; Solar/Abyssal/Janest choose per purchase (`CharacterCharm.oxBodyPicks`)
 

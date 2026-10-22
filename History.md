@@ -4,6 +4,9 @@ One entry per shipped change, newest first: what changed and **why**. How things
 now is in `Summary.md`; plans in `ROADMAP.md`. Entries before 2026-10-15 were rebuilt
 from the git history (one per day, its commits listed).
 
+- **2026-10-22** — **Health boxes wrap inside their panel.** Found in the screenshot
+  review: at narrower desktop widths a long health level (Ox Body adds many boxes) ran
+  past the panel's right edge; it now wraps onto a second row.
 - **2026-10-22** — **Home lists your characters and campaigns.** Walking through the
   app as a player: after signing in, home was four tiles, so reaching a sheet always took
   an extra click. Home now lists your characters and campaigns, each one click away;

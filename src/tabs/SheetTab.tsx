@@ -2814,11 +2814,12 @@ export default function SheetTab({ sheet, onChange, editMode, readOnly = false, 
           </div>
           <div className="flex flex-wrap gap-x-3 gap-y-2">
             {groups.map(g => (
-              <div key={g.start} className="flex flex-col gap-1">
+              <div key={g.start} className="flex flex-col gap-1 min-w-0 max-w-full">
                 <span className="text-[10px] text-stone-500 whitespace-nowrap">
                   {LEVEL_NAMES[String(g.level)]}{g.level !== 'incap' && <span className="text-stone-600"> {g.level === 0 ? '0' : `−${-g.level}`}</span>}
                 </span>
-                <div className="flex gap-1">
+                {/* A long level (Ox Body adds many) wraps rather than running past the panel's edge. */}
+                <div className="flex flex-wrap gap-1">
                   {g.boxes.map((box, j) => {
                     const idx = g.start + j
                     const filled = idx < damage
