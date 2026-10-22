@@ -39,7 +39,7 @@ const mobile = args.includes('--mobile');
 const dark = args.includes('--dark');
 const wide = args.includes('--wide');
 // Steps run on each page before the shot, in the order given:
-//   --click=Text           clicks the button with that text (e.g. --click=Milestones)
+//   --click=Text           clicks the button, or ticks the checkbox, with that text (e.g. --click=Milestones)
 //   --fill=Placeholder=Val types Val into the field with that placeholder
 const steps = args
     .filter((a) => a.startsWith('--click=') || a.startsWith('--fill='))
@@ -132,7 +132,8 @@ try {
         await page.waitForLoadState('networkidle');
         for (const step of steps) {
             if (step.click) {
-                await page.getByRole('button', { name: step.click, exact: true }).first().click();
+                await page.getByRole('button', { name: step.click, exact: true })
+                    .or(page.getByLabel(step.click, { exact: true })).first().click();
             } else {
                 await page.getByPlaceholder(step.fill).first().fill(step.value);
             }

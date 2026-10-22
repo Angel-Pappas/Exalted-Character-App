@@ -7,9 +7,10 @@ import { inTraining, type MilestoneAmounts } from './milestones'
 // sheet but has no effect yet. Charms live in the sheet and the ledger beside it,
 // so every change here returns both.
 
-/** How a charm purchase was paid for: milestones (usually starting a training), or the starting build. */
+/** How a charm purchase was paid for: milestones or given free (either usually starting a training), or the starting build. */
 export type CharmCost =
   | { kind: 'purchase'; amounts: MilestoneAmounts; training: boolean }
+  | { kind: 'free'; training: boolean }
   | { kind: 'creation' }
 
 export interface CharmsAndLedger {
@@ -22,11 +23,12 @@ export function charmLine(lib: Pick<LibraryCharm, 'id' | 'name'>, repurchase: bo
   const none = { personal: 0, exalted: 0, minor: 0, major: 0 }
   return {
     id,
-    kind: cost.kind,
+    kind: 'purchase',
     ...(cost.kind === 'purchase' ? cost.amounts : none),
+    ...(cost.kind === 'purchase' ? {} : { cost: cost.kind }),
     description: `Charm (${lib.name})${repurchase ? ' repurchase' : ''}`,
     date: cost.kind === 'creation' ? '' : date,
-    ...(cost.kind === 'purchase' && cost.training ? { training: true } : {}),
+    ...(cost.kind !== 'creation' && cost.training ? { training: true } : {}),
     charm: { libraryId: lib.id, name: lib.name },
   }
 }

@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { api } from '../lib/api'
 import { useAuth } from '../contexts/AuthContext'
+import { normalizeLedger } from '../lib/milestones'
 import type { Character, CharacterData, GameData } from '../types/character'
 import { DEFAULT_GAME_DATA } from '../types/character'
 
@@ -25,7 +26,8 @@ export function useCharacter(id: string | undefined) {
       .then(({ data: char, error }) => {
         if (error || !char) { navigate('/'); return }
         setCharacter(char)
-        setData({ ...defaultData, ...char.data })
+        const loaded = { ...defaultData, ...char.data }
+        setData({ ...loaded, milestones: normalizeLedger(loaded.milestones) })
       })
   }, [id, navigate])
 

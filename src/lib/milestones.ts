@@ -1,9 +1,9 @@
-import type { MilestoneKind, MilestoneTransaction, TrainingDone } from '../types/character'
+import type { FreeCost, MilestoneKind, MilestoneTransaction, TrainingDone } from '../types/character'
 
-// The milestone ledger works like Angel's spreadsheet: every row is Income,
-// Expense, or a Character Creation note. Total = all income; Remaining =
-// income minus expenses. Creation notes record what was bought with the
-// starting build and never touch the totals.
+// The milestone ledger works like Angel's spreadsheet: every row is Income or
+// an Expense. Total = all income; Remaining = income minus expenses. An Expense
+// that spends nothing says why (`cost`): Free, or Char. Creation (bought with
+// the starting build). Neither touches the totals.
 
 export const MILESTONE_TYPES = ['personal', 'exalted', 'minor', 'major'] as const
 export type MilestoneType = typeof MILESTONE_TYPES[number]
@@ -21,7 +21,27 @@ export const MILESTONE_USES: Record<MilestoneType, string[]> = {
 export const KIND_LABELS: Record<MilestoneKind, string> = {
   gain: 'Income',
   purchase: 'Expense',
+}
+
+export const FREE_LABELS: Record<FreeCost, string> = {
+  free: 'Free',
   creation: 'Char. Creation',
+}
+
+/** What a line's type tag reads: Income, Expense, Free or Char. Creation. */
+export function entryLabel(entry: Pick<MilestoneTransaction, 'kind' | 'cost'>): string {
+  return entry.kind === 'purchase' && entry.cost ? FREE_LABELS[entry.cost] : KIND_LABELS[entry.kind]
+}
+
+const isCreation = (e: MilestoneTransaction) => e.kind === 'purchase' && e.cost === 'creation'
+
+/**
+ * Ledgers saved before 2026-10-22 have Char. Creation as a kind of its own;
+ * it is now an Expense marked `cost: 'creation'`. Converts those lines (and
+ * only those), so an old copy of the sheet still reads right.
+ */
+export function normalizeLedger(entries: MilestoneTransaction[]): MilestoneTransaction[] {
+  return entries.map(e => ((e.kind as string) === 'creation' ? { ...e, kind: 'purchase', cost: 'creation' } : e))
 }
 
 export function totalEarned(entries: MilestoneTransaction[], type: MilestoneType): number {
@@ -32,7 +52,7 @@ export function totalEarned(entries: MilestoneTransaction[], type: MilestoneType
 
 export function totalSpent(entries: MilestoneTransaction[], type: MilestoneType): number {
   return entries
-    .filter(e => e.kind === 'purchase')
+    .filter(e => e.kind === 'purchase' && !e.cost)
     .reduce((sum, e) => sum + (e[type] ?? 0), 0)
 }
 
@@ -47,18 +67,16 @@ export function parseAmount(raw: string): number {
 }
 
 /**
- * Whether an entry is worth saving. Income must award something, and an
- * Expense must spend something (Angel, 2026-10-16: no Expense without a
- * milestone; something free is a Char. Creation note). Expenses and creation
- * notes need a description, unless `named`: what they bought on the sheet
- * (a charm, dots, a specialty) names them.
+ * Whether an entry is worth saving. Income must award something. An Expense
+ * must spend something unless it is deliberately Free or Char. Creation
+ * (Angel, 2026-10-22: spending nothing is a choice, never an accident), and
+ * needs a description unless `named`: what it bought on the sheet (a charm,
+ * dots, a specialty) names it.
  */
-export function isValidEntry(kind: MilestoneKind, amounts: MilestoneAmounts, description: string, named = false): boolean {
+export function isValidEntry(kind: MilestoneKind, amounts: MilestoneAmounts, description: string, named = false, cost?: FreeCost): boolean {
   const spends = MILESTONE_TYPES.some(t => amounts[t] > 0)
-  const described = named || description.trim() !== ''
   if (kind === 'gain') return spends
-  if (kind === 'purchase') return spends && described
-  return described
+  return (spends || cost !== undefined) && (named || description.trim() !== '')
 }
 
 /**
@@ -86,10 +104,10 @@ export function todayKey(now: Date = new Date()): string {
  * the exact reverse, so the creation rows sink to the bottom.
  */
 export function sortLedger(entries: MilestoneTransaction[], order: 'oldest' | 'newest'): MilestoneTransaction[] {
-  const creation = entries.filter(e => e.kind === 'creation')
+  const creation = entries.filter(isCreation)
   const rest = entries
     .map((entry, index) => ({ entry, index, key: dateKey(entry.date) }))
-    .filter(x => x.entry.kind !== 'creation')
+    .filter(x => !isCreation(x.entry))
     .sort((a, b) => (a.key < b.key ? -1 : a.key > b.key ? 1 : a.index - b.index))
     .map(x => x.entry)
   const oldest = [...creation, ...rest]
@@ -99,12 +117,12 @@ export function sortLedger(entries: MilestoneTransaction[], order: 'oldest' | 'n
 /**
  * The Expenses still in training, the longest-waiting first. Only entries
  * flagged `training` count: everything logged before training existed is
- * treated as already done.
+ * treated as already done. The starting build never trains.
  */
 export function inTraining(entries: MilestoneTransaction[], done: TrainingDone): MilestoneTransaction[] {
   return entries
     .map((entry, index) => ({ entry, index, key: dateKey(entry.date) }))
-    .filter(x => x.entry.kind === 'purchase' && x.entry.training === true && !(x.entry.id in done))
+    .filter(x => x.entry.kind === 'purchase' && !isCreation(x.entry) && x.entry.training === true && !(x.entry.id in done))
     .sort((a, b) => (a.key < b.key ? -1 : a.key > b.key ? 1 : a.index - b.index))
     .map(x => x.entry)
 }

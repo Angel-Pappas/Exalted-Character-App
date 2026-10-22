@@ -1,13 +1,13 @@
 import { useState } from 'react'
 import ModalPortal from './ModalPortal'
 import type { CharmCost } from '../lib/charmTraining'
-import { KIND_LABELS, MILESTONE_USES, parseAmount, type MilestoneType } from '../lib/milestones'
+import { FREE_LABELS, MILESTONE_USES, parseAmount, type MilestoneType } from '../lib/milestones'
 
 // Asked whenever a charm is added or bought again on the sheet: what paid for
 // it. The answer becomes a line in the milestone ledger (usually starting a
 // training), so the two never drift apart.
 
-type Choice = MilestoneType | 'creation'
+type Choice = MilestoneType | 'free' | 'creation'
 
 // The milestone types that can buy charms at all (Angel's house table); Major only buys Attributes.
 const CHARM_TYPES: MilestoneType[] = ['exalted', 'minor', 'personal']
@@ -23,12 +23,14 @@ export default function CharmCostModal({ charmName, repurchase, onConfirm, onClo
   const [amount, setAmount] = useState('1')
   const [training, setTraining] = useState(true)
 
-  // An Expense always spends something; a free charm is a Char. Creation note.
-  const spendsNothing = choice !== 'creation' && parseAmount(amount) === 0
+  // Milestones must be entered unless Free or Char. Creation is chosen on purpose.
+  const paid = choice !== 'free' && choice !== 'creation'
+  const spendsNothing = paid && parseAmount(amount) === 0
 
   function confirm() {
     if (spendsNothing) return
     if (choice === 'creation') { onConfirm({ kind: 'creation' }); return }
+    if (choice === 'free') { onConfirm({ kind: 'free', training }); return }
     const amounts = { personal: 0, exalted: 0, minor: 0, major: 0 }
     amounts[choice] = parseAmount(amount)
     onConfirm({ kind: 'purchase', amounts, training })
@@ -55,15 +57,16 @@ export default function CharmCostModal({ charmName, repurchase, onConfirm, onClo
           </div>
           <div className="flex gap-1.5">
             {CHARM_TYPES.map(t => option(t, t[0].toUpperCase() + t.slice(1), `${MILESTONE_USES[t].join(' · ')}`))}
-            {option('creation', KIND_LABELS.creation, 'Part of the starting build — costs nothing, no training')}
+            {option('free', FREE_LABELS.free, 'Given for free, e.g. by the Storyteller — costs no milestones')}
+            {option('creation', FREE_LABELS.creation, 'Part of the starting build — costs nothing, no training')}
           </div>
           {choice !== 'creation' && (
             <div className="flex items-center gap-4">
-              <label className="flex items-center gap-2 text-xs text-stone-400">
+              {paid && <label className="flex items-center gap-2 text-xs text-stone-400">
                 Milestones spent
                 <input type="number" min="0" value={amount} onChange={e => setAmount(e.target.value)} aria-label="Milestones spent"
                   className="w-14 bg-stone-800 border border-stone-600 text-stone-100 rounded px-2 py-1 text-sm focus:outline-none focus:border-amber-500" />
-              </label>
+              </label>}
               <label className="flex items-center gap-2 text-xs text-stone-300 cursor-pointer">
                 <input type="checkbox" checked={training} onChange={e => setTraining(e.target.checked)} className="accent-amber-500" />
                 In training
@@ -71,7 +74,7 @@ export default function CharmCostModal({ charmName, repurchase, onConfirm, onClo
             </div>
           )}
           <div className="flex items-center justify-end gap-2 pt-1">
-            {spendsNothing && <span className="mr-auto text-xs text-stone-500">Enter the milestones spent.</span>}
+            {spendsNothing && <span className="mr-auto text-xs text-stone-500">Enter the milestones spent, or choose Free.</span>}
             <button type="button" onClick={onClose} className="text-stone-400 hover:text-stone-200 text-sm px-2">Cancel</button>
             <button type="submit" autoFocus disabled={spendsNothing} className="bg-amber-600 hover:bg-amber-500 disabled:opacity-40 disabled:hover:bg-amber-600 text-white rounded px-4 py-1.5 text-sm transition-colors">
               {repurchase ? 'Buy again' : 'Add charm'}

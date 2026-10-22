@@ -4,6 +4,19 @@ One entry per shipped change, newest first: what changed and **why**. How things
 now is in `Summary.md`; plans in `ROADMAP.md`. Entries before 2026-10-15 were rebuilt
 from the git history (one per day, its commits listed).
 
+- **2026-10-22** — **Free and Char. Creation are now marks on an Expense; Kaien's ledger
+  corrected.** Angel checked Kaien's ledger against the sheet: a gift from the
+  Storyteller had no honest way in (the only free option was Char. Creation). An
+  Expense now has Free and Char. Creation toggles, so spending nothing is always a
+  deliberate choice and the line's tag says which; the "+ Char. Creation" button is
+  gone, and the charm payment prompt offers Free too. A migration converted every
+  ledger, and fixed Kaien's at Angel's request: Racing Hare Method dropped (an upgrade
+  costs nothing), one Arsenal-Summoning Gesture repurchase and Five-Direction Armaments
+  dropped (the Solar mode is free; the charm has three paid lines), the missing Minor for
+  Athletics 4→5 added, Presence Excellency marked Free, and every old description
+  rewritten in today's format ("Charm (…)", "Athletics 3→4", "Specialty: …"). Angel had
+  already deleted the two July lines (Awareness 3→4, Embassy 4→5) that never reached
+  the sheet. The screenshot script's `--click` now also ticks a labelled checkbox.
 - **2026-10-17** — **Every charm in the library implemented.** Angel asked for every charm
   without an implementation to be reviewed by the rules agreed for Kaien's, then built.
   All 484 were read: 231 need nothing (spent on a roll, a step or a question), 215 got

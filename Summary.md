@@ -83,23 +83,30 @@ A campaign is one story a group plays. **Storyteller (ST) is a per-campaign role
 - Server: `CampaignController`, `CharacterCampaignController` (options + campaign membership), `CircleController`; rules covered by `tests/Feature/CampaignTest.php`.
 
 ## Milestones and training (training added 2026-10-16)
-The Milestones tab is a ledger of Income, Expense and Char. Creation lines (logic in
+The Milestones tab is a ledger of Income and Expense lines (logic in
 `src/lib/milestones.ts`, tested). The ledger fills the page from the top; beside it sit
 the four remaining/total tiles (hover one for what that type buys) and the **In
 training** list. **Spending milestones starts a training:** a new Expense has "In
 training" ticked (untick it for something that needs none). Training time is entirely
 the Storyteller's call, so the app only records "started" (the line's date) and "done".
-- **An Expense must spend at least one milestone** (Angel, 2026-10-16); something free
-  is a Char. Creation note. Save (and the charm payment prompt) stays disabled until
-  a milestone is entered, with a note saying why. Two older zero-cost Expenses on
-  Kaien were left as they are; editing one asks for a milestone.
+- **An Expense spends at least one milestone unless it says why it doesn't**
+  (Angel, 2026-10-22): its form has two toggles, **Free** (given for free, e.g. by
+  the Storyteller in downtime; can still be in training) and **Char. Creation**
+  (bought with the starting build; undated, never trains, listed first). Either one
+  hides the milestone fields and shows on the line as its tag instead of "Expense"
+  (`MilestoneTransaction.cost`). Without one, Save (and the charm payment prompt,
+  which offers Free and Char. Creation too) stays disabled until a milestone is
+  entered. There is no separate "+ Char. Creation" button. Ledgers saved before
+  this had Char. Creation as a line kind of its own; migration `2026_10_22_000001`
+  converted them (and marked zero-cost Expenses Free), and `normalizeLedger` reads
+  any old copy the same way.
 - The In training list shows the longest-waiting first, each with a **Done** button.
   Ticking "In training" again in a line's edit form puts it back (for a Done pressed by
   mistake).
 - **Charms and the ledger stay in step** (`src/lib/charmTraining.ts`, tested). Adding or
   buying a charm again on the sheet asks what paid for it (Exalted / Minor / Personal
-  and how many, or Char. Creation) and logs that line, linked to the charm
-  (`MilestoneTransaction.charm`). The other way round, a new Expense or creation note
+  and how many, Free, or Char. Creation) and logs that line, linked to the charm
+  (`MilestoneTransaction.charm`). The other way round, a new Expense
   can pick "What it bought": a charm (from the Add Charm browser), which lands on the
   sheet. Undo last purchase / Remove in the charm window take their linked lines with
   them. **Deleting a ledger line** that bought something still on the sheet (a charm

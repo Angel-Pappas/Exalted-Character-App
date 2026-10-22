@@ -1,5 +1,5 @@
 import { Fragment, useEffect, useState } from 'react'
-import type { LibraryCharm, MilestoneKind, MilestoneTransaction, SheetData, TraitPurchase, TrainingDone } from '../types/character'
+import type { FreeCost, LibraryCharm, MilestoneKind, MilestoneTransaction, SheetData, TraitPurchase, TrainingDone } from '../types/character'
 import { Tooltip } from '../components/Tooltip'
 import { TrainingCost } from '../components/TrainingCost'
 import { CharmBrowseModal } from './SheetTab'
@@ -7,10 +7,10 @@ import ModalPortal from '../components/ModalPortal'
 import { cachedCharmLibrary, loadCharmLibrary } from '../lib/charmLibrary'
 import { boughtOnSheet, undoBought } from '../lib/ledgerRemoval'
 import type { ChoicePick } from '../lib/charmPurchase'
-import { buyCharm, charmLine } from '../lib/charmTraining'
+import { buyCharm, charmLine, type CharmCost } from '../lib/charmTraining'
 import { applyTrait, traitDescription } from '../lib/traitTraining'
 import {
-  KIND_LABELS, MILESTONE_TYPES, MILESTONE_USES, dateKey, formatDay, inTraining, isValidEntry, parseAmount,
+  FREE_LABELS, KIND_LABELS, MILESTONE_TYPES, MILESTONE_USES, dateKey, entryLabel, formatDay, inTraining, isValidEntry, parseAmount,
   remaining, sortLedger, todayKey, totalEarned,
   type MilestoneAmounts, type MilestoneType,
 } from '../lib/milestones'
@@ -43,6 +43,7 @@ type Bought =
 // Form state keeps raw strings so a field can be blank while typing.
 interface Draft {
   kind: MilestoneKind
+  cost: FreeCost | null  // Expenses only: spends nothing on purpose (Free / Char. Creation)
   amounts: Record<MilestoneType, string>
   description: string
   date: string
@@ -55,16 +56,21 @@ const ORDER_KEY = 'milestones.order'
 
 const blankAmounts = { personal: '', exalted: '', minor: '', major: '' }
 
-const KIND_BADGE: Record<MilestoneKind, string> = {
+const BADGE: Record<MilestoneKind | FreeCost, string> = {
   gain: 'bg-emerald-950 text-emerald-300 border-emerald-800/60',
   purchase: 'bg-red-950 text-red-300 border-red-900/60',
+  free: 'bg-sky-950 text-sky-300 border-sky-900/60',
   creation: 'bg-stone-800 text-stone-300 border-stone-700',
 }
 
 const DESC_PLACEHOLDER: Record<MilestoneKind, string> = {
   gain: 'e.g. Session 26/9/26',
   purchase: 'e.g. Charm (Excellent Strike)',
-  creation: 'e.g. Charm (Ox-Body Technique)',
+}
+
+const FREE_HINT: Record<FreeCost, string> = {
+  free: 'Given for free (e.g. by the Storyteller) — costs no milestones.',
+  creation: 'Bought with the starting build — recorded for reference, costs no milestones.',
 }
 
 const inputClass = 'w-full bg-stone-800 border border-stone-600 text-stone-100 rounded px-2 py-1 text-sm focus:outline-none focus:border-amber-500'
@@ -73,24 +79,29 @@ const smallBtn = 'text-xs px-2 py-0.5 rounded border border-stone-600 text-stone
 
 // A new Expense starts a training unless the player unticks it (e.g. a reward the Storyteller grants at once).
 function newDraft(kind: MilestoneKind): Draft {
-  return { kind, amounts: blankAmounts, description: '', date: kind === 'creation' ? '' : todayKey(), training: true, bought: { kind: 'none' } }
+  return { kind, cost: null, amounts: blankAmounts, description: '', date: todayKey(), training: true, bought: { kind: 'none' } }
 }
 
 function draftFrom(tx: MilestoneTransaction, training: boolean): Draft {
   const amounts = { ...blankAmounts }
   for (const t of MILESTONE_TYPES) amounts[t] = tx[t] ? String(tx[t]) : ''
-  return { kind: tx.kind, amounts, description: tx.description, date: dateKey(tx.date), training, bought: { kind: 'none' } }
+  return { kind: tx.kind, cost: tx.cost ?? null, amounts, description: tx.description, date: dateKey(tx.date), training, bought: { kind: 'none' } }
 }
 
 function parsedAmounts(draft: Draft): MilestoneAmounts {
-  // Creation notes are free by definition, whatever was typed before switching kind.
-  if (draft.kind === 'creation') return { personal: 0, exalted: 0, minor: 0, major: 0 }
+  // Free and Char. Creation spend nothing, whatever was typed before ticking them.
+  if (draftCost(draft)) return { personal: 0, exalted: 0, minor: 0, major: 0 }
   return {
     personal: parseAmount(draft.amounts.personal),
     exalted: parseAmount(draft.amounts.exalted),
     minor: parseAmount(draft.amounts.minor),
     major: parseAmount(draft.amounts.major),
   }
+}
+
+/** The draft's Free / Char. Creation mark; only an Expense can carry one. */
+function draftCost(draft: Draft): FreeCost | undefined {
+  return draft.kind === 'purchase' && draft.cost ? draft.cost : undefined
 }
 
 /** The trait a draft buys, once every part of it is filled in. */
@@ -145,7 +156,7 @@ function SpendOptions({ type }: { type: MilestoneType }) {
   )
 }
 
-// What a new Expense or creation note bought: a charm (chosen in the library
+// What a new Expense bought: a charm (chosen in the library
 // browser), ability dots, an attribute dot or a specialty. It lands on the sheet
 // when the entry is saved.
 function BoughtFields({ bought, onChange, onChooseCharm }: { bought: Bought; onChange: (b: Bought) => void; onChooseCharm: () => void }) {
@@ -223,6 +234,9 @@ function EntryFields({ draft, setDraft, isNew, placeholder, onChooseCharm }: {
   placeholder: string
   onChooseCharm: () => void
 }) {
+  const cost = draftCost(draft)
+  // Free and Char. Creation exclude each other; ticking one again clears it.
+  const toggleCost = (c: FreeCost) => setDraft({ ...draft, cost: draft.cost === c ? null : c })
   return (
     <div className="space-y-3">
       <div className="flex flex-wrap items-end gap-3">
@@ -238,7 +252,7 @@ function EntryFields({ draft, setDraft, isNew, placeholder, onChooseCharm }: {
             ))}
           </select>
         </div>
-        {draft.kind !== 'creation' && MILESTONE_TYPES.map(type => (
+        {!cost && MILESTONE_TYPES.map(type => (
           <div key={type} className="w-20">
             <label className={`${labelClass} capitalize`}>{type}</label>
             <input
@@ -250,16 +264,24 @@ function EntryFields({ draft, setDraft, isNew, placeholder, onChooseCharm }: {
             />
           </div>
         ))}
-        {!isNew && draft.kind !== 'creation' && (
+        {!isNew && cost !== 'creation' && (
           <div>
             <label className={labelClass}>Date (sets its place)</label>
             <input type="date" value={draft.date} onChange={e => setDraft({ ...draft, date: e.target.value })} className={inputClass} />
           </div>
         )}
+        {draft.kind === 'purchase' && (
+          <div className="flex items-center gap-4 pb-1.5">
+            {(Object.keys(FREE_LABELS) as FreeCost[]).map(c => (
+              <label key={c} className="flex items-center gap-2 text-sm text-stone-300 cursor-pointer">
+                <input type="checkbox" checked={draft.cost === c} onChange={() => toggleCost(c)} className="accent-amber-500" />
+                {FREE_LABELS[c]}
+              </label>
+            ))}
+          </div>
+        )}
       </div>
-      {draft.kind === 'creation' && (
-        <p className="text-xs text-stone-500">Bought with the starting build — recorded for reference, costs no milestones.</p>
-      )}
+      {cost && <p className="text-xs text-stone-500">{FREE_HINT[cost]}</p>}
       {isNew && draft.kind !== 'gain' && (
         <BoughtFields bought={draft.bought} onChange={bought => setDraft({ ...draft, bought })} onChooseCharm={onChooseCharm} />
       )}
@@ -273,7 +295,7 @@ function EntryFields({ draft, setDraft, isNew, placeholder, onChooseCharm }: {
           className={inputClass}
         />
       </div>
-      {draft.kind === 'purchase' && (
+      {draft.kind === 'purchase' && cost !== 'creation' && (
         <label className="flex items-center gap-2 text-sm text-stone-300 w-fit cursor-pointer">
           <input
             type="checkbox"
@@ -322,19 +344,23 @@ export default function MilestonesTab({ milestones, sheet, trainingDone, onChang
   const isRepurchase = (bought: Bought) => bought.kind === 'charm' && bought.lib !== null && charms.some(c => c.libraryId === bought.lib?.id)
   // Something bought on the sheet names itself, so its description may stay blank.
   const addValid = adding !== null && boughtComplete(adding.bought)
-    && isValidEntry(adding.kind, parsedAmounts(adding), adding.description, adding.kind !== 'gain' && adding.bought.kind !== 'none')
-  const spendsNothing = (d: Draft) => d.kind === 'purchase' && MILESTONE_TYPES.every(t => parsedAmounts(d)[t] === 0)
-  const editValid = isValidEntry(editDraft.kind, parsedAmounts(editDraft), editDraft.description)
+    && isValidEntry(adding.kind, parsedAmounts(adding), adding.description, adding.kind !== 'gain' && adding.bought.kind !== 'none', draftCost(adding))
+  const spendsNothing = (d: Draft) => d.kind === 'purchase' && !draftCost(d) && MILESTONE_TYPES.every(t => parsedAmounts(d)[t] === 0)
+  const editValid = isValidEntry(editDraft.kind, parsedAmounts(editDraft), editDraft.description, false, draftCost(editDraft))
 
   function saveAdd() {
     if (!adding || !addValid) return
     const amounts = parsedAmounts(adding)
     const description = adding.description.trim()
     const { bought } = adding
-    const inTrainingNow = adding.kind === 'purchase' && adding.training
+    const freeCost = draftCost(adding)
+    const inTrainingNow = adding.kind === 'purchase' && freeCost !== 'creation' && adding.training
+    const date = freeCost === 'creation' ? '' : adding.date
 
     if (bought.kind === 'charm' && bought.lib) {
-      const cost = adding.kind === 'creation' ? { kind: 'creation' as const } : { kind: 'purchase' as const, amounts, training: inTrainingNow }
+      const cost: CharmCost = freeCost === 'creation' ? { kind: 'creation' }
+        : freeCost === 'free' ? { kind: 'free', training: inTrainingNow }
+        : { kind: 'purchase', amounts, training: inTrainingNow }
       const next = buyCharm({ charms, milestones }, bought.lib, bought.pick, cost, { charm: crypto.randomUUID(), line: crypto.randomUUID() }, adding.date)
       const lines = description
         ? next.milestones.map((m, i) => (i === next.milestones.length - 1 ? { ...m, description } : m))
@@ -346,8 +372,9 @@ export default function MilestonesTab({ milestones, sheet, trainingDone, onChang
         id: crypto.randomUUID(),
         kind: adding.kind,
         ...amounts,
+        ...(freeCost ? { cost: freeCost } : {}),
         description: description || autoDescription(bought, sheet, false) || 'Session',
-        date: adding.date,
+        date,
         ...(inTrainingNow ? { training: true } : {}),
         ...(trait ? { trait } : {}),
       }
@@ -366,18 +393,21 @@ export default function MilestonesTab({ milestones, sheet, trainingDone, onChang
 
   function saveEdit(tx: MilestoneTransaction) {
     const amounts = parsedAmounts(editDraft)
-    if (!isValidEntry(editDraft.kind, amounts, editDraft.description)) return
+    const freeCost = draftCost(editDraft)
+    if (!isValidEntry(editDraft.kind, amounts, editDraft.description, false, freeCost)) return
     const wasTraining = training.includes(tx)
-    const nowTraining = editDraft.kind === 'purchase' && editDraft.training
+    const nowTraining = editDraft.kind === 'purchase' && freeCost !== 'creation' && editDraft.training
     const updated: MilestoneTransaction = {
       ...tx,
       kind: editDraft.kind,
       ...amounts,
+      ...(freeCost ? { cost: freeCost } : {}),
       description: editDraft.description.trim() || tx.description,
-      date: editDraft.date,
+      date: freeCost === 'creation' ? '' : editDraft.date,
       // Once tracked, a line stays tracked: unticking means "done", not "never trained".
       ...(nowTraining ? { training: true } : {}),
     }
+    if (!freeCost) delete updated.cost
     onChange(milestones.map(m => (m.id === tx.id ? updated : m)))
     setEditingId(null)
     if (wasTraining && !nowTraining && editDraft.kind === 'purchase') onTrainingDone(tx.id, true)
@@ -453,7 +483,6 @@ export default function MilestonesTab({ milestones, sheet, trainingDone, onChang
         <div className="flex flex-wrap gap-2 items-center">
           <button onClick={() => openAdd('gain')} className={`${actionBtn} bg-amber-600 hover:bg-amber-500 text-white`}>+ Add Income</button>
           <button onClick={() => openAdd('purchase')} className={`${actionBtn} bg-stone-700 hover:bg-stone-600 text-white`}>− Add Expense</button>
-          <button onClick={() => openAdd('creation')} className={`${actionBtn} bg-stone-800 hover:bg-stone-700 text-stone-300`}>+ Char. Creation</button>
           {milestones.length > 1 && (
             <button onClick={toggleOrder} className="ml-auto text-xs text-stone-400 hover:text-amber-400 transition-colors">
               {order === 'newest' ? 'Newest first ↓' : 'Oldest first ↑'}
@@ -472,7 +501,7 @@ export default function MilestonesTab({ milestones, sheet, trainingDone, onChang
                 Save
               </button>
               <button type="button" onClick={() => setAdding(null)} className="text-stone-400 hover:text-stone-200 text-sm px-2">Cancel</button>
-              {spendsNothing(adding) && <span className="self-center text-xs text-stone-500">An Expense needs the milestones it spent.</span>}
+              {spendsNothing(adding) && <span className="self-center text-xs text-stone-500">An Expense needs the milestones it spent, or tick Free.</span>}
             </div>
           </form>
         )}
@@ -494,15 +523,15 @@ export default function MilestonesTab({ milestones, sheet, trainingDone, onChang
                   <Fragment key={tx.id}>
                     <tr className="group border-b border-stone-800/70 last:border-0 hover:bg-stone-900/60">
                       <td className="py-1.5 pl-3 pr-2">
-                        <span className={`text-[11px] font-semibold px-1.5 py-px rounded border whitespace-nowrap ${KIND_BADGE[tx.kind]}`}>
-                          {KIND_LABELS[tx.kind]}
+                        <span className={`text-[11px] font-semibold px-1.5 py-px rounded border whitespace-nowrap ${BADGE[tx.kind === 'purchase' && tx.cost ? tx.cost : tx.kind]}`}>
+                          {entryLabel(tx)}
                         </span>
                         {/* Phones have no room for a description column: it sits under the type. */}
                         <div className="md:hidden mt-1 text-xs text-stone-300">{tx.description}</div>
                       </td>
                       {MILESTONE_TYPES.map(type => (
                         <td key={type} className="text-center py-1.5 px-1 font-mono">
-                          {tx.kind !== 'creation' && tx[type] > 0 ? (
+                          {!tx.cost && tx[type] > 0 ? (
                             <span className={tx.kind === 'gain' ? 'text-emerald-400' : 'text-red-400'}>
                               {tx.kind === 'gain' ? '+' : '−'}{tx[type]}
                             </span>
@@ -544,7 +573,7 @@ export default function MilestonesTab({ milestones, sheet, trainingDone, onChang
                               Save
                             </button>
                             <button onClick={() => setEditingId(null)} className="text-stone-400 hover:text-stone-200 text-sm px-2">Cancel</button>
-                            {spendsNothing(editDraft) && <span className="self-center text-xs text-stone-500">An Expense needs the milestones it spent.</span>}
+                            {spendsNothing(editDraft) && <span className="self-center text-xs text-stone-500">An Expense needs the milestones it spent, or tick Free.</span>}
                           </div>
                         </td>
                       </tr>

@@ -29,6 +29,8 @@ the priorities — the order under **Next** is a suggestion until he does.
 
 - [x] Every charm in the library reviewed and implemented by the rules agreed for
       Kaien's; sheet effects reach all five Defenses, health and wound penalty (2026-10-17).
+- [x] Free and Char. Creation as toggles on an Expense; Kaien's ledger checked and
+      corrected (2026-10-22).
 
 ## Next (suggested)
 

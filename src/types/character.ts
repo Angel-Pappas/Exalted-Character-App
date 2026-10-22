@@ -151,8 +151,15 @@ export interface InventoryCategory {
   items: InventoryItem[]
 }
 
-// gain = Income, purchase = Expense, creation = bought with the starting build (costs nothing)
-export type MilestoneKind = 'gain' | 'purchase' | 'creation'
+// gain = Income, purchase = Expense. (Until 2026-10-22 'creation' was a kind of its
+// own; it is now an Expense with `cost: 'creation'`, and `normalizeLedger` converts
+// any old line still carrying it.)
+export type MilestoneKind = 'gain' | 'purchase'
+
+// An Expense that spends nothing, on purpose (Angel, 2026-10-22): 'free' = given
+// for free (e.g. by the Storyteller in downtime), 'creation' = bought with the
+// starting build. Absent = paid with the milestones on the line.
+export type FreeCost = 'free' | 'creation'
 
 export interface MilestoneTransaction {
   id: string
@@ -162,6 +169,7 @@ export interface MilestoneTransaction {
   minor: number
   major: number
   description: string
+  cost?: FreeCost  // Expenses only; its milestones are then all 0
   date: string   // YYYY-MM-DD (older entries: full ISO timestamp); '' = undated
   // An Expense that starts a training (logged since 2026-10-16). Whether it is
   // done lives on the server (GET characters/:id/training), not in the sheet.

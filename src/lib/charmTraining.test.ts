@@ -38,10 +38,20 @@ describe('buying a charm logs what paid for it', () => {
     expect(bought(2).charms[0].count).toBe(2)
   })
 
-  it('logs a character-creation charm as a free, undated note with no training', () => {
+  it('logs a character-creation charm as an undated Char. Creation expense with no training', () => {
     const line = charmLine(lib(), false, { kind: 'creation' }, 'l', '2026-10-16')
-    expect(line).toMatchObject({ kind: 'creation', exalted: 0, date: '', charm: { libraryId: 'ox' } })
+    expect(line).toMatchObject({ kind: 'purchase', cost: 'creation', exalted: 0, date: '', charm: { libraryId: 'ox' } })
     expect(line.training).toBeUndefined()
+  })
+
+  it('logs a free charm as a dated Free expense that spends nothing, in training if chosen', () => {
+    const line = charmLine(lib(), false, { kind: 'free', training: true }, 'l', '2026-10-22')
+    expect(line).toMatchObject({ kind: 'purchase', cost: 'free', exalted: 0, personal: 0, date: '2026-10-22', training: true })
+    expect(charmLine(lib(), false, { kind: 'free', training: false }, 'l', '2026-10-22').training).toBeUndefined()
+  })
+
+  it('a paid charm carries no free mark', () => {
+    expect(charmLine(lib(), false, exalted4, 'l', '2026-10-16').cost).toBeUndefined()
   })
 
   it('can skip the training (e.g. a charm the Storyteller hands out)', () => {

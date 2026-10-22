@@ -1,6 +1,6 @@
 import { describe, it, expect } from 'vitest'
 import {
-  MILESTONE_TYPES, MILESTONE_USES, dateKey, formatDay, inTraining, isValidEntry, parseAmount, remaining, sortLedger, todayKey, totalEarned, totalSpent,
+  MILESTONE_TYPES, MILESTONE_USES, dateKey, entryLabel, formatDay, inTraining, isValidEntry, normalizeLedger, parseAmount, remaining, sortLedger, todayKey, totalEarned, totalSpent,
 } from './milestones'
 import type { MilestoneTransaction } from '../types/character'
 
@@ -38,10 +38,14 @@ describe('Totals — "Total = income; Remaining = Total minus expenses"', () => 
     expect(remaining(ledger, 'exalted')).toBe(7) // no exalted expenses
   })
 
-  it('Character Creation rows never touch the totals, even if they carry numbers', () => {
-    const withCreation = [...ledger, tx({ kind: 'creation', personal: 3, description: 'Charm (Bulwark Stance)' })]
-    expect(totalEarned(withCreation, 'personal')).toBe(6)
-    expect(remaining(withCreation, 'personal')).toBe(5)
+  it('Free and Char. Creation expenses never touch the totals, even if they carry numbers', () => {
+    const withFree = [...ledger,
+      tx({ kind: 'purchase', cost: 'creation', personal: 3, description: 'Charm (Bulwark Stance)' }),
+      tx({ kind: 'purchase', cost: 'free', personal: 2, description: 'Charm ([Presence] Excellency)' }),
+    ]
+    expect(totalEarned(withFree, 'personal')).toBe(6)
+    expect(totalSpent(withFree, 'personal')).toBe(1)
+    expect(remaining(withFree, 'personal')).toBe(5)
   })
 
   it('an empty ledger is all zeroes', () => {
@@ -65,12 +69,35 @@ describe('Entry validation', () => {
   it('something bought on the sheet names the entry, but an expense still has to spend', () => {
     expect(isValidEntry('purchase', { ...none, minor: 1 }, '', true)).toBe(true)
     expect(isValidEntry('purchase', none, '', true)).toBe(false)
-    expect(isValidEntry('creation', none, '', true)).toBe(true)
+    expect(isValidEntry('purchase', none, '', true, 'creation')).toBe(true)
   })
 
-  it('a creation note needs only a description', () => {
-    expect(isValidEntry('creation', none, 'Charm (Ox-Body Technique)')).toBe(true)
-    expect(isValidEntry('creation', none, '')).toBe(false)
+  it('an expense may spend nothing only when deliberately Free or Char. Creation, and still needs a description', () => {
+    expect(isValidEntry('purchase', none, 'Charm ([Presence] Excellency)', false, 'free')).toBe(true)
+    expect(isValidEntry('purchase', none, 'Charm (Ox Body Technique)', false, 'creation')).toBe(true)
+    expect(isValidEntry('purchase', none, '', false, 'free')).toBe(false)
+  })
+
+  it('income is never free: Free does not make an empty income valid', () => {
+    expect(isValidEntry('gain', none, 'Session', false, 'free')).toBe(false)
+  })
+})
+
+describe('Type tags and old ledgers', () => {
+  it('a line reads Income, Expense, Free or Char. Creation', () => {
+    expect(entryLabel({ kind: 'gain' })).toBe('Income')
+    expect(entryLabel({ kind: 'purchase' })).toBe('Expense')
+    expect(entryLabel({ kind: 'purchase', cost: 'free' })).toBe('Free')
+    expect(entryLabel({ kind: 'purchase', cost: 'creation' })).toBe('Char. Creation')
+  })
+
+  it('turns an old Char. Creation line into an Expense marked creation, and leaves every other line alone', () => {
+    const old = { ...tx({ kind: 'purchase', description: 'cc' }), kind: 'creation' } as unknown as MilestoneTransaction
+    const paid = tx({ kind: 'purchase', exalted: 1 })
+    const income = tx({ kind: 'gain', minor: 1 })
+    const [converted, ...rest] = normalizeLedger([old, paid, income])
+    expect(converted).toMatchObject({ kind: 'purchase', cost: 'creation', description: 'cc' })
+    expect(rest).toEqual([paid, income])
   })
 })
 
@@ -106,8 +133,8 @@ describe('Ledger order', () => {
   const buy1a = tx({ kind: 'purchase', description: 'buy1a', date: '2026-01-03' })
   const buy1b = tx({ kind: 'purchase', description: 'buy1b', date: '2026-01-03' })
   const s2 = tx({ kind: 'gain', description: 's2', date: '2026-01-30T10:00:00.000Z' })
-  const cc1 = tx({ kind: 'creation', description: 'cc1' })
-  const cc2 = tx({ kind: 'creation', description: 'cc2', date: '2026-09-01' }) // a date never moves a creation row
+  const cc1 = tx({ kind: 'purchase', cost: 'creation', description: 'cc1' })
+  const cc2 = tx({ kind: 'purchase', cost: 'creation', description: 'cc2', date: '2026-09-01' }) // a date never moves a creation row
   const logged = [s2, cc1, buy1a, start, s1, cc2, buy1b] // deliberately scrambled across dates
   const names = (list: MilestoneTransaction[]) => list.map(t => t.description)
 
@@ -148,8 +175,13 @@ describe('Training — "spending milestones starts a training; the player or ST 
     expect(inTraining([old], {})).toEqual([])
   })
 
-  it('only Expenses train — never Income or creation notes', () => {
-    expect(inTraining([income, tx({ kind: 'creation', training: true })], {})).toEqual([])
+  it('only Expenses train — never Income or the starting build', () => {
+    expect(inTraining([income, tx({ kind: 'purchase', cost: 'creation', training: true })], {})).toEqual([])
+  })
+
+  it('a Free expense can still be in training', () => {
+    const gift = tx({ kind: 'purchase', cost: 'free', training: true, date: '2026-10-22' })
+    expect(inTraining([gift], {})).toEqual([gift])
   })
 
   it('keeps logging order for trainings started the same day', () => {
