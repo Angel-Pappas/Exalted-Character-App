@@ -257,7 +257,7 @@ function EditCharmRow({ charm, onSave, onCancel, saving, textInput, abilitySugge
       </div>
       <div className="flex justify-end gap-2">
         <button onClick={onCancel} className="text-xs text-stone-500 hover:text-stone-300 transition-colors">Cancel</button>
-        <button onClick={() => onSave(form)} disabled={saving || !form.name.trim()} className="text-xs bg-amber-600 hover:bg-amber-500 disabled:opacity-40 text-white px-3 py-1 rounded transition-colors">
+        <button onClick={() => onSave(form)} disabled={saving || !form.name.trim()} className="text-xs bg-amber-600 hover:bg-amber-500 disabled:opacity-40 text-stone-950 px-3 py-1 rounded transition-colors">
           {saving ? 'Saving…' : 'Save'}
         </button>
       </div>
@@ -458,7 +458,7 @@ export default function CharmLibraryTab({ isOwner, textInput }: { isOwner: boole
                 </div>
               </div>
               <div className="flex justify-end px-4 py-3 border-t border-stone-800 shrink-0">
-                <button onClick={addCharm} disabled={saving || !newCharm.name.trim()} className="text-xs bg-amber-600 hover:bg-amber-500 disabled:opacity-40 text-white px-3 py-1 rounded transition-colors">
+                <button onClick={addCharm} disabled={saving || !newCharm.name.trim()} className="text-xs bg-amber-600 hover:bg-amber-500 disabled:opacity-40 text-stone-950 px-3 py-1 rounded transition-colors">
                   {saving ? 'Saving…' : 'Add'}
                 </button>
               </div>
@@ -588,7 +588,7 @@ export default function CharmLibraryTab({ isOwner, textInput }: { isOwner: boole
                       {isOwner && charm.needsReview && (
                         <button
                           onClick={e => { e.stopPropagation(); setReviewAction(charm.id, 'freetext') }}
-                          className={`w-6 h-6 rounded border transition-colors ${charm.reviewAction === 'freetext' ? 'bg-amber-600 border-amber-500 text-white' : 'bg-stone-800 border-stone-700 text-stone-500 hover:border-amber-500'}`}
+                          className={`w-6 h-6 rounded border transition-colors ${charm.reviewAction === 'freetext' ? 'bg-amber-600 border-amber-500 text-stone-950' : 'bg-stone-800 border-stone-700 text-stone-500 hover:border-amber-500'}`}
                           title="Mark as a free-text choice"
                         >
                           T
@@ -599,7 +599,7 @@ export default function CharmLibraryTab({ isOwner, textInput }: { isOwner: boole
                       {isOwner && charm.needsReview && (
                         <button
                           onClick={e => { e.stopPropagation(); setReviewAction(charm.id, 'set_list') }}
-                          className={`w-6 h-6 rounded border transition-colors ${charm.reviewAction === 'set_list' ? 'bg-amber-600 border-amber-500 text-white' : 'bg-stone-800 border-stone-700 text-stone-500 hover:border-amber-500'}`}
+                          className={`w-6 h-6 rounded border transition-colors ${charm.reviewAction === 'set_list' ? 'bg-amber-600 border-amber-500 text-stone-950' : 'bg-stone-800 border-stone-700 text-stone-500 hover:border-amber-500'}`}
                           title="Mark as needing a generated choice list"
                         >
                           ☰
@@ -610,7 +610,7 @@ export default function CharmLibraryTab({ isOwner, textInput }: { isOwner: boole
                       {isOwner && charm.needsReview && (
                         <button
                           onClick={e => { e.stopPropagation(); setReviewAction(charm.id, 'ask_admin') }}
-                          className={`w-6 h-6 rounded border transition-colors ${charm.reviewAction === 'ask_admin' ? 'bg-amber-600 border-amber-500 text-white' : 'bg-stone-800 border-stone-700 text-stone-500 hover:border-amber-500'}`}
+                          className={`w-6 h-6 rounded border transition-colors ${charm.reviewAction === 'ask_admin' ? 'bg-amber-600 border-amber-500 text-stone-950' : 'bg-stone-800 border-stone-700 text-stone-500 hover:border-amber-500'}`}
                           title="Park for manual case-by-case review"
                         >
                           ?
@@ -621,7 +621,7 @@ export default function CharmLibraryTab({ isOwner, textInput }: { isOwner: boole
                       {isOwner && charm.needsReview && (
                         <button
                           onClick={e => { e.stopPropagation(); setReviewAction(charm.id, 'no_action') }}
-                          className={`w-6 h-6 rounded border transition-colors ${charm.reviewAction === 'no_action' ? 'bg-amber-600 border-amber-500 text-white' : 'bg-stone-800 border-stone-700 text-stone-500 hover:border-amber-500'}`}
+                          className={`w-6 h-6 rounded border transition-colors ${charm.reviewAction === 'no_action' ? 'bg-amber-600 border-amber-500 text-stone-950' : 'bg-stone-800 border-stone-700 text-stone-500 hover:border-amber-500'}`}
                           title="No choice needed — false positive from the scan"
                         >
                           ✕

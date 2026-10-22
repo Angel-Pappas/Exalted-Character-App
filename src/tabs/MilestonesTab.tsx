@@ -469,7 +469,7 @@ export default function MilestonesTab({ milestones, sheet, trainingDone, onChang
               <div className="flex flex-wrap items-center justify-end gap-2 pt-1 [&>button]:whitespace-nowrap">
                 <button type="button" onClick={() => setDeleting(null)} className="text-stone-400 hover:text-stone-200 text-sm px-2 mr-auto">Cancel</button>
                 <button type="button" onClick={() => void deleteLine(deleting.line, false)}
-                  className="bg-stone-700 hover:bg-stone-600 text-white rounded px-3 py-1.5 text-sm transition-colors">Keep on sheet</button>
+                  className="bg-stone-700 hover:bg-stone-600 text-stone-100 rounded px-3 py-1.5 text-sm transition-colors">Keep on sheet</button>
                 <button type="button" autoFocus onClick={() => void deleteLine(deleting.line, true)}
                   className="bg-red-700 hover:bg-red-600 text-white rounded px-3 py-1.5 text-sm transition-colors">Remove from sheet</button>
               </div>
@@ -481,8 +481,8 @@ export default function MilestonesTab({ milestones, sheet, trainingDone, onChang
       {/* The ledger, from the very top of the page. */}
       <main className="min-w-0 space-y-3">
         <div className="flex flex-wrap gap-2 items-center">
-          <button onClick={() => openAdd('gain')} className={`${actionBtn} bg-amber-600 hover:bg-amber-500 text-white`}>+ Add Income</button>
-          <button onClick={() => openAdd('purchase')} className={`${actionBtn} bg-stone-700 hover:bg-stone-600 text-white`}>− Add Expense</button>
+          <button onClick={() => openAdd('gain')} className={`${actionBtn} bg-amber-600 hover:bg-amber-500 text-stone-950`}>+ Add Income</button>
+          <button onClick={() => openAdd('purchase')} className={`${actionBtn} bg-stone-700 hover:bg-stone-600 text-stone-100`}>− Add Expense</button>
           {milestones.length > 1 && (
             <button onClick={toggleOrder} className="ml-auto text-xs text-stone-400 hover:text-amber-400 transition-colors">
               {order === 'newest' ? 'Newest first ↓' : 'Oldest first ↑'}
@@ -497,7 +497,7 @@ export default function MilestonesTab({ milestones, sheet, trainingDone, onChang
               onChooseCharm={() => setBrowsing(true)} />
             <div className="flex gap-2">
               <button type="submit" disabled={!addValid}
-                className="bg-amber-600 hover:bg-amber-500 disabled:opacity-40 disabled:hover:bg-amber-600 text-white rounded px-4 py-1.5 text-sm transition-colors">
+                className="bg-amber-600 hover:bg-amber-500 disabled:opacity-40 disabled:hover:bg-amber-600 text-stone-950 rounded px-4 py-1.5 text-sm transition-colors">
                 Save
               </button>
               <button type="button" onClick={() => setAdding(null)} className="text-stone-400 hover:text-stone-200 text-sm px-2">Cancel</button>
@@ -568,7 +568,7 @@ export default function MilestonesTab({ milestones, sheet, trainingDone, onChang
                             <button
                               onClick={() => saveEdit(tx)}
                               disabled={!editValid}
-                              className="bg-amber-600 hover:bg-amber-500 disabled:opacity-40 disabled:hover:bg-amber-600 text-white rounded px-3 py-1 text-sm transition-colors"
+                              className="bg-amber-600 hover:bg-amber-500 disabled:opacity-40 disabled:hover:bg-amber-600 text-stone-950 rounded px-3 py-1 text-sm transition-colors"
                             >
                               Save
                             </button>

@@ -147,7 +147,7 @@ export default function CharactersPage() {
                 <div className="grid grid-cols-2 gap-2">
                   {(['pc', 'npc'] as const).map(k => (
                     <button key={k} type="button" onClick={() => setNewKind(k)} aria-pressed={newKind === k}
-                      className={`py-1.5 rounded border text-sm transition-colors ${newKind === k ? 'bg-amber-600 border-amber-500 text-white' : 'border-stone-600 text-stone-400 hover:border-amber-500 hover:text-amber-300'}`}>
+                      className={`py-1.5 rounded border text-sm transition-colors ${newKind === k ? 'bg-amber-600 border-amber-500 text-stone-950' : 'border-stone-600 text-stone-400 hover:border-amber-500 hover:text-amber-300'}`}>
                       {k === 'pc' ? 'PC' : 'NPC'}
                     </button>
                   ))}
@@ -195,7 +195,7 @@ export default function CharactersPage() {
               <button
                 onClick={createCharacter}
                 disabled={creating || !newName.trim() || !newExaltType || !newCaste}
-                className="flex-1 py-2 bg-amber-600 hover:bg-amber-500 disabled:opacity-50 text-white text-sm font-medium rounded transition-colors"
+                className="flex-1 py-2 bg-amber-600 hover:bg-amber-500 disabled:opacity-50 text-stone-950 text-sm font-medium rounded transition-colors"
               >
                 {creating ? 'Creating…' : 'Create'}
               </button>

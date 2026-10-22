@@ -1,5 +1,116 @@
 @import "tailwindcss";
 
+/* ── Colours ─────────────────────────────────────────────────────────────────
+   The app is written with Tailwind's stone (greys) and amber (gold) scales, so the
+   look is set here, once, by giving those scales our own values.
+
+   Dark theme (default), 2026-10-22: Angel found the old one heavy on the eye. The
+   background moved off near-black to a warm charcoal, the gold is softer and less
+   saturated (saturated colours "vibrate" on dark backgrounds — Material Design's
+   dark-theme guidance), and stone-500, the muted text, is lighter so it reaches the
+   WCAG AA 4.5:1 contrast for text on every panel (it was 3.6:1). */
+@theme {
+  --color-stone-50: #faf9f7;
+  --color-stone-100: #f3f1ee;
+  --color-stone-200: #e6e2dd;
+  --color-stone-300: #d3cec8;
+  --color-stone-400: #aea79f;
+  --color-stone-500: #958d86;
+  --color-stone-600: #615a54;
+  --color-stone-700: #48423d;
+  --color-stone-800: #2f2b28;
+  --color-stone-900: #221f1c;
+  --color-stone-950: #181614;
+
+  --color-amber-100: #fdf0cc;
+  --color-amber-200: #f8dd96;
+  --color-amber-300: #f3cc70;
+  --color-amber-400: #ebb44a;
+  --color-amber-500: #e09a2a;
+  --color-amber-600: #c97d14;
+  --color-amber-700: #a3600f;
+  --color-amber-800: #82490f;
+  --color-amber-900: #683a10;
+  --color-amber-950: #3d2006;
+}
+
+:root {
+  color-scheme: dark;
+}
+
+/* Light theme. Each scale is turned around: the darkest greys become the page and
+   panels, the lightest become the text, and the bright accent shades (300–500) used
+   as text on dark become deep ones that read on white. Every text colour here is at
+   least 4.5:1 on the page, the panels and the input fields (checked with the WCAG
+   formula when this was written). */
+.light-mode {
+  color-scheme: light;
+
+  --color-stone-50: #141110;
+  --color-stone-100: #1f1b18;
+  --color-stone-200: #2f2a26;
+  --color-stone-300: #443e39;
+  --color-stone-400: #57504a;
+  --color-stone-500: #6b635c;
+  --color-stone-600: #8f857b;
+  --color-stone-700: #d8d2cb;
+  --color-stone-800: #f1eeea;
+  --color-stone-900: #ffffff;
+  --color-stone-950: #f6f4f1;
+
+  --color-amber-100: #5c3105;
+  --color-amber-200: #6b3a07;
+  --color-amber-300: #7c4308;
+  --color-amber-400: #9a5507;
+  --color-amber-500: #a75a08;
+  --color-amber-600: #8f4a07;
+  --color-amber-700: #c27a2c;
+  --color-amber-800: #e8c48a;
+  --color-amber-900: #fbedd2;
+  --color-amber-950: #fdf6e7;
+
+  --color-red-300: #991b1b;
+  --color-red-400: #b91c1c;
+  --color-red-500: #dc2626;
+  --color-red-900: #fee2e2;
+  --color-red-950: #fef2f2;
+
+  --color-emerald-300: #065f46;
+  --color-emerald-400: #047857;
+  --color-emerald-500: #059669;
+  --color-emerald-950: #ecfdf5;
+
+  --color-green-400: #137034;
+  --color-green-500: #16a34a;
+  --color-green-900: #dcfce7;
+
+  --color-sky-300: #075985;
+  --color-sky-400: #0369a1;
+  --color-sky-500: #0284c7;
+  --color-sky-900: #e0f2fe;
+  --color-sky-950: #f0f9ff;
+
+  --color-orange-300: #9a3412;
+  --color-orange-400: #c2410c;
+  --color-orange-500: #ea580c;
+  --color-orange-900: #ffedd5;
+
+  --color-blue-300: #1e40af;
+  --color-blue-400: #1d4ed8;
+  --color-blue-900: #dbeafe;
+
+  --color-purple-300: #6b21a8;
+  --color-purple-900: #f3e8ff;
+
+  --color-slate-300: #475569;
+  --color-slate-700: #cbd5e1;
+  --color-gray-700: #d1d5db;
+}
+
+html {
+  background: var(--color-stone-950);
+}
+
 * {
   box-sizing: border-box;
 }
@@ -37,9 +148,9 @@ body {
   -moz-osx-font-smoothing: grayscale;
 }
 
-/* Dark-themed scrollbars app-wide, instead of the OS-default bright ones */
+/* Scrollbars in the theme's colours, instead of the OS-default bright ones */
 * {
-  scrollbar-color: #57534e #1c1917; /* thumb: stone-600, track: stone-900 */
+  scrollbar-color: var(--color-stone-600) var(--color-stone-900);
   scrollbar-width: thin;
 }
 *::-webkit-scrollbar {
@@ -47,18 +158,18 @@ body {
   height: 10px;
 }
 *::-webkit-scrollbar-track {
-  background: #1c1917; /* stone-900 */
+  background: var(--color-stone-900);
 }
 *::-webkit-scrollbar-thumb {
-  background-color: #57534e; /* stone-600 */
+  background-color: var(--color-stone-600);
   border-radius: 6px;
-  border: 2px solid #1c1917;
+  border: 2px solid var(--color-stone-900);
 }
 *::-webkit-scrollbar-thumb:hover {
-  background-color: #78716c; /* stone-500 */
+  background-color: var(--color-stone-500);
 }
 *::-webkit-scrollbar-corner {
-  background: #1c1917;
+  background: var(--color-stone-900);
 }
 
 /* Resize handle: always on top of drag handle and panel content */

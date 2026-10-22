@@ -1,12 +1,14 @@
 // Screenshot app pages from the DEV checkout (dev database + the `demo` login from
 // DemoSeeder, never live), so a change can be looked at before it ships. Usage:
 //
-//   npm run shots -- / /characters "/character/<id>"   [--mobile] [--dark] [--wide] [--click=Milestones] [--fill=Search=Ox]
+//   npm run shots -- / /characters "/character/<id>"   [--mobile] [--light] [--wide] [--full] [--click=Milestones] [--fill=Search=Ox]
 //
 // (the `--` matters: without it npm swallows the --flags itself)
 //
 // --wide is Angel's desktop (2560 wide) and captures the whole page, not just the
-// first screenful — the sheet's layout is sized for that width.
+// first screenful — the sheet's layout is sized for that width. --full captures the
+// whole page at any size. --light switches the app to its light theme (Settings →
+// Appearance); without it the app is in its default dark theme.
 //
 // Serves the built front end (`dist/`, SPA fallback to index.html) and forwards
 // `/api/*` to `php artisan serve` (backend/), the same split nginx does live. Logs
@@ -36,10 +38,12 @@ const TYPES = {
 
 const args = process.argv.slice(2);
 const mobile = args.includes('--mobile');
-const dark = args.includes('--dark');
+const light = args.includes('--light');
+const full = args.includes('--full');
 const wide = args.includes('--wide');
 // Steps run on each page before the shot, in the order given:
-//   --click=Text           clicks the button, or ticks the checkbox, with that text (e.g. --click=Milestones)
+//   --click=Text           clicks the button, link or checkbox with that text, or else any element
+//                          showing exactly that text (e.g. --click=Milestones, --click="Ox Body Technique")
 //   --fill=Placeholder=Val types Val into the field with that placeholder
 const steps = args
     .filter((a) => a.startsWith('--click=') || a.startsWith('--fill='))
@@ -112,9 +116,11 @@ try {
             : wide
               ? { width: 2560, height: 1440 }
               : { width: 1440, height: 900 },
-        colorScheme: dark ? 'dark' : 'light',
+        colorScheme: light ? 'light' : 'dark',
         storageState: existsSync(AUTH) ? AUTH : undefined,
     });
+    // The app keeps the chosen theme in localStorage (ThemeContext).
+    await context.addInitScript((theme) => localStorage.setItem('theme', theme), light ? 'light' : 'dark');
     const page = await context.newPage();
 
     await page.goto(`${BASE}/`);
@@ -133,7 +139,9 @@ try {
         for (const step of steps) {
             if (step.click) {
                 await page.getByRole('button', { name: step.click, exact: true })
-                    .or(page.getByLabel(step.click, { exact: true })).first().click();
+                    .or(page.getByRole('link', { name: step.click, exact: true }))
+                    .or(page.getByLabel(step.click, { exact: true }))
+                    .or(page.getByText(step.click, { exact: true })).first().click();
             } else {
                 await page.getByPlaceholder(step.fill).first().fill(step.value);
             }
@@ -144,8 +152,8 @@ try {
         const clicked = steps
             .map((st) => `-${(st.click ?? st.value).replace(/[^a-z0-9]+/gi, '-')}`)
             .join('');
-        const file = `${OUT}/${slug}${clicked}${mobile ? '-mobile' : ''}${wide ? '-wide' : ''}${dark ? '-dark' : ''}.png`;
-        await page.screenshot({ path: file, fullPage: wide });
+        const file = `${OUT}/${slug}${clicked}${mobile ? '-mobile' : ''}${wide ? '-wide' : ''}${light ? '-light' : ''}.png`;
+        await page.screenshot({ path: file, fullPage: wide || full });
         console.log(file);
     }
 } finally {

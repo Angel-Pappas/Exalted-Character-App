@@ -21,6 +21,8 @@ export function ThemeProvider({ children }: { children: React.ReactNode }) {
 
   useEffect(() => {
     document.documentElement.classList.toggle('light-mode', theme === 'light')
+    // The phone browser's own bar matches the page background.
+    document.querySelector('meta[name="theme-color"]')?.setAttribute('content', theme === 'light' ? '#f6f4f1' : '#181614')
   }, [theme])
 
   return (

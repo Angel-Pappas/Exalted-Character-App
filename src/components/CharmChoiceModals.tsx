@@ -10,7 +10,7 @@ import { protectable } from '../lib/charmUse'
 
 const inputCls = 'w-full bg-stone-800 border border-stone-600 text-stone-100 rounded px-2 py-1 text-sm focus:outline-none focus:border-amber-500'
 const laterBtn = 'text-stone-400 hover:text-stone-200 text-sm px-2'
-const saveBtn = 'bg-amber-600 hover:bg-amber-500 disabled:opacity-40 disabled:hover:bg-amber-600 text-white rounded px-4 py-1.5 text-sm transition-colors'
+const saveBtn = 'bg-amber-600 hover:bg-amber-500 disabled:opacity-40 disabled:hover:bg-amber-600 text-stone-950 rounded px-4 py-1.5 text-sm transition-colors'
 
 function Frame({ title, hint, onClose, children }: { title: string; hint: string; onClose: () => void; children: React.ReactNode }) {
   return (

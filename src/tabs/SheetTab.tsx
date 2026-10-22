@@ -337,7 +337,7 @@ function ChoicePickerModal({ charm, existingPicks, existingTargets, purchaseInde
               <button
                 onClick={() => freeText.trim() && onConfirm(freeText.trim())}
                 disabled={!freeText.trim()}
-                className="text-xs bg-amber-600 hover:bg-amber-500 disabled:opacity-40 text-white px-3 py-1 rounded transition-colors"
+                className="text-xs bg-amber-600 hover:bg-amber-500 disabled:opacity-40 text-stone-950 px-3 py-1 rounded transition-colors"
               >
                 Confirm
               </button>
@@ -348,7 +348,7 @@ function ChoicePickerModal({ charm, existingPicks, existingTargets, purchaseInde
               <button
                 onClick={() => target.trim() && selected.length > 0 && onConfirm({ target: target.trim(), selected })}
                 disabled={!target.trim() || selected.length === 0}
-                className="text-xs bg-amber-600 hover:bg-amber-500 disabled:opacity-40 text-white px-3 py-1 rounded transition-colors"
+                className="text-xs bg-amber-600 hover:bg-amber-500 disabled:opacity-40 text-stone-950 px-3 py-1 rounded transition-colors"
               >
                 Confirm
               </button>
@@ -359,7 +359,7 @@ function ChoicePickerModal({ charm, existingPicks, existingTargets, purchaseInde
               <button
                 onClick={() => selected.length === neededPicks && onConfirm(selected)}
                 disabled={selected.length !== neededPicks}
-                className="text-xs bg-amber-600 hover:bg-amber-500 disabled:opacity-40 text-white px-3 py-1 rounded transition-colors"
+                className="text-xs bg-amber-600 hover:bg-amber-500 disabled:opacity-40 text-stone-950 px-3 py-1 rounded transition-colors"
               >
                 Confirm
               </button>
@@ -450,14 +450,14 @@ export function CharmBrowseModal({ library, loading, existing, exaltType, caste,
               <button
                 onClick={() => setShowAll(s => !s)}
                 data-tip="Show charms from every Exalt type and mode"
-                className={`shrink-0 text-xs px-2 py-1 rounded border transition-colors ${showAll ? 'bg-amber-600 border-amber-500 text-white' : 'bg-stone-800 border-stone-700 text-stone-400 hover:border-amber-500'}`}
+                className={`shrink-0 text-xs px-2 py-1 rounded border transition-colors ${showAll ? 'bg-amber-600 border-amber-500 text-stone-950' : 'bg-stone-800 border-stone-700 text-stone-400 hover:border-amber-500'}`}
               >
                 Show All
               </button>
               <button
                 onClick={() => setExpandedIds(allExpanded ? new Set() : new Set(charms.map(c => c.id)))}
                 data-tip="Expand every charm to read its full text"
-                className={`shrink-0 text-xs px-2 py-1 rounded border transition-colors whitespace-nowrap ${allExpanded ? 'bg-amber-600 border-amber-500 text-white' : 'bg-stone-800 border-stone-700 text-stone-400 hover:border-amber-500'}`}
+                className={`shrink-0 text-xs px-2 py-1 rounded border transition-colors whitespace-nowrap ${allExpanded ? 'bg-amber-600 border-amber-500 text-stone-950' : 'bg-stone-800 border-stone-700 text-stone-400 hover:border-amber-500'}`}
               >
                 {allExpanded ? 'Collapse All' : 'Expand All'}
               </button>
@@ -491,10 +491,10 @@ export function CharmBrowseModal({ library, loading, existing, exaltType, caste,
                     </div>
                     <div className="shrink-0 flex items-center gap-1.5">
                       {!owned && (
-                        <button onClick={() => startPurchase(charm)} data-tip="Add" aria-label="Add" className="bg-amber-600 hover:bg-amber-500 text-white w-6 h-6 rounded transition-colors">+</button>
+                        <button onClick={() => startPurchase(charm)} data-tip="Add" aria-label="Add" className="bg-amber-600 hover:bg-amber-500 text-stone-950 w-6 h-6 rounded transition-colors">+</button>
                       )}
                       {owned && buyAgain && (
-                        <button onClick={() => startPurchase(charm)} data-tip="Repurchase (buy again)" aria-label="Repurchase (buy again)" className="bg-amber-600 hover:bg-amber-500 text-white w-6 h-6 rounded transition-colors">↻</button>
+                        <button onClick={() => startPurchase(charm)} data-tip="Repurchase (buy again)" aria-label="Repurchase (buy again)" className="bg-amber-600 hover:bg-amber-500 text-stone-950 w-6 h-6 rounded transition-colors">↻</button>
                       )}
                       {owned && onRemove && (
                         <button onClick={() => onRemove(charm)} data-tip="Remove (undo a purchase)" aria-label="Remove (undo a purchase)" className="w-6 h-6 rounded border border-stone-600 text-stone-400 hover:border-stone-400 hover:text-stone-200 transition-colors">✕</button>
@@ -573,7 +573,7 @@ function CharmGroupForm({ initial, submitLabel, onSubmit, onCancel }: {
             className={`w-4 h-4 rounded-full ${GROUP_COLORS[c].dot} ${color === c ? 'ring-2 ring-offset-1 ring-offset-stone-900 ring-stone-200' : 'opacity-60 hover:opacity-100'}`} />
         ))}
         <span className="flex-1" />
-        <button onClick={submit} className="bg-amber-600 hover:bg-amber-500 text-white rounded px-2 py-0.5 text-xs">{submitLabel}</button>
+        <button onClick={submit} className="bg-amber-600 hover:bg-amber-500 text-stone-950 rounded px-2 py-0.5 text-xs">{submitLabel}</button>
         <button onClick={onCancel} className="text-stone-500 hover:text-stone-300 text-xs px-1">Cancel</button>
       </div>
     </div>
@@ -610,12 +610,15 @@ function CharmText({ charm, choiceOptions, exaltType, caste, essence, abilities 
         const lockReasons = modeLockReasons(m, charm.libraryModes, charm.count ?? 1, essence, abilities)
         const locked = lockReasons.length > 0
         return (
+          // An unlocked mode is part of the charm the character has, so its text looks
+          // exactly like the charm's own text (Angel, 2026-10-22: the dimmer grey made
+          // him unsure whether he had it). Only a locked mode is dimmed.
           <div key={`${m.label}-${i}`} className={locked ? 'opacity-50' : undefined}>
             <p className={`text-xs font-bold flex items-center gap-1 ${locked ? 'text-stone-500' : 'text-amber-400'}`}>
               <span>{modeIcon(m.label).glyph}</span>
               {m.label}
             </p>
-            <p className="text-xs text-stone-400 leading-relaxed whitespace-pre-wrap">{m.text}</p>
+            <p className={`text-xs leading-relaxed whitespace-pre-wrap ${locked ? 'text-stone-400' : 'text-stone-300'}`}>{m.text}</p>
             {locked && <p className="text-xs text-stone-500">Locked: {lockReasons.join(', ')}</p>}
           </div>
         )
@@ -637,7 +640,7 @@ function CharmTextEditor({ initial, rows, onSave, onCancel }: {
       <textarea autoFocus value={text} onChange={e => setText(e.target.value)} rows={rows}
         className="w-full bg-stone-800 border border-stone-600 text-stone-100 rounded px-2 py-1 text-xs focus:outline-none focus:border-amber-500 resize-y" />
       <div className="flex items-center justify-end gap-1">
-        <button onClick={() => onSave(text)} className="bg-amber-600 hover:bg-amber-500 text-white rounded px-2 py-0.5 text-xs">Save</button>
+        <button onClick={() => onSave(text)} className="bg-amber-600 hover:bg-amber-500 text-stone-950 rounded px-2 py-0.5 text-xs">Save</button>
         <button onClick={onCancel} className="text-stone-500 hover:text-stone-300 text-xs px-1">Cancel</button>
       </div>
     </div>
@@ -834,7 +837,7 @@ function CharmWindow({ charm, lib, groups, exaltType, caste, essence, abilities,
                         {([['zero', 'One 0'], ['twoInjured', 'Two −1']] as const).map(([value, label]) => (
                           <button key={value} onClick={() => setOxBodyPick(i, value)}
                             className={`px-1.5 py-0.5 rounded border text-[11px] transition-colors ${
-                              pick === value ? 'bg-amber-600 border-amber-500 text-white' : 'border-stone-600 text-stone-400 hover:border-amber-500 hover:text-amber-300'}`}>
+                              pick === value ? 'bg-amber-600 border-amber-500 text-stone-950' : 'border-stone-600 text-stone-400 hover:border-amber-500 hover:text-amber-300'}`}>
                             {label}
                           </button>
                         ))}
@@ -1376,7 +1379,7 @@ function EffectPanel({ categories, onChange, dragEnabled, anima }: {
   return (
     <div className="bg-stone-900 border border-stone-700 rounded-lg p-2 overflow-hidden h-full flex flex-col no-scrollbar">
       <div className="flex items-center justify-between mb-2 shrink-0"><SectionHeader title="Effects" /><button onClick={() => setAddingCat(v => !v)} data-tip="Add category" aria-label="Add category" className={gPlus}>+</button></div>
-      {addingCat && <div className="flex gap-1 mb-2 shrink-0"><input autoFocus type="text" value={newCatName} onChange={e => setNewCatName(e.target.value)} onKeyDown={e => { if (e.key === 'Enter') addCat(); if (e.key === 'Escape') setAddingCat(false) }} placeholder="Category name…" className={inputCls} /><button onClick={addCat} className="bg-amber-600 hover:bg-amber-500 text-white rounded px-2 py-0.5 text-xs">✓</button><button onClick={() => setAddingCat(false)} className="text-stone-500 hover:text-stone-300 text-xs px-1">✕</button></div>}
+      {addingCat && <div className="flex gap-1 mb-2 shrink-0"><input autoFocus type="text" value={newCatName} onChange={e => setNewCatName(e.target.value)} onKeyDown={e => { if (e.key === 'Enter') addCat(); if (e.key === 'Escape') setAddingCat(false) }} placeholder="Category name…" className={inputCls} /><button onClick={addCat} className="bg-amber-600 hover:bg-amber-500 text-stone-950 rounded px-2 py-0.5 text-xs">✓</button><button onClick={() => setAddingCat(false)} className="text-stone-500 hover:text-stone-300 text-xs px-1">✕</button></div>}
       <div className="space-y-2 overflow-y-auto no-scrollbar flex-1">
         {categories.length === 0 && <p className="text-xs text-stone-500">No categories yet.</p>}
         {categories.map(cat => (
@@ -1392,10 +1395,10 @@ function EffectPanel({ categories, onChange, dragEnabled, anima }: {
               onDragStart={e => dragEnabled && onCatDragStart(e, cat.id)}
               className={`flex items-center justify-between px-1.5 py-1 ${dragEnabled ? 'cursor-grab active:cursor-grabbing' : ''}`}
             >
-              {editingCatId === cat.id ? <div className="flex gap-1 flex-1"><input autoFocus type="text" value={editCatName} onChange={e => setEditCatName(e.target.value)} onKeyDown={e => { if (e.key === 'Enter') saveCat(); if (e.key === 'Escape') setEditingCatId(null) }} className={inputActive} /><button onClick={saveCat} className="bg-amber-600 hover:bg-amber-500 text-white rounded px-1.5 py-0.5 text-xs">✓</button><button onClick={() => setEditingCatId(null)} className="text-stone-500 hover:text-stone-300 text-xs">✕</button></div>
+              {editingCatId === cat.id ? <div className="flex gap-1 flex-1"><input autoFocus type="text" value={editCatName} onChange={e => setEditCatName(e.target.value)} onKeyDown={e => { if (e.key === 'Enter') saveCat(); if (e.key === 'Escape') setEditingCatId(null) }} className={inputActive} /><button onClick={saveCat} className="bg-amber-600 hover:bg-amber-500 text-stone-950 rounded px-1.5 py-0.5 text-xs">✓</button><button onClick={() => setEditingCatId(null)} className="text-stone-500 hover:text-stone-300 text-xs">✕</button></div>
               : <><span className="text-xs font-semibold text-amber-400/80 uppercase tracking-wider">{cat.name}</span><div className="flex items-center gap-2"><button onClick={() => setAddingEffectCatId(cat.id === addingEffectCatId ? null : cat.id)} data-tip="Add effect" aria-label="Add effect" className={gPlus}>+</button><button onClick={() => { setEditingCatId(cat.id); setEditCatName(cat.name) }} data-tip="Edit" aria-label="Edit" className={g}>✎</button><button onClick={() => removeCat(cat.id)} data-tip="Delete" aria-label="Delete" className="text-stone-500 hover:text-red-400 transition-colors text-xs">✕</button></div></>}
             </div>
-            {addingEffectCatId === cat.id && <div className="px-1.5 pb-1.5 space-y-1 border-t border-stone-700/50 pt-1"><input autoFocus type="text" value={newEffectName} onChange={e => setNewEffectName(e.target.value)} placeholder="Effect name…" className={inputCls} /><textarea value={newEffectText} onChange={e => setNewEffectText(e.target.value)} placeholder="Description…" rows={3} className="w-full bg-stone-800 border border-stone-600 text-stone-100 rounded px-2 py-1 text-xs focus:outline-none focus:border-amber-500 placeholder-stone-500 resize-none" /><div className="flex gap-1 justify-end"><button onClick={() => addEffect(cat.id)} className="bg-amber-600 hover:bg-amber-500 text-white rounded px-2 py-0.5 text-xs">Add</button><button onClick={() => { setAddingEffectCatId(null); setNewEffectName(''); setNewEffectText('') }} className="text-stone-500 hover:text-stone-300 text-xs px-1">Cancel</button></div></div>}
+            {addingEffectCatId === cat.id && <div className="px-1.5 pb-1.5 space-y-1 border-t border-stone-700/50 pt-1"><input autoFocus type="text" value={newEffectName} onChange={e => setNewEffectName(e.target.value)} placeholder="Effect name…" className={inputCls} /><textarea value={newEffectText} onChange={e => setNewEffectText(e.target.value)} placeholder="Description…" rows={3} className="w-full bg-stone-800 border border-stone-600 text-stone-100 rounded px-2 py-1 text-xs focus:outline-none focus:border-amber-500 placeholder-stone-500 resize-none" /><div className="flex gap-1 justify-end"><button onClick={() => addEffect(cat.id)} className="bg-amber-600 hover:bg-amber-500 text-stone-950 rounded px-2 py-0.5 text-xs">Add</button><button onClick={() => { setAddingEffectCatId(null); setNewEffectName(''); setNewEffectText('') }} className="text-stone-500 hover:text-stone-300 text-xs px-1">Cancel</button></div></div>}
             <div>
               {cat.effects.length === 0 && addingEffectCatId !== cat.id && <p className="text-xs text-stone-600 px-1.5 pb-1">No effects.</p>}
               {cat.effects.map(effect => (
@@ -1418,7 +1421,7 @@ function EffectPanel({ categories, onChange, dragEnabled, anima }: {
                     )
                   })()}
                   {expandedIds.has(effect.id) && editingEffect?.effect.id !== effect.id && <p className="text-xs text-stone-400 pb-1.5 whitespace-pre-wrap leading-relaxed">{effect.text || <em className="text-stone-600">No description.</em>}</p>}
-                  {editingEffect?.effect.id === effect.id && <div className="pb-1.5 space-y-1"><input type="text" value={editEffectName} onChange={e => setEditEffectName(e.target.value)} className={inputActive} /><textarea value={editEffectText} onChange={e => setEditEffectText(e.target.value)} rows={4} className="w-full bg-stone-800 border border-stone-600 text-stone-100 rounded px-2 py-1 text-xs focus:outline-none focus:border-amber-500 resize-none" /><div className="flex gap-1 justify-end"><button onClick={saveEffect} className="bg-amber-600 hover:bg-amber-500 text-white rounded px-2 py-0.5 text-xs">Save</button><button onClick={() => setEditingEffect(null)} className="text-stone-500 hover:text-stone-300 text-xs px-1">Cancel</button></div></div>}
+                  {editingEffect?.effect.id === effect.id && <div className="pb-1.5 space-y-1"><input type="text" value={editEffectName} onChange={e => setEditEffectName(e.target.value)} className={inputActive} /><textarea value={editEffectText} onChange={e => setEditEffectText(e.target.value)} rows={4} className="w-full bg-stone-800 border border-stone-600 text-stone-100 rounded px-2 py-1 text-xs focus:outline-none focus:border-amber-500 resize-none" /><div className="flex gap-1 justify-end"><button onClick={saveEffect} className="bg-amber-600 hover:bg-amber-500 text-stone-950 rounded px-2 py-0.5 text-xs">Save</button><button onClick={() => setEditingEffect(null)} className="text-stone-500 hover:text-stone-300 text-xs px-1">Cancel</button></div></div>}
                 </div>
               ))}
             </div>
@@ -1644,7 +1647,7 @@ function ItemModal({ item, onSave, onClose, gameData }: {
             <div className="flex gap-1">
               {(['weapon', 'armor', 'other'] as InventoryItemKind[]).map(k => (
                 <button key={k} onClick={() => set({ kind: k })}
-                  className={`px-2 py-0.5 rounded text-xs capitalize transition-colors ${form.kind === k ? 'bg-amber-600 text-white' : 'bg-stone-700 text-stone-400 hover:bg-stone-600'}`}>
+                  className={`px-2 py-0.5 rounded text-xs capitalize transition-colors ${form.kind === k ? 'bg-amber-600 text-stone-950' : 'bg-stone-700 text-stone-400 hover:bg-stone-600'}`}>
                   {k}
                 </button>
               ))}
@@ -1665,7 +1668,7 @@ function ItemModal({ item, onSave, onClose, gameData }: {
               <div className="flex flex-wrap gap-1">
                 {gameData.weapons.map(w => (
                   <button key={w.category} onClick={() => selectWeightRow(w.category)}
-                    className={`px-2 py-0.5 rounded text-xs transition-colors ${form.weight === w.category ? 'bg-amber-600 text-white' : 'bg-stone-700 text-stone-400 hover:bg-stone-600'}`}>
+                    className={`px-2 py-0.5 rounded text-xs transition-colors ${form.weight === w.category ? 'bg-amber-600 text-stone-950' : 'bg-stone-700 text-stone-400 hover:bg-stone-600'}`}>
                     {w.category}
                   </button>
                 ))}
@@ -1680,7 +1683,7 @@ function ItemModal({ item, onSave, onClose, gameData }: {
                   <div className="flex gap-1">
                     {(['melee', 'ranged'] as const).map(ct => (
                       <button key={ct} onClick={() => selectCombatType(ct)}
-                        className={`px-2 py-0.5 rounded text-xs capitalize transition-colors ${weaponCombatType === ct ? 'bg-amber-600 text-white' : 'bg-stone-700 text-stone-400 hover:bg-stone-600'}`}>
+                        className={`px-2 py-0.5 rounded text-xs capitalize transition-colors ${weaponCombatType === ct ? 'bg-amber-600 text-stone-950' : 'bg-stone-700 text-stone-400 hover:bg-stone-600'}`}>
                         {ct}
                       </button>
                     ))}
@@ -1724,7 +1727,7 @@ function ItemModal({ item, onSave, onClose, gameData }: {
                   <div className="flex flex-wrap gap-1">
                     {gameData.armor.map(a => (
                       <button key={a.category} onClick={() => selectArmorRow(a.category)}
-                        className={`px-2 py-0.5 rounded text-xs transition-colors ${form.type === a.category ? 'bg-amber-600 text-white' : 'bg-stone-700 text-stone-400 hover:bg-stone-600'}`}>
+                        className={`px-2 py-0.5 rounded text-xs transition-colors ${form.type === a.category ? 'bg-amber-600 text-stone-950' : 'bg-stone-700 text-stone-400 hover:bg-stone-600'}`}>
                         {a.category}
                       </button>
                     ))}
@@ -1783,7 +1786,7 @@ function ItemModal({ item, onSave, onClose, gameData }: {
         <div className="flex justify-end gap-2 px-4 py-3 border-t border-stone-700 shrink-0">
           <button onClick={onClose} className="px-3 py-1 text-xs text-stone-400 hover:text-stone-200 transition-colors">Cancel</button>
           <button onClick={() => { if (form.name.trim()) onSave(form) }}
-            className="px-3 py-1 text-xs bg-amber-600 hover:bg-amber-500 text-white rounded transition-colors">
+            className="px-3 py-1 text-xs bg-amber-600 hover:bg-amber-500 text-stone-950 rounded transition-colors">
             Save
           </button>
         </div>
@@ -1868,7 +1871,7 @@ function FoiModal({ current, foiWeights, foiTags, onSave, onClose }: {
         <div className="flex items-center justify-end gap-2 px-4 py-3 border-t border-stone-700 shrink-0">
           <button onClick={onClose} className="px-3 py-1 text-xs text-stone-400 hover:text-stone-200 transition-colors">Cancel</button>
           <button onClick={() => canSave && onSave({ active, weight, tag, artifact })} disabled={!canSave}
-            className={`px-3 py-1 text-xs rounded transition-colors ${canSave ? 'bg-amber-600 hover:bg-amber-500 text-white' : 'bg-stone-700 text-stone-500 cursor-not-allowed'}`}>
+            className={`px-3 py-1 text-xs rounded transition-colors ${canSave ? 'bg-amber-600 hover:bg-amber-500 text-stone-950' : 'bg-stone-700 text-stone-500 cursor-not-allowed'}`}>
             Save
           </button>
         </div>
@@ -2712,17 +2715,19 @@ export default function SheetTab({ sheet, onChange, editMode, readOnly = false, 
       const setWill = (delta: number) => update({ will: Math.max(0, Math.min(10, will + delta)) })
 
       const divider = <div className="border-t border-stone-700/60" />
-      const vRule = <div className="w-px self-stretch bg-stone-700/60" />
+      const vRule = <div className="hidden @[12rem]:block w-px self-stretch bg-stone-700/60" />
 
       // No panel-level SectionHeader here: the Essence label below would sit directly
       // under an identical "Essence" title.
       // Layout is a 2-column grid of three rows: Essence | Anima, then Motes (whose
-      // Current | Committed pair fills both columns), then Power | Will.
+      // Current | Committed pair fills both columns), then Power | Will. A panel too
+      // narrow for two counters side by side stacks each pair instead, so no label
+      // is cut off (a container query on the panel's own width).
       return (
-        <div className={panelBase}>
+        <div className={`${panelBase} @container`}>
           <div className="space-y-2">
 
-            <div className="flex items-start gap-1">
+            <div className="flex flex-col @[12rem]:flex-row items-stretch @[12rem]:items-start gap-2 @[12rem]:gap-1">
               <div className="flex-1 min-w-0">
                 <SubHeader title="Essence" />
                 <Counter value={essence} onStep={setEssence} />
@@ -2745,7 +2750,7 @@ export default function SheetTab({ sheet, onChange, editMode, readOnly = false, 
                 onReset={resetMotes}
                 right={<span className="text-[10px] text-stone-500">Total <span className="text-stone-300 font-semibold">{totalMotes}</span></span>}
               />
-              <div className="flex items-start">
+              <div className="flex flex-col @[12rem]:flex-row items-stretch @[12rem]:items-start gap-1.5 @[12rem]:gap-0">
                 <div className="flex-1 min-w-0 flex flex-col items-center gap-0.5">
                   <span className="text-[10px] uppercase tracking-wider text-stone-500">Current</span>
                   <Counter value={current} onStep={setCurrent} size="sm" />
@@ -2759,7 +2764,7 @@ export default function SheetTab({ sheet, onChange, editMode, readOnly = false, 
 
             {divider}
 
-            <div className="flex items-start gap-1">
+            <div className="flex flex-col @[12rem]:flex-row items-stretch @[12rem]:items-start gap-2 @[12rem]:gap-1">
               <div className="flex-1 min-w-0">
                 <SubHeader title="Power" onReset={() => update({ power: 0 })} />
                 <Counter value={power} onStep={setPower} />
@@ -2862,7 +2867,7 @@ export default function SheetTab({ sheet, onChange, editMode, readOnly = false, 
                   <input type="text" value={editMeritName} onChange={e => setEditMeritName(e.target.value)}
                     onKeyDown={e => { if (e.key === 'Enter') saveMerit(); if (e.key === 'Escape') setEditingMeritId(null) }}
                     className="flex-1 min-w-0 bg-stone-800 border border-amber-500 text-stone-100 rounded px-2 py-0.5 text-xs focus:outline-none" />
-                  <button onClick={saveMerit} className="bg-amber-600 hover:bg-amber-500 text-white rounded px-2 py-0.5 text-xs transition-colors">✓</button>
+                  <button onClick={saveMerit} className="bg-amber-600 hover:bg-amber-500 text-stone-950 rounded px-2 py-0.5 text-xs transition-colors">✓</button>
                   <button onClick={() => setEditingMeritId(null)} className="text-stone-500 hover:text-stone-300 text-xs px-1">✕</button>
                 </div>
               )}
@@ -2878,7 +2883,7 @@ export default function SheetTab({ sheet, onChange, editMode, readOnly = false, 
           <input type="text" value={newMeritName} onChange={e => setNewMeritName(e.target.value)}
             onKeyDown={e => e.key === 'Enter' && addMerit()} placeholder="Merit name…"
             className="flex-1 min-w-0 bg-stone-800 border border-stone-600 text-stone-100 rounded px-2 py-0.5 text-xs focus:outline-none focus:border-amber-500 placeholder-stone-500" />
-          <button onClick={addMerit} className="bg-stone-700 hover:bg-stone-600 text-white rounded px-2 py-0.5 text-xs transition-colors">+</button>
+          <button onClick={addMerit} className="bg-stone-700 hover:bg-stone-600 text-stone-100 rounded px-2 py-0.5 text-xs transition-colors">+</button>
         </div>
       </div>
     ),
@@ -2901,7 +2906,7 @@ export default function SheetTab({ sheet, onChange, editMode, readOnly = false, 
                   <input type="text" value={editLangValue} onChange={e => setEditLangValue(e.target.value)}
                     onKeyDown={e => { if (e.key === 'Enter') saveLang(); if (e.key === 'Escape') setEditingLangIdx(null) }}
                     className="flex-1 min-w-0 bg-stone-800 border border-amber-500 text-stone-100 rounded px-2 py-0.5 text-xs focus:outline-none" />
-                  <button onClick={saveLang} className="bg-amber-600 hover:bg-amber-500 text-white rounded px-2 py-0.5 text-xs transition-colors">✓</button>
+                  <button onClick={saveLang} className="bg-amber-600 hover:bg-amber-500 text-stone-950 rounded px-2 py-0.5 text-xs transition-colors">✓</button>
                   <button onClick={() => setEditingLangIdx(null)} className="text-stone-500 hover:text-stone-300 text-xs px-1">✕</button>
                 </div>
               )}
@@ -2913,7 +2918,7 @@ export default function SheetTab({ sheet, onChange, editMode, readOnly = false, 
           <input type="text" value={newLanguage} onChange={e => setNewLanguage(e.target.value)}
             onKeyDown={e => e.key === 'Enter' && addLanguage()} placeholder="Add language…"
             className="flex-1 min-w-0 bg-stone-800 border border-stone-600 text-stone-100 rounded px-2 py-0.5 text-xs focus:outline-none focus:border-amber-500 placeholder-stone-500" />
-          <button onClick={addLanguage} className="bg-stone-700 hover:bg-stone-600 text-white rounded px-2 py-0.5 text-xs transition-colors">+</button>
+          <button onClick={addLanguage} className="bg-stone-700 hover:bg-stone-600 text-stone-100 rounded px-2 py-0.5 text-xs transition-colors">+</button>
         </div>
       </div>
     ),
@@ -2947,7 +2952,7 @@ export default function SheetTab({ sheet, onChange, editMode, readOnly = false, 
                   <input type="text" value={editIntimacyDesc} onChange={e => setEditIntimacyDesc(e.target.value)}
                     onKeyDown={e => { if (e.key === 'Enter') saveIntimacy(); if (e.key === 'Escape') setEditingIntimacyId(null) }}
                     className="flex-1 min-w-0 bg-stone-800 border border-amber-500 text-stone-100 rounded px-2 py-0.5 text-xs focus:outline-none" />
-                  <button onClick={saveIntimacy} className="bg-amber-600 hover:bg-amber-500 text-white rounded px-2 py-0.5 text-xs transition-colors">✓</button>
+                  <button onClick={saveIntimacy} className="bg-amber-600 hover:bg-amber-500 text-stone-950 rounded px-2 py-0.5 text-xs transition-colors">✓</button>
                   <button onClick={() => setEditingIntimacyId(null)} className="text-stone-500 hover:text-stone-300 text-xs px-1">✕</button>
                 </div>
               )}
@@ -2964,7 +2969,7 @@ export default function SheetTab({ sheet, onChange, editMode, readOnly = false, 
           <input type="text" value={newIntimacyDesc} onChange={e => setNewIntimacyDesc(e.target.value)}
             onKeyDown={e => e.key === 'Enter' && addIntimacy()} placeholder="Describe…"
             className="flex-1 min-w-0 bg-stone-800 border border-stone-600 text-stone-100 rounded px-2 py-0.5 text-xs focus:outline-none focus:border-amber-500 placeholder-stone-500" />
-          <button onClick={addIntimacy} className="bg-stone-700 hover:bg-stone-600 text-white rounded px-2 py-0.5 text-xs transition-colors">+</button>
+          <button onClick={addIntimacy} className="bg-stone-700 hover:bg-stone-600 text-stone-100 rounded px-2 py-0.5 text-xs transition-colors">+</button>
         </div>
       </div>
     ),

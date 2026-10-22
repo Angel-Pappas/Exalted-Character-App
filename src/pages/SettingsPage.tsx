@@ -255,7 +255,7 @@ export default function SettingsPage() {
               <button
                 onClick={saveUsername}
                 disabled={usernameSaving}
-                className="flex-1 py-2 bg-amber-600 hover:bg-amber-500 disabled:opacity-50 text-white text-sm font-medium rounded transition-colors"
+                className="flex-1 py-2 bg-amber-600 hover:bg-amber-500 disabled:opacity-50 text-stone-950 text-sm font-medium rounded transition-colors"
               >
                 {usernameSaving ? 'Saving…' : 'Save'}
               </button>
@@ -316,7 +316,7 @@ export default function SettingsPage() {
               <button
                 onClick={savePassword}
                 disabled={passwordSaving}
-                className="flex-1 py-2 bg-amber-600 hover:bg-amber-500 disabled:opacity-50 text-white text-sm font-medium rounded transition-colors"
+                className="flex-1 py-2 bg-amber-600 hover:bg-amber-500 disabled:opacity-50 text-stone-950 text-sm font-medium rounded transition-colors"
               >
                 {passwordSaving ? 'Updating…' : 'Update Password'}
               </button>

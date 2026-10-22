@@ -76,7 +76,7 @@ export default function CharmCostModal({ charmName, repurchase, onConfirm, onClo
           <div className="flex items-center justify-end gap-2 pt-1">
             {spendsNothing && <span className="mr-auto text-xs text-stone-500">Enter the milestones spent, or choose Free.</span>}
             <button type="button" onClick={onClose} className="text-stone-400 hover:text-stone-200 text-sm px-2">Cancel</button>
-            <button type="submit" autoFocus disabled={spendsNothing} className="bg-amber-600 hover:bg-amber-500 disabled:opacity-40 disabled:hover:bg-amber-600 text-white rounded px-4 py-1.5 text-sm transition-colors">
+            <button type="submit" autoFocus disabled={spendsNothing} className="bg-amber-600 hover:bg-amber-500 disabled:opacity-40 disabled:hover:bg-amber-600 text-stone-950 rounded px-4 py-1.5 text-sm transition-colors">
               {repurchase ? 'Buy again' : 'Add charm'}
             </button>
           </div>

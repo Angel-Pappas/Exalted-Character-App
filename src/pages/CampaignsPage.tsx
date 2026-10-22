@@ -84,7 +84,7 @@ export default function CampaignsPage() {
               <p className="text-xs text-stone-500">You'll be its Storyteller. You can hand that role to another member later.</p>
               <div className="flex gap-2 pt-1">
                 <button onClick={() => void createCampaign()} disabled={creating}
-                  className="flex-1 py-2 bg-amber-600 hover:bg-amber-500 disabled:opacity-50 text-white text-sm font-medium rounded transition-colors">
+                  className="flex-1 py-2 bg-amber-600 hover:bg-amber-500 disabled:opacity-50 text-stone-950 text-sm font-medium rounded transition-colors">
                   {creating ? 'Creating…' : 'Create'}
                 </button>
                 <button onClick={() => setModalOpen(false)}

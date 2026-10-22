@@ -4,7 +4,16 @@
     <meta charset="UTF-8" />
     <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>exalted-character-app</title>
+    <meta name="theme-color" content="#181614" />
+    <title>Exalted</title>
+    <script>
+      // The chosen theme is applied before the first paint, so a light-mode page
+      // never flashes dark while the app loads (ThemeContext keeps it in step after).
+      if (localStorage.getItem('theme') === 'light') {
+        document.documentElement.classList.add('light-mode')
+        document.querySelector('meta[name="theme-color"]').content = '#f6f4f1'
+      }
+    </script>
   </head>
   <body>
     <div id="root"></div>

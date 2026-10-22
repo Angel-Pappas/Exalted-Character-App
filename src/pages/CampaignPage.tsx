@@ -181,7 +181,7 @@ export default function CampaignPage() {
               </select>
               <button disabled={!addCharacterId}
                 onClick={() => void act('PUT', `characters/${addCharacterId}/campaigns/${c}`, undefined, () => { setAddCharacterId(''); void load() })}
-                className="bg-amber-600 hover:bg-amber-500 disabled:opacity-50 text-white rounded px-3 py-1 text-sm">Add</button>
+                className="bg-amber-600 hover:bg-amber-500 disabled:opacity-50 text-stone-950 rounded px-3 py-1 text-sm">Add</button>
             </div>
           )}
           <p className="text-xs text-stone-500 mt-2">PCs join as public and NPCs as private. Change that in the character's options.</p>
@@ -193,7 +193,7 @@ export default function CampaignPage() {
           {st && (
             <form className="flex items-center gap-2 mt-3" onSubmit={e => { e.preventDefault(); if (newMember.trim()) void act('POST', `campaigns/${c}/members`, { username: newMember.trim() }, () => { setNewMember(''); void load() }) }}>
               <input value={newMember} onChange={e => setNewMember(e.target.value)} placeholder="Username" className={`${input} flex-1`} aria-label="Username to add" />
-              <button type="submit" disabled={!newMember.trim()} className="bg-amber-600 hover:bg-amber-500 disabled:opacity-50 text-white rounded px-3 py-1 text-sm">Add member</button>
+              <button type="submit" disabled={!newMember.trim()} className="bg-amber-600 hover:bg-amber-500 disabled:opacity-50 text-stone-950 rounded px-3 py-1 text-sm">Add member</button>
             </form>
           )}
         </section>

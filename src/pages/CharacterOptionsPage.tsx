@@ -23,7 +23,7 @@ function Choice<T extends string>({ value, options, onChange, label }: {
     <div role="group" aria-label={label} className="inline-flex rounded border border-stone-600 overflow-hidden">
       {options.map(([v, text]) => (
         <button key={v} type="button" onClick={() => { if (v !== value) onChange(v) }} aria-pressed={v === value}
-          className={`px-3 py-1 text-xs transition-colors ${v === value ? 'bg-amber-600 text-white' : 'text-stone-400 hover:text-amber-300'}`}>
+          className={`px-3 py-1 text-xs transition-colors ${v === value ? 'bg-amber-600 text-stone-950' : 'text-stone-400 hover:text-amber-300'}`}>
           {text}
         </button>
       ))}
@@ -108,7 +108,7 @@ export default function CharacterOptionsPage() {
               <label htmlFor="character-name" className="text-sm text-stone-400 w-24 shrink-0">Name</label>
               <input id="character-name" value={name} onChange={e => setName(e.target.value)} className={`${input} flex-1`} />
               <button type="submit" disabled={name.trim() === character.name || !name.trim()}
-                className="bg-amber-600 hover:bg-amber-500 disabled:opacity-40 text-white rounded px-3 py-1 text-sm">Rename</button>
+                className="bg-amber-600 hover:bg-amber-500 disabled:opacity-40 text-stone-950 rounded px-3 py-1 text-sm">Rename</button>
             </form>
             <div className="flex items-center gap-2">
               <span className="text-sm text-stone-400 w-24 shrink-0">Type</span>

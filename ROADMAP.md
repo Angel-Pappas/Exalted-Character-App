@@ -33,14 +33,11 @@ the priorities — the order under **Next** is a suggestion until he does.
       corrected (2026-10-22).
 - [x] UI/UX pass, part 1: header that stays on top, breadcrumbs, links everywhere
       (middle-click, Back), tab addresses, page titles (2026-10-22).
+- [x] UI/UX pass, part 2: softer dark theme, light mode, contrast to WCAG AA, charm
+      modes read as owned, Essence labels no longer cut off (2026-10-22).
 
 ## Next (suggested)
 
-
-- [ ] **Cut-off headings on the character sheet** — "Essence", "Anima" and "Power"
-      show as "ESSE…", "ANI…", "PO…" at desktop width (found in the first screenshot
-      review, 2026-10-15).
-- [ ] **Light mode** CSS theming pass.
 - [ ] **Charm questions** — 12 open questions for Angel in `CHARM_QUESTIONS.md`.
 
 ## Ideas / later

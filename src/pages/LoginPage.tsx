@@ -96,7 +96,7 @@ export default function LoginPage() {
               onClick={() => switchMode(m)}
               className={`flex-1 py-1.5 rounded text-sm font-medium transition-colors ${
                 mode === m
-                  ? 'bg-amber-600 text-white'
+                  ? 'bg-amber-600 text-stone-950'
                   : 'text-stone-400 hover:text-stone-200'
               }`}
             >
@@ -145,7 +145,7 @@ export default function LoginPage() {
           <button
             type="submit"
             disabled={loading}
-            className="w-full bg-amber-600 hover:bg-amber-500 disabled:opacity-50 text-white font-semibold rounded py-2 text-sm transition-colors"
+            className="w-full bg-amber-600 hover:bg-amber-500 disabled:opacity-50 text-stone-950 font-semibold rounded py-2 text-sm transition-colors"
           >
             {loading
               ? (mode === 'signin' ? 'Signing in…' : 'Creating account…')

@@ -83,7 +83,7 @@ function EditExaltRow({ et, onSave, onCancel, saving, textInput }: {
       <input value={castesText} onChange={e => setCastesText(e.target.value)} placeholder="Castes/Aspects, comma-separated…" className={textInput} />
       <div className="flex justify-end gap-2">
         <button onClick={onCancel} className="text-xs text-stone-500 hover:text-stone-300 transition-colors">Cancel</button>
-        <button onClick={() => onSave(form, castesText)} disabled={saving || !form.name.trim()} className="text-xs bg-amber-600 hover:bg-amber-500 disabled:opacity-40 text-white px-3 py-1 rounded transition-colors">
+        <button onClick={() => onSave(form, castesText)} disabled={saving || !form.name.trim()} className="text-xs bg-amber-600 hover:bg-amber-500 disabled:opacity-40 text-stone-950 px-3 py-1 rounded transition-colors">
           {saving ? 'Saving…' : 'Save'}
         </button>
       </div>
@@ -508,7 +508,7 @@ export default function SetupPage() {
                   </div>
                   <input value={newExaltCastesText} onChange={e => setNewExaltCastesText(e.target.value)} placeholder="Castes/Aspects, comma-separated… (e.g. Dawn, Zenith, Twilight)" className={textInput} />
                   <div className="flex justify-end">
-                    <button onClick={addExaltType} disabled={exaltSaving || !newExalt.name.trim()} className="text-xs bg-amber-600 hover:bg-amber-500 disabled:opacity-40 text-white px-3 py-1 rounded transition-colors">
+                    <button onClick={addExaltType} disabled={exaltSaving || !newExalt.name.trim()} className="text-xs bg-amber-600 hover:bg-amber-500 disabled:opacity-40 text-stone-950 px-3 py-1 rounded transition-colors">
                       {exaltSaving ? 'Saving…' : 'Add'}
                     </button>
                   </div>
@@ -665,7 +665,7 @@ export default function SetupPage() {
               <button
                 onClick={moveCharacter}
                 disabled={moving || !moveToUserId}
-                className="flex-1 py-2 bg-amber-600 hover:bg-amber-500 disabled:opacity-50 text-white text-sm font-medium rounded transition-colors"
+                className="flex-1 py-2 bg-amber-600 hover:bg-amber-500 disabled:opacity-50 text-stone-950 text-sm font-medium rounded transition-colors"
               >
                 {moving ? 'Moving…' : 'Move'}
               </button>

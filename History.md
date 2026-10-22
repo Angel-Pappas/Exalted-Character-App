@@ -4,6 +4,16 @@ One entry per shipped change, newest first: what changed and **why**. How things
 now is in `Summary.md`; plans in `ROADMAP.md`. Entries before 2026-10-15 were rebuilt
 from the git history (one per day, its commits listed).
 
+- **2026-10-22** — **Softer dark theme, a working light mode, charm modes that read as
+  owned.** Angel found the colours heavy on the eye and asked for light mode and for
+  readability by the guidelines. The dark background moved from near-black to a warm
+  charcoal and the gold is less saturated (Material Design's dark-theme advice); the
+  muted grey text was below WCAG AA (3.6:1 on panels) and now passes (5:1). Light mode
+  had a switch but no styles: it is now a full palette that turns each colour scale
+  around, every text colour checked at 4.5:1 or more; it applies before the first paint.
+  Buttons filled with gold use dark text (white on that gold was 3.2:1). A charm's
+  unlocked modes are now written exactly like its own text (Angel couldn't tell if he had
+  one); the Essence panel stacks its pairs when narrow instead of cutting "ESSE…" off.
 - **2026-10-22** — **Navigation that behaves like other web apps.** Angel: the Back
   button was clunky, a middle-click couldn't open Notes in one browser tab and the sheet
   in another, and the header scrolled away. Every page now has one header that stays at
