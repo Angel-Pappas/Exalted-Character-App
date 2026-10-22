@@ -45,10 +45,12 @@ const wide = args.includes('--wide');
 //   --click=Text           clicks the button, link or checkbox with that text, or else any element
 //                          showing exactly that text (e.g. --click=Milestones, --click="Ox Body Technique")
 //   --fill=Placeholder=Val types Val into the field with that placeholder
+//   --scroll=600           scrolls the page down by that many pixels (e.g. to see the header stay)
 const steps = args
-    .filter((a) => a.startsWith('--click=') || a.startsWith('--fill='))
+    .filter((a) => a.startsWith('--click=') || a.startsWith('--fill=') || a.startsWith('--scroll='))
     .map((a) => {
         const [flag, ...rest] = a.slice(2).split('=');
+        if (flag === 'scroll') return { scroll: Number(rest[0]) };
         return flag === 'click'
             ? { click: rest.join('=') }
             : { fill: rest[0], value: rest.slice(1).join('=') };
@@ -137,7 +139,9 @@ try {
         await page.goto(`${BASE}${path}`);
         await page.waitForLoadState('networkidle');
         for (const step of steps) {
-            if (step.click) {
+            if (step.scroll) {
+                await page.mouse.wheel(0, step.scroll);
+            } else if (step.click) {
                 await page.getByRole('button', { name: step.click, exact: true })
                     .or(page.getByRole('link', { name: step.click, exact: true }))
                     .or(page.getByLabel(step.click, { exact: true }))
@@ -152,7 +156,7 @@ try {
         const slug =
             path.replace(/[^a-z0-9]+/gi, '-').replace(/^-|-$/g, '') || 'home';
         const clicked = steps
-            .map((st) => `-${(st.click ?? st.value).replace(/[^a-z0-9]+/gi, '-')}`)
+            .map((st) => `-${String(st.click ?? st.value ?? `scroll${st.scroll}`).replace(/[^a-z0-9]+/gi, '-')}`)
             .join('');
         const file = `${OUT}/${slug}${clicked}${mobile ? '-mobile' : ''}${wide ? '-wide' : ''}${light ? '-light' : ''}.png`;
         await page.screenshot({ path: file, fullPage: wide || full });

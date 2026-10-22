@@ -3047,7 +3047,9 @@ export default function SheetTab({ sheet, onChange, editMode, readOnly = false, 
           }}
           autoSize={false}
           style={{
-            minHeight: '2000px',
+            // As tall as the panels reach (no scrolling into empty space below them);
+            // while editing, room below to drag a panel further down.
+            height: `${Math.max(0, ...data.layout.map(l => l.y + l.h)) * ROW_HEIGHT + (editMode ? 600 : 8)}px`,
             ...(editMode ? {
               backgroundImage: 'linear-gradient(rgba(251,191,36,0.08) 1px, transparent 1px), linear-gradient(90deg, rgba(251,191,36,0.08) 1px, transparent 1px)',
               backgroundSize: `${width / 128}px ${ROW_HEIGHT}px`,

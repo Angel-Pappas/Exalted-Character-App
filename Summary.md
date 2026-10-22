@@ -56,7 +56,7 @@ Closing the browser tab within the second before a sheet save goes out sends the
 at once and lets the browser ask "Leave site?". Buttons show the hand cursor, and the
 keyboard focus gets an amber outline.
 
-**HomePage** (`/`): hub with Cards — Characters, Campaigns, Settings, Admin (admin only). Sign Out button in header.
+**HomePage** (`/`): where a player lands — "Your characters" and "Your campaigns" side by side (stacked on a phone), each a link straight to the sheet or campaign; "New or manage →" goes to the Characters / Campaigns pages, which keep creating and deleting. Settings, Admin (admin only) and Sign out sit in the header. (Until 2026-10-22 it was four tiles, which cost an extra click on every visit.)
 
 **CharactersPage** (`/characters`): list of the current user's characters with ExaltType·Caste subtitle. "+ New Character" button opens modal requiring all 3 fields (name, exalt type, caste/aspect) before enabling Create. Delete (shown on hover on a desktop) asks for a second click — it used to delete at once.
 
@@ -153,7 +153,7 @@ the Storyteller's call, so the app only records "started" (the line's date) and 
   tested in `tests/Feature/TrainingTest.php`.
 
 ## Character Sheet
-11 draggable/resizable panels on a 128-column grid. Layout saved per character in the database.
+11 draggable/resizable panels on a 128-column grid. Layout saved per character in the database. The grid is exactly as tall as its panels reach (it used to be at least 2000px, so the page scrolled into empty space); in Edit Layout it has room below to drag a panel down.
 
 **On a phone** (sheet narrower than 768px, `STACK_BELOW_PX`) the sheet shows one *page* of panels at a time instead of one long column (Angel, 2026-10-22: too much scrolling up and down; never two panels side by side). The eleven panels are grouped by use (`src/lib/phonePages.ts`, tested): Traits (Attributes, Abilities), Combat (Essence, Health, Defenses), Charms, Gear (Inventory), Social (Intimacies, Merits, Languages), Effects; a panel no group names gets its own page. A bar of the six names, sharing the width so none is cut off, stays under the header (`--page-header-h`, published by `PageHeader`); tapping a name or swiping sideways turns the page, which opens at its top. The page last looked at is kept for the browser tab's session (`PhoneSheet`). Each panel is as tall as its content; the saved layout is never changed there, and Edit Layout is hidden. The page header puts the tabs on a row of their own. The Milestones page stacks too (totals and training first), and its ledger shows each description under its type, with three-letter column headings.
 

@@ -4,6 +4,11 @@ One entry per shipped change, newest first: what changed and **why**. How things
 now is in `Summary.md`; plans in `ROADMAP.md`. Entries before 2026-10-15 were rebuilt
 from the git history (one per day, its commits listed).
 
+- **2026-10-22** — **Home lists your characters and campaigns.** Walking through the
+  app as a player: after signing in, home was four tiles, so reaching a sheet always took
+  an extra click. Home now lists your characters and campaigns, each one click away;
+  Settings, Admin and Sign out moved to the header. The sheet no longer lets the page
+  scroll into 2000px of empty space below the panels.
 - **2026-10-22** — **The sheet on a phone turns pages instead of scrolling.** Angel: on
   a phone everything looked fine but meant scrolling all the way up and down; he didn't
   want panels side by side. The panels are now grouped into six pages (Traits, Combat,

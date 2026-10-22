@@ -1,93 +1,95 @@
+import { useEffect, useState } from 'react'
 import { Link } from 'react-router-dom'
-import PageHeader from '../components/PageHeader'
 import { useAuth } from '../contexts/AuthContext'
+import { api } from '../lib/api'
+import PageHeader from '../components/PageHeader'
+import { KIND_LABEL } from '../types/campaign'
+import type { CampaignSummary } from '../types/campaign'
+import type { Character } from '../types/character'
 
-function HubCard({
-  to,
-  icon,
-  label,
-}: {
-  to: string
-  icon: React.ReactNode
-  label: string
-}) {
-  return (
-    <Link
-      to={to}
-      className="flex flex-col items-center justify-center gap-3 bg-stone-900 hover:bg-stone-800 border border-stone-700 hover:border-amber-500 rounded-2xl p-8 transition-all group"
-    >
-      <div className="text-stone-400 group-hover:text-amber-400 transition-colors">
-        {icon}
-      </div>
-      <span className="text-sm font-medium text-stone-300 group-hover:text-stone-100 transition-colors tracking-wide">
-        {label}
-      </span>
-    </Link>
-  )
-}
+const card = 'block bg-stone-900 border border-stone-700 hover:border-amber-500/70 rounded-lg px-4 py-3 transition-colors group'
+const heading = 'text-xs font-semibold text-stone-400 uppercase tracking-widest'
+const headerLink = 'text-sm text-stone-400 hover:text-stone-100 transition-colors'
 
+// Where a signed-in player lands: their characters and campaigns, each one click
+// away (it used to be four tiles, so every visit took an extra click to reach a
+// sheet). Making and deleting characters and campaigns stays on their own pages.
 export default function HomePage() {
-  const { signOut, role } = useAuth()
+  const { user, signOut, role } = useAuth()
+  const [characters, setCharacters] = useState<Character[] | null>(null)
+  const [campaigns, setCampaigns] = useState<CampaignSummary[] | null>(null)
 
-  const isAdmin = role === 'admin'
-
-  const cards = [
-    {
-      label: 'Characters',
-      to: '/characters',
-      icon: (
-        <svg xmlns="http://www.w3.org/2000/svg" className="w-10 h-10" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
-          <path strokeLinecap="round" strokeLinejoin="round" d="M17 20h5v-2a4 4 0 00-5.477-3.75M9 20H4v-2a4 4 0 015.477-3.75M15 7a4 4 0 11-8 0 4 4 0 018 0zm6 3a3 3 0 11-6 0 3 3 0 016 0zm-18 0a3 3 0 116 0 3 3 0 01-6 0z" />
-        </svg>
-      ),
-    },
-    {
-      label: 'Campaigns',
-      to: '/campaigns',
-      icon: (
-        <svg xmlns="http://www.w3.org/2000/svg" className="w-10 h-10" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
-          <path strokeLinecap="round" strokeLinejoin="round" d="M9 20l-5.447-2.724A1 1 0 013 16.382V5.618a1 1 0 011.447-.894L9 7m0 13l6-3m-6 3V7m6 10l4.553 2.276A1 1 0 0021 18.382V7.618a1 1 0 00-.553-.894L15 4m0 13V4m0 0L9 7" />
-        </svg>
-      ),
-    },
-    {
-      label: 'Settings',
-      to: '/options',
-      icon: (
-        <svg xmlns="http://www.w3.org/2000/svg" className="w-10 h-10" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
-          <path strokeLinecap="round" strokeLinejoin="round" d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z" />
-          <path strokeLinecap="round" strokeLinejoin="round" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
-        </svg>
-      ),
-    },
-    ...(isAdmin ? [{
-      label: 'Admin',
-      to: '/setup',
-      icon: (
-        <svg xmlns="http://www.w3.org/2000/svg" className="w-10 h-10" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
-          <path strokeLinecap="round" strokeLinejoin="round" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
-        </svg>
-      ),
-    }] : []),
-  ]
+  const userId = user?.id
+  useEffect(() => {
+    if (!userId) return
+    api<Character[]>('GET', 'characters').then(({ data }) => setCharacters(data ?? []))
+    api<CampaignSummary[]>('GET', 'campaigns').then(({ data }) => setCampaigns(data ?? []))
+  }, [userId])
 
   return (
     <div className="min-h-screen bg-stone-950 text-stone-100 flex flex-col">
       <PageHeader title="Exalted">
-        <div className="flex items-center ml-auto py-2.5">
-          <button onClick={signOut} className="text-sm text-stone-400 hover:text-stone-100 transition-colors">
-            Sign out
-          </button>
-        </div>
+        <nav className="flex items-center gap-4 ml-auto py-2.5" aria-label="Account">
+          <Link to="/options" className={headerLink}>Settings</Link>
+          {role === 'admin' && <Link to="/setup" className={headerLink}>Admin</Link>}
+          <button onClick={signOut} className={headerLink}>Sign out</button>
+        </nav>
       </PageHeader>
 
-      <div className="flex-1 flex items-center justify-center p-8">
-        <div className={`grid gap-4 w-full max-w-sm ${cards.length === 4 ? 'grid-cols-2' : 'grid-cols-2 sm:grid-cols-3'}`}>
-          {cards.map(card => (
-            <HubCard key={card.label} {...card} />
-          ))}
-        </div>
-      </div>
+      <main className="w-full max-w-4xl mx-auto px-4 py-8 grid gap-8 md:grid-cols-2 items-start">
+        <section aria-labelledby="home-characters">
+          <div className="flex items-baseline justify-between mb-3">
+            <h2 id="home-characters" className={heading}>Your characters</h2>
+            <Link to="/characters" className="text-xs text-amber-400 hover:text-amber-300">New or manage →</Link>
+          </div>
+          {characters === null ? (
+            <p className="text-sm text-stone-500">Loading…</p>
+          ) : characters.length === 0 ? (
+            <p className="text-sm text-stone-500">No characters yet. <Link to="/characters" className="text-amber-400 hover:text-amber-300">Create one</Link>.</p>
+          ) : (
+            <div className="space-y-2">
+              {characters.map(c => {
+                const identity = [c.data?.sheet?.exaltType, c.data?.sheet?.caste].filter(Boolean).join(' · ')
+                return (
+                  <Link key={c.id} to={`/character/${c.id}`} className={card}>
+                    <div className="flex items-center gap-2">
+                      <span className="font-medium text-stone-100 group-hover:text-amber-400 transition-colors truncate">{c.name}</span>
+                      <span className={`text-[10px] px-1.5 rounded border shrink-0 ${c.kind === 'npc' ? 'border-sky-700/60 text-sky-400' : 'border-amber-700/60 text-amber-400'}`}>{KIND_LABEL[c.kind ?? 'pc']}</span>
+                    </div>
+                    {identity && <div className="text-xs text-stone-500 mt-0.5">{identity}</div>}
+                  </Link>
+                )
+              })}
+            </div>
+          )}
+        </section>
+
+        <section aria-labelledby="home-campaigns">
+          <div className="flex items-baseline justify-between mb-3">
+            <h2 id="home-campaigns" className={heading}>Your campaigns</h2>
+            <Link to="/campaigns" className="text-xs text-amber-400 hover:text-amber-300">New or manage →</Link>
+          </div>
+          {campaigns === null ? (
+            <p className="text-sm text-stone-500">Loading…</p>
+          ) : campaigns.length === 0 ? (
+            <p className="text-sm text-stone-500">Not in a campaign yet. <Link to="/campaigns" className="text-amber-400 hover:text-amber-300">Start one</Link>, or ask a Storyteller to add you.</p>
+          ) : (
+            <div className="space-y-2">
+              {campaigns.map(c => (
+                <Link key={c.id} to={`/campaign/${c.id}`} className={card}>
+                  <div className="flex items-center gap-2">
+                    <span className="font-medium text-stone-100 group-hover:text-amber-400 transition-colors truncate">{c.name}</span>
+                    {c.is_storyteller && <span className="text-[10px] px-1.5 rounded border border-amber-700/60 text-amber-400 shrink-0">ST</span>}
+                  </div>
+                  <div className="text-xs text-stone-500 mt-0.5">
+                    Storyteller: {c.storyteller.username} · {c.member_count} {c.member_count === 1 ? 'member' : 'members'}
+                  </div>
+                </Link>
+              ))}
+            </div>
+          )}
+        </section>
+      </main>
     </div>
   )
 }

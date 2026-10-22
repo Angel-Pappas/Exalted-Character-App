@@ -37,6 +37,8 @@ the priorities — the order under **Next** is a suggestion until he does.
       modes read as owned, Essence labels no longer cut off (2026-10-22).
 - [x] UI/UX pass, part 3: the phone sheet in six swipeable pages; Settings/Admin menus
       fit a phone (2026-10-22).
+- [x] UI/UX pass, part 4: home lists characters and campaigns; sheet no longer scrolls
+      into empty space (2026-10-22).
 
 ## Next (suggested)
 
