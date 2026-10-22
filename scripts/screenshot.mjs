@@ -147,6 +147,8 @@ try {
             }
             await page.waitForLoadState('networkidle');
         }
+        // Let colour transitions (150 ms) finish, so a click's result is what's shown.
+        await page.waitForTimeout(300);
         const slug =
             path.replace(/[^a-z0-9]+/gi, '-').replace(/^-|-$/g, '') || 'home';
         const clicked = steps

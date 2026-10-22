@@ -43,9 +43,3 @@ export function gridLayoutChange(current: PanelLayout[], reported: readonly Pane
 // Below this container width the sheet's grid is too narrow to read, so the
 // panels stack in one column instead (phones).
 export const STACK_BELOW_PX = 768
-
-// The panels in reading order for the one-column phone view: top to bottom as
-// laid out on the desktop grid, left to right within a row.
-export function stackOrder(layout: PanelLayout[]): string[] {
-  return [...layout].sort((a, b) => a.y - b.y || a.x - b.x).map(l => l.i)
-}

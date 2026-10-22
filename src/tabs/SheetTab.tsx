@@ -30,7 +30,8 @@ import { charmHealthLevels, charmStatLines, defenseAbilities, statTotal, woundPe
 import { IntimacyPickModal, NamePromptModal } from '../components/CharmChoiceModals'
 import type { ChoicePick } from '../lib/charmPurchase'
 import { cachedCharmLibrary, loadCharmLibrary } from '../lib/charmLibrary'
-import { ROW_HEIGHT, STACK_BELOW_PX, fitPanelHeight, gridLayoutChange, rowsToFit, stackOrder } from '../lib/panelLayout'
+import PhoneSheet from '../components/PhoneSheet'
+import { ROW_HEIGHT, STACK_BELOW_PX, fitPanelHeight, gridLayoutChange, rowsToFit } from '../lib/panelLayout'
 import { bestEquipped, calculateDefenses, STATIC_BONUS_CAP } from '../lib/defenses'
 import {
   DEFAULT_OX_BODY_PICK, LEVEL_NAMES, buildHealthTrack, clampDamage, currentWound, damageAfterClick,
@@ -3028,13 +3029,9 @@ export default function SheetTab({ sheet, onChange, editMode, readOnly = false, 
 
   return (
     <div className="relative" ref={containerRef}>
-      {/* Phones: one column, each panel as tall as its content; the saved desktop
-          layout is only read for the order, never changed. */}
-      {mounted && stacked && (
-        <div className="flex flex-col gap-1 pb-4 [&>div>*]:!h-auto">
-          {stackOrder(data.layout).filter(key => key in panels).map(key => <div key={key}>{panels[key]}</div>)}
-        </div>
-      )}
+      {/* Phones: one page of panels at a time, each panel as tall as its content; the
+          saved desktop layout is never changed there. */}
+      {mounted && stacked && <PhoneSheet panels={panels} />}
       {mounted && !stacked && (
         <GridLayout
           width={width}

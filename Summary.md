@@ -60,7 +60,7 @@ keyboard focus gets an amber outline.
 
 **CharactersPage** (`/characters`): list of the current user's characters with ExaltType·Caste subtitle. "+ New Character" button opens modal requiring all 3 fields (name, exalt type, caste/aspect) before enabling Create. Delete (shown on hover on a desktop) asks for a second click — it used to delete at once.
 
-**SettingsPage** (`/options`): left sidebar → Account (username read-only with Change button, role read-only, Change Password modal with eye-icon fields + current-password re-auth) + Appearance (light/dark theme toggle; the choice is kept per browser and applied before the page first paints, so light mode never flashes dark).
+**SettingsPage** (`/options`): left sidebar (on a phone, a row of tabs across the top, like Admin's) → Account (username read-only with Change button, role read-only, Change Password modal with eye-icon fields + current-password re-auth) + Appearance (light/dark theme toggle; the choice is kept per browser and applied before the page first paints, so light mode never flashes dark).
 - Display name has been removed — username is the only identity.
 - Change Username saves through `PUT /api/me/username`.
 
@@ -155,7 +155,7 @@ the Storyteller's call, so the app only records "started" (the line's date) and 
 ## Character Sheet
 11 draggable/resizable panels on a 128-column grid. Layout saved per character in the database.
 
-**On a phone** (sheet narrower than 768px, `STACK_BELOW_PX`) the panels stack in one column in the desktop layout's reading order (`stackOrder`, tested), each as tall as its content; the saved layout is never changed there, and Edit Layout is hidden. The page header puts the tabs on a row of their own. The Milestones page stacks too (totals and training first), and its ledger shows each description under its type, with three-letter column headings.
+**On a phone** (sheet narrower than 768px, `STACK_BELOW_PX`) the sheet shows one *page* of panels at a time instead of one long column (Angel, 2026-10-22: too much scrolling up and down; never two panels side by side). The eleven panels are grouped by use (`src/lib/phonePages.ts`, tested): Traits (Attributes, Abilities), Combat (Essence, Health, Defenses), Charms, Gear (Inventory), Social (Intimacies, Merits, Languages), Effects; a panel no group names gets its own page. A bar of the six names, sharing the width so none is cut off, stays under the header (`--page-header-h`, published by `PageHeader`); tapping a name or swiping sideways turns the page, which opens at its top. The page last looked at is kept for the browser tab's session (`PhoneSheet`). Each panel is as tall as its content; the saved layout is never changed there, and Edit Layout is hidden. The page header puts the tabs on a row of their own. The Milestones page stacks too (totals and training first), and its ledger shows each description under its type, with three-letter column headings.
 
 The **Essence** panel holds every pool in one box: an Essence | Anima row on top,
 then Motes (Current | Committed), then a Power | Will row. Power and Will are 0–10; Essence is 1–5 and has no reset

@@ -1,4 +1,4 @@
-import { useEffect } from 'react'
+import { useEffect, useRef } from 'react'
 import { Link } from 'react-router-dom'
 
 export interface Crumb {
@@ -36,8 +36,20 @@ export default function PageHeader({ crumbs = [], title, titleSlot, subtitle, ch
   const parent = trail[trail.length - 1]
   const isHome = crumbs.length === 0 && title === 'Exalted'
 
+  // Anything else that stays on screen while scrolling (the phone sheet's page bar)
+  // sits just under the header, so the header publishes its height as a CSS variable.
+  const ref = useRef<HTMLElement>(null)
+  useEffect(() => {
+    const el = ref.current
+    if (!el) return
+    const root = document.documentElement
+    const observer = new ResizeObserver(() => root.style.setProperty('--page-header-h', `${el.offsetHeight}px`))
+    observer.observe(el)
+    return () => { observer.disconnect(); root.style.removeProperty('--page-header-h') }
+  }, [])
+
   return (
-    <header className="sticky top-0 z-40 bg-stone-950/95 backdrop-blur-sm border-b border-stone-700 shrink-0">
+    <header ref={ref} className="sticky top-0 z-40 bg-stone-950/95 backdrop-blur-sm border-b border-stone-700 shrink-0">
       <div className="flex flex-wrap md:flex-nowrap items-stretch gap-x-5 px-4 min-h-14">
         <div className="flex items-center gap-2 min-w-0 flex-1 md:flex-none py-2.5">
           {!isHome && (

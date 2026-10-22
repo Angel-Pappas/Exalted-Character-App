@@ -4,6 +4,13 @@ One entry per shipped change, newest first: what changed and **why**. How things
 now is in `Summary.md`; plans in `ROADMAP.md`. Entries before 2026-10-15 were rebuilt
 from the git history (one per day, its commits listed).
 
+- **2026-10-22** — **The sheet on a phone turns pages instead of scrolling.** Angel: on
+  a phone everything looked fine but meant scrolling all the way up and down; he didn't
+  want panels side by side. The panels are now grouped into six pages (Traits, Combat,
+  Charms, Gear, Social, Effects) under a bar that stays in view; a tap or a sideways
+  swipe turns the page, and the last page is remembered. A whole fight — Essence, Health
+  and Defenses — fits on one screen. Settings and Admin put their side menus across the
+  top on a phone (they squeezed the content off the screen).
 - **2026-10-22** — **Softer dark theme, a working light mode, charm modes that read as
   owned.** Angel found the colours heavy on the eye and asked for light mode and for
   readability by the guidelines. The dark background moved from near-black to a warm

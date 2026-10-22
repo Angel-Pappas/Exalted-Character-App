@@ -137,16 +137,17 @@ export default function SettingsPage() {
         )}
       </PageHeader>
 
-      <div className="flex flex-1 overflow-hidden">
+      {/* A side menu on a desktop; on a phone, a row of tabs across the top. */}
+      <div className="flex flex-col md:flex-row flex-1 overflow-hidden">
         {/* Sidebar */}
-        <nav className="w-44 shrink-0 border-r border-stone-700 py-4 px-2 space-y-0.5">
+        <nav className="flex md:block gap-1 md:w-44 shrink-0 border-b md:border-b-0 md:border-r border-stone-700 p-2 md:py-4 md:space-y-0.5">
           {SECTIONS.map(s => (
             <button
               key={s}
               onClick={() => setActive(s)}
-              className={`w-full text-left px-3 py-2 rounded text-sm transition-colors ${
+              className={`md:w-full text-left px-3 py-2 rounded text-sm transition-colors ${
                 active === s
-                  ? 'bg-stone-800 text-stone-100 font-medium'
+                  ? 'bg-stone-800 text-amber-400 font-medium'
                   : 'text-stone-400 hover:text-stone-200 hover:bg-stone-900'
               }`}
             >
