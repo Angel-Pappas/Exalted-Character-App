@@ -113,9 +113,10 @@ Storyteller, not admins (`WikiController`, tested in `tests/Feature/WikiTest.php
   the left shows people with their place, places as a tree, then groups.
 - **Links:** typing `[[` in any text opens a list of pages; a name with no page yet can
   become a new person, place or group right there. A link points at the page (its id),
-  so it shows the current name after a rename; it opens the page on click (Ctrl-click
+  so it shows the current name after a rename (unless it has its own wording, like a Wikipedia piped link: "Cato" for Cato Meren — `linkText`); it opens the page on click (Ctrl-click
   while editing) and shows a preview card after a short hover (image, kind, place, the
   start of the text). A link whose page is gone is red and starts a page with that name.
+  The list on the left wraps long names rather than cutting them off.
 - Text is stored as the editor's JSON (Tiptap 3, pinned), not Markdown — Angel's call,
   so links never break on a rename. The derived lists are worked out in the browser
   from all pages (`src/lib/wiki.ts`, tested); the server keeps the facts consistent (a

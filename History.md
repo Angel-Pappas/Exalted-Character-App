@@ -4,6 +4,15 @@ One entry per shipped change, newest first: what changed and **why**. How things
 now is in `Summary.md`; plans in `ROADMAP.md`. Entries before 2026-10-15 were rebuilt
 from the git history (one per day, its commits listed).
 
+- **2026-10-23** — **Kaien's first People & Places pages.** Angel's list, added by a
+  tested migration (adds only, skips names already there): Dovestone, Greyfalls and
+  Port Calin; Kaien; Kaien's Entourage, the eighteen people of the Service Estate with
+  his write-ups (six stayed in Dovestone, the rest are in Greyfalls); Blaque, Ral,
+  Maelia, Avaros, Ilyatha and Seset in Greyfalls; Solaen, Marek and Jorel in
+  Dovestone. Each write-up links the first mention of another page; Veyra has no page
+  yet, so hers is red. Links can now keep their own wording ("Cato's older sister"
+  links Cato Meren without renaming him in the sentence), and long names wrap in the
+  page list instead of being cut off.
 - **2026-10-23** — **People & Places tab.** Angel wanted a wiki for what his
   character knows: people grouped by what binds them (the entourage, the 23rd Legion,
   the villains), where each one is, and links between pages that open on click and
