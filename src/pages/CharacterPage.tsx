@@ -1,4 +1,4 @@
-import { useState, useCallback, useEffect, useRef } from 'react'
+import { lazy, Suspense, useState, useCallback, useEffect, useRef } from 'react'
 import { Link, useParams } from 'react-router-dom'
 import { api } from '../lib/api'
 import { useCharacter, useGameData } from '../hooks/useCharacter'
@@ -15,8 +15,11 @@ import MilestonesTab from '../tabs/MilestonesTab'
 import NotesTab from '../tabs/NotesTab'
 import CircleTab from '../tabs/CircleTab'
 
+// The wiki's editor is a large library; it loads only when the tab is opened.
+const WikiTab = lazy(() => import('../tabs/WikiTab'))
+
 export default function CharacterPage() {
-  const { id, tab } = useParams<{ id: string; tab?: string }>()
+  const { id, tab, pageId } = useParams<{ id: string; tab?: string; pageId?: string }>()
   const { user, role } = useAuth()
   const { character, data, setData } = useCharacter(id)
   const gameData = useGameData()
@@ -179,6 +182,11 @@ export default function CharacterPage() {
           />
         )}
         {!readOnly && activeTab === 'circle' && <CircleTab characterId={character.id} />}
+        {!readOnly && activeTab === 'people' && (
+          <Suspense fallback={<p className="p-6 text-sm text-stone-500">Loading…</p>}>
+            <WikiTab characterId={character.id} pageId={pageId} />
+          </Suspense>
+        )}
       </main>
     </div>
   )

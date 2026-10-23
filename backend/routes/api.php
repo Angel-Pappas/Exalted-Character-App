@@ -10,6 +10,7 @@ use App\Http\Controllers\CircleController;
 use App\Http\Controllers\ExaltTypeController;
 use App\Http\Controllers\GameDataController;
 use App\Http\Controllers\TrainingController;
+use App\Http\Controllers\WikiController;
 use Illuminate\Support\Facades\Route;
 
 // Loaded with the `web` middleware group under the /api prefix (see
@@ -35,6 +36,13 @@ Route::middleware('auth')->group(function () {
     Route::delete('characters/{character}/campaigns/{campaign}', [CharacterCampaignController::class, 'destroy']);
     Route::get('characters/{character}/circle', [CircleController::class, 'show']);
     Route::put('characters/{character}/circle/{subject}', [CircleController::class, 'update']);
+    Route::get('characters/{character}/wiki', [WikiController::class, 'index']);
+    Route::post('characters/{character}/wiki', [WikiController::class, 'store']);
+    Route::put('characters/{character}/wiki/{page}', [WikiController::class, 'update']);
+    Route::delete('characters/{character}/wiki/{page}', [WikiController::class, 'destroy']);
+    Route::get('characters/{character}/wiki/{page}/image', [WikiController::class, 'showImage']);
+    Route::post('characters/{character}/wiki/{page}/image', [WikiController::class, 'storeImage']);
+    Route::delete('characters/{character}/wiki/{page}/image', [WikiController::class, 'destroyImage']);
     Route::get('characters/{character}/training', [TrainingController::class, 'index']);
     Route::put('characters/{character}/training/{entry}', [TrainingController::class, 'complete']);
     Route::delete('characters/{character}/training/{entry}', [TrainingController::class, 'reopen']);

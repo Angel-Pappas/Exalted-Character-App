@@ -4,6 +4,18 @@ One entry per shipped change, newest first: what changed and **why**. How things
 now is in `Summary.md`; plans in `ROADMAP.md`. Entries before 2026-10-15 were rebuilt
 from the git history (one per day, its commits listed).
 
+- **2026-10-23** — **People & Places tab.** Angel wanted a wiki for what his
+  character knows: people grouped by what binds them (the entourage, the 23rd Legion,
+  the villains), where each one is, and links between pages that open on click and
+  preview on hover, like Wikipedia. We compared ready-made tools (Kanka, World Anvil,
+  LegendKeeper, Obsidian + Quartz, general wikis) and built it into the app: one login,
+  tied to the character, backed up with everything else. Each page is a person, place or
+  group, with an optional image and sections; a person has a current place and groups,
+  a place lists who is in it (and in the places inside it), a group its members. Pages
+  are stored in the editor's own format (Tiptap JSON), not Markdown, so links point at
+  the page itself and survive renames; Markdown export is on the roadmap. Private to
+  the character's owner, like the Circle notes. Images are shrunk in the browser (the
+  server takes 2 MB), served only to the owner, and copied by the nightly backup.
 - **2026-10-23** — **Essence panel pairs side by side again.** Angel saw Essence,
   Anima, the two Motes and Power/Will stacked in one column on his desktop: the panel
   switched to one column below 12rem, wider than it is at his window width. The +/−

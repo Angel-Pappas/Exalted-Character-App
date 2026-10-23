@@ -6,6 +6,7 @@ export const CHARACTER_TABS = [
   { id: 'milestones', label: 'Milestones', short: 'Milestones' },
   { id: 'notes', label: 'Notes', short: 'Notes' },
   { id: 'circle', label: 'Circle', short: 'Circle' },
+  { id: 'people', label: 'People & Places', short: 'People' },
 ] as const
 
 export type CharacterTab = typeof CHARACTER_TABS[number]['id']

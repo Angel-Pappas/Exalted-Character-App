@@ -36,6 +36,7 @@ A web-based interactive character sheet for a **custom version of the Exalted ta
 | `/characters` | CharactersPage | all |
 | `/character/:id` | CharacterPage (sheet) | all |
 | `/character/:id/milestones` · `/notes` · `/circle` | CharacterPage, that tab | owner / admin |
+| `/character/:id/people` · `/people/:pageId` | People & Places, a page | owner only |
 | `/options` | SettingsPage | all |
 | `/character/:id/options` | CharacterOptionsPage | owner / admin |
 | `/campaigns` | CampaignsPage | all |
@@ -80,6 +81,7 @@ keyboard focus gets an amber outline.
 | `charm_library` (+ child list tables) | Global charm list; everyone reads, admins write |
 | `exalt_types` | Global exalt types with caste label and castes (10 seeded) |
 | `training_completions` | Which milestone trainings are done, when and by whom (kept outside the sheet) |
+| `wiki_pages` (+ `wiki_page_groups`) | People & Places pages per character: kind, name, place, text, sections, image path |
 
 The schema is `backend/database/migrations/`. Who may do what is enforced in Laravel
 (`CharacterPolicy`: owner or admin; `can:admin` routes for admin tools) and covered by
@@ -95,6 +97,35 @@ A campaign is one story a group plays. **Storyteller (ST) is a per-campaign role
 - Someone else's character opens with only the Character Sheet tab, "View only": a disabled `<fieldset>` switches off every control and nothing is saved.
 - **Circle** tab (replaced the old "Characters" NPC-notes tab, whose saved `npcs` data is left untouched and unused): the other players' PCs in each of the character's campaigns, with notes only the character's owner can read (not the ST, not admins) — `circle_notes`.
 - Server: `CampaignController`, `CharacterCampaignController` (options + campaign membership), `CircleController`; rules covered by `tests/Feature/CampaignTest.php`.
+
+## People & Places (added 2026-10-23)
+A character's own wiki of the people, places and groups it knows (tab "People & Places",
+`src/tabs/WikiTab.tsx`). **Only the character's owner reads or edits it** — not the
+Storyteller, not admins (`WikiController`, tested in `tests/Feature/WikiTest.php`).
+- Every page is a **person**, **place** or **group**, with a name (unique in the wiki,
+  ignoring case), an optional image, the main text and optional titled sections
+  (reorder, remove). Read view first, like Wikipedia; **Edit** turns it into fields, and
+  changes save a moment after typing stops.
+- Each page has a **place** (a person's current place, the place a place sits in, where a
+  group is based) and **groups**. A place page lists the people and groups in it and in
+  the places inside it ("· in Lower Market"), and its places within; a group page lists
+  its members, each with where they are. Every page lists what mentions it. The list on
+  the left shows people with their place, places as a tree, then groups.
+- **Links:** typing `[[` in any text opens a list of pages; a name with no page yet can
+  become a new person, place or group right there. A link points at the page (its id),
+  so it shows the current name after a rename; it opens the page on click (Ctrl-click
+  while editing) and shows a preview card after a short hover (image, kind, place, the
+  start of the text). A link whose page is gone is red and starts a page with that name.
+- Text is stored as the editor's JSON (Tiptap 3, pinned), not Markdown — Angel's call,
+  so links never break on a rename. The derived lists are worked out in the browser
+  from all pages (`src/lib/wiki.ts`, tested); the server keeps the facts consistent (a
+  place is a place, groups are groups, no place inside itself).
+- **Images** are shrunk in the browser to at most 1600px (`src/lib/imageResize.ts`): the
+  server takes 2 MB (`upload_max_filesize`), and redrawing drops the photo's metadata.
+  Stored on the private disk (`storage/app/private/wiki/<character>/`), served only to
+  the owner, removed with the page, the character or the account, and copied nightly by
+  `backup-db.sh` into `~/backups/exalted/wiki-images/` (a copy that only grows).
+- The editor loads only when the tab is opened (a separate bundle).
 
 ## Milestones and training (training added 2026-10-16)
 The Milestones tab is a ledger of Income and Expense lines (logic in
@@ -309,6 +340,7 @@ src/
     SetupPage.tsx           # /setup — Tables | Charms | Users tabs
     LoginPage.tsx           # Username + password only; eye-icon toggle on all password fields
   tabs/
+    WikiTab.tsx             # People & Places (editor and previews in components/wiki/)
     SheetTab.tsx            # All 11 panels + defense calculations + FoI + CharmPanel
   types/
     character.ts            # All interfaces + DEFAULT_GAME_DATA + ExaltType

@@ -48,11 +48,15 @@ const width = Number(args.find((a) => a.startsWith('--width='))?.slice(8)) || 0;
 //                          showing exactly that text (e.g. --click=Milestones, --click="Ox Body Technique")
 //   --fill=Placeholder=Val types Val into the field with that placeholder
 //   --scroll=600           scrolls the page down by that many pixels (e.g. to see the header stay)
+//   --hover=Text           rests the pointer on the first element showing that text (a preview, a hint)
+//   --type=Text            types at the cursor, key by key (e.g. --click="Close friends" --type="[[So")
 const steps = args
-    .filter((a) => a.startsWith('--click=') || a.startsWith('--fill=') || a.startsWith('--scroll='))
+    .filter((a) => ['--click=', '--fill=', '--scroll=', '--hover=', '--type='].some((f) => a.startsWith(f)))
     .map((a) => {
         const [flag, ...rest] = a.slice(2).split('=');
         if (flag === 'scroll') return { scroll: Number(rest[0]) };
+        if (flag === 'hover') return { hover: rest.join('=') };
+        if (flag === 'type') return { type: rest.join('=') };
         return flag === 'click'
             ? { click: rest.join('=') }
             : { fill: rest[0], value: rest.slice(1).join('=') };
@@ -128,6 +132,9 @@ try {
     // The app keeps the chosen theme in localStorage (ThemeContext).
     await context.addInitScript((theme) => localStorage.setItem('theme', theme), light ? 'light' : 'dark');
     const page = await context.newPage();
+    // Errors in the app's own code show up here, not only as a broken screenshot.
+    page.on('pageerror', (e) => console.error(`page error: ${e.message}`));
+    page.on('console', (m) => m.type() === 'error' && console.error(`console: ${m.text()}`));
 
     await page.goto(`${BASE}/`);
     await page.waitForLoadState('networkidle');
@@ -145,6 +152,12 @@ try {
         for (const step of steps) {
             if (step.scroll) {
                 await page.mouse.wheel(0, step.scroll);
+            } else if (step.hover) {
+                await page.getByText(step.hover, { exact: true }).first().hover();
+                // Hover previews open after a short rest.
+                await page.waitForTimeout(800);
+            } else if (step.type) {
+                await page.keyboard.type(step.type, { delay: 30 });
             } else if (step.click) {
                 await page.getByRole('button', { name: step.click, exact: true })
                     .or(page.getByRole('link', { name: step.click, exact: true }))
@@ -160,7 +173,7 @@ try {
         const slug =
             path.replace(/[^a-z0-9]+/gi, '-').replace(/^-|-$/g, '') || 'home';
         const clicked = steps
-            .map((st) => `-${String(st.click ?? st.value ?? `scroll${st.scroll}`).replace(/[^a-z0-9]+/gi, '-')}`)
+            .map((st) => `-${String(st.click ?? st.hover ?? st.type ?? st.value ?? `scroll${st.scroll}`).replace(/[^a-z0-9]+/gi, '-')}`)
             .join('');
         const file = `${OUT}/${slug}${clicked}${mobile ? '-mobile' : ''}${wide ? '-wide' : ''}${width ? `-w${width}` : ''}${light ? '-light' : ''}.png`;
         await page.screenshot({ path: file, fullPage: wide || full || width > 0 });

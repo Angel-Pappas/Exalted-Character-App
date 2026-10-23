@@ -18,7 +18,7 @@ type Anchor = { el: Element; content: React.ReactNode }
 /** How long the pointer must rest on a `data-tip` hint before it shows. */
 const HINT_DELAY_MS = 300
 
-function Bubble({ anchor, wide = false, children }: { anchor: Element; wide?: boolean; children: React.ReactNode }) {
+export function Bubble({ anchor, wide = false, children }: { anchor: Element; wide?: boolean; children: React.ReactNode }) {
   const ref = useRef<HTMLDivElement>(null)
 
   // Positioned by writing styles directly: the size is only known after the bubble

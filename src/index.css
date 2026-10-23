@@ -214,3 +214,29 @@ body {
   border-right: 2px solid rgba(251, 191, 36, 0.9);
   border-bottom: 2px solid rgba(251, 191, 36, 0.9);
 }
+
+/* People & Places text (the Tiptap editor, read and edit). Colours from the palette,
+   so light mode follows. */
+.wiki-prose {
+  font-size: 0.875rem;
+  line-height: 1.65;
+  color: var(--color-stone-200);
+}
+/* The editor's frame already marks focus (its border turns amber). */
+.wiki-prose:focus-visible { outline: none; }
+.wiki-prose > * + * { margin-top: 0.6em; }
+.wiki-prose ul { list-style: disc; padding-left: 1.4em; }
+.wiki-prose ol { list-style: decimal; padding-left: 1.4em; }
+.wiki-prose li + li { margin-top: 0.2em; }
+.wiki-prose li > p { margin: 0; }
+.wiki-prose blockquote { border-left: 2px solid var(--color-stone-600); padding-left: 0.8em; color: var(--color-stone-400); }
+.wiki-prose strong { color: var(--color-stone-100); }
+.wiki-prose p.is-editor-empty:first-child::before {
+  content: attr(data-placeholder);
+  float: left;
+  height: 0;
+  pointer-events: none;
+  color: var(--color-stone-500);
+}
+/* While a [[ search is open, the typed text is marked as a link in the making. */
+.wiki-prose .suggestion { color: var(--color-amber-400); }

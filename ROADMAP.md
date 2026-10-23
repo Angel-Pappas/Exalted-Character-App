@@ -39,11 +39,18 @@ the priorities — the order under **Next** is a suggestion until he does.
       fit a phone (2026-10-22).
 - [x] UI/UX pass, part 4: home lists characters and campaigns; sheet no longer scrolls
       into empty space (2026-10-22).
+- [x] People & Places tab: each character's private wiki of people, places and groups,
+      with [[ links, hover previews, images and sections (2026-10-23).
 
 ## Next (suggested)
 
 - [ ] **Charm questions** — 12 open questions for Angel in `CHARM_QUESTIONS.md`.
 
 ## Ideas / later
+
+- [ ] People & Places: export the wiki as Markdown files (Obsidian-style `[[links]]`),
+      Angel's choice of 2026-10-23 when the pages were kept in the editor's format.
+- [ ] People & Places: share chosen pages with the campaign (today every page is
+      private to the character's owner).
 
 - [ ] Make the GitHub repo private (it was public only for Vercel's free tier).

@@ -33,8 +33,10 @@ export function errorMessage(status: number, body: unknown): string {
 }
 
 export async function api<T = unknown>(method: Method, path: string, body?: unknown): Promise<ApiResult<T>> {
+  // A FormData body (a file upload) sets its own multipart Content-Type.
+  const isForm = body instanceof FormData
   const headers: Record<string, string> = { Accept: 'application/json' }
-  if (body !== undefined) headers['Content-Type'] = 'application/json'
+  if (body !== undefined && !isForm) headers['Content-Type'] = 'application/json'
   const xsrf = readXsrfToken(document.cookie)
   if (xsrf) headers['X-XSRF-TOKEN'] = xsrf
 
@@ -44,7 +46,7 @@ export async function api<T = unknown>(method: Method, path: string, body?: unkn
       method,
       headers,
       credentials: 'same-origin',
-      body: body === undefined ? undefined : JSON.stringify(body),
+      body: body === undefined ? undefined : isForm ? body : JSON.stringify(body),
     })
   } catch {
     return { data: null, error: 'Could not reach the server.', status: 0 }

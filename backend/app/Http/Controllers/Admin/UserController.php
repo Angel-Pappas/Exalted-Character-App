@@ -4,7 +4,9 @@ namespace App\Http\Controllers\Admin;
 
 use App\Enums\Role;
 use App\Http\Controllers\Controller;
+use App\Models\Character;
 use App\Models\User;
+use App\Support\WikiImages;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Http\Response;
@@ -51,7 +53,10 @@ class UserController extends Controller
             throw ValidationException::withMessages(['user' => 'You cannot delete your own account.']);
         }
 
+        // The database takes the characters with the account; their images are files.
+        $characters = $user->characters()->get();
         $user->delete();
+        $characters->each(fn (Character $character) => WikiImages::forgetCharacter($character));
 
         return response()->noContent();
     }

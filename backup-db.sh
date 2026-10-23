@@ -39,3 +39,14 @@ chmod 600 "$FILE"
 
 find "$BACKUP_DIR" -name '*.sql.gz' -mtime +"$KEEP_DAYS" -delete
 echo "Backup OK: $FILE ($(du -h "$FILE" | cut -f1))"
+
+# People & Places images are files, not database rows. They are copied into one
+# folder that only ever grows: every upload has its own file name, so a replaced
+# or deleted image stays in the backup, and nothing is copied twice.
+IMAGES="storage/app/private/wiki"
+if [ -d "$IMAGES" ]; then
+    mkdir -p "$BACKUP_DIR/wiki-images"
+    chmod 700 "$BACKUP_DIR/wiki-images"
+    rsync -a "$IMAGES/" "$BACKUP_DIR/wiki-images/"
+    echo "Images OK: $BACKUP_DIR/wiki-images ($(du -sh "$BACKUP_DIR/wiki-images" | cut -f1))"
+fi
