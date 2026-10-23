@@ -6,7 +6,7 @@ import Mention from '@tiptap/extension-mention'
 import { Placeholder } from '@tiptap/extensions'
 import type { SuggestionKeyDownProps, SuggestionProps } from '@tiptap/suggestion'
 import { Bold, Italic, Link2, List, ListOrdered } from 'lucide-react'
-import { KIND_LABEL, KINDS, WIKI_LINK, nameTaken, resolveLink, searchPages } from '../../lib/wiki'
+import { KIND_LABEL, KINDS, WIKI_LINK, linkText, nameTaken, resolveLink, searchPages } from '../../lib/wiki'
 import type { RichDoc, WikiKind, WikiPage } from '../../types/wiki'
 import { KindIcon, PageLink } from './PageLink'
 import { useWiki, wikiPath, type WikiContextValue } from './WikiContext'
@@ -27,6 +27,7 @@ function WikiLinkView({ node, editor }: NodeViewProps) {
   const navigate = useNavigate()
   const label = typeof node.attrs.label === 'string' ? node.attrs.label : ''
   const page = resolveLink(pages, node.attrs.id, label)
+  const shown = linkText(node.attrs, page)
 
   // While editing, a plain click places the cursor; Ctrl/⌘-click still follows the link.
   const stayWhileEditing = (e: React.MouseEvent) => {
@@ -36,7 +37,7 @@ function WikiLinkView({ node, editor }: NodeViewProps) {
   return (
     <NodeViewWrapper as="span">
       {page ? (
-        <PageLink page={page} onClick={stayWhileEditing} />
+        <PageLink page={page} onClick={stayWhileEditing}>{shown}</PageLink>
       ) : (
         <a
           href={`${wikiPath(characterId)}?new=${encodeURIComponent(label)}`}
@@ -50,7 +51,7 @@ function WikiLinkView({ node, editor }: NodeViewProps) {
             }
           }}
         >
-          {label}
+          {shown}
         </a>
       )}
     </NodeViewWrapper>
@@ -104,8 +105,12 @@ function wikiLinkExtension(wiki: () => WikiContextValue) {
   return Mention.extend({
     name: WIKI_LINK,
     addNodeView() { return ReactNodeViewRenderer(WikiLinkView) },
+    // A link's own wording (see linkText); kept when the page is saved and loaded.
+    addAttributes() {
+      return { ...this.parent?.(), text: { default: null } }
+    },
   }).configure({
-    renderText: ({ node }) => String(node.attrs.label ?? ''),
+    renderText: ({ node }) => String(node.attrs.text || node.attrs.label || ''),
     deleteTriggerWithBackspace: true,
     suggestion: {
       char: '[[',

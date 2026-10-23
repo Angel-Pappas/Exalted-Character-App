@@ -5,8 +5,20 @@
 // can never hang the page.
 import type { RichDoc, WikiKind, WikiPage } from '../types/wiki'
 
-/** The editor's node for a link to another page; attrs `id` and `label` (the name when linked). */
+/**
+ * The editor's node for a link to another page; attrs `id`, `label` (the name when
+ * linked) and, optionally, `text`: its own wording ("Cato" for Cato Meren), like a
+ * Wikipedia piped link. Without `text` a link shows the page's current name.
+ */
 export const WIKI_LINK = 'wikiLink'
+
+/** What a link reads as: its own wording, else the page's current name, else the name it was written with. */
+export function linkText(attrs: Record<string, unknown> | undefined, page: WikiPage | null): string {
+  const text = attrs?.text
+  if (typeof text === 'string' && text) return text
+  const label = attrs?.label
+  return page?.name ?? (typeof label === 'string' ? label : '')
+}
 
 export const KIND_LABEL: Record<WikiKind, string> = { person: 'Person', place: 'Place', group: 'Group' }
 export const KIND_PLURAL: Record<WikiKind, string> = { person: 'People', place: 'Places', group: 'Groups' }
@@ -110,10 +122,7 @@ export function plainText(doc: RichDoc | null | undefined, pages: WikiPage[] = [
   const blocks: string[] = []
   const inline = (node: RichDoc): string => {
     if (node.type === 'text') return node.text ?? ''
-    if (node.type === WIKI_LINK) {
-      const label = node.attrs?.label
-      return resolveLink(pages, node.attrs?.id, label)?.name ?? (typeof label === 'string' ? label : '')
-    }
+    if (node.type === WIKI_LINK) return linkText(node.attrs, resolveLink(pages, node.attrs?.id, node.attrs?.label))
     if (node.type === 'hardBreak') return ' '
     return (node.content ?? []).map(inline).join('')
   }

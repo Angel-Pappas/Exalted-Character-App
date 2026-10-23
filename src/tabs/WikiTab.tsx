@@ -58,7 +58,7 @@ function NewPageForm({ initialName, onCreate, onCancel }: {
 /** The list of every page: search, then People, Places (as a tree) and Groups. */
 function PageList({ pages, currentId }: { pages: WikiPage[]; currentId?: string }) {
   const [query, setQuery] = useState('')
-  const rowCls = (id: string) => `flex items-center gap-1.5 rounded px-2 py-1 text-sm truncate ${id === currentId ? 'bg-stone-800 text-amber-400' : 'text-stone-300 hover:bg-stone-800/60 hover:text-stone-100'}`
+  const rowCls = (id: string) => `flex items-baseline gap-1.5 rounded px-2 py-1 text-sm ${id === currentId ? 'bg-stone-800 text-amber-400' : 'text-stone-300 hover:bg-stone-800/60 hover:text-stone-100'}`
 
   if (query.trim()) {
     const hits = searchPages(pages, query)
@@ -66,7 +66,7 @@ function PageList({ pages, currentId }: { pages: WikiPage[]; currentId?: string 
       <div className="space-y-2">
         <SearchBox query={query} setQuery={setQuery} />
         {hits.length ? hits.map(p => (
-          <PageLink key={p.id} page={p} className={rowCls(p.id)}><KindIcon kind={p.kind} className="w-3.5 h-3.5 shrink-0 text-stone-500" /><span className="truncate">{p.name}</span></PageLink>
+          <PageLink key={p.id} page={p} className={rowCls(p.id)}><KindIcon kind={p.kind} className="w-3.5 h-3.5 shrink-0 self-center text-stone-500" /><span className="min-w-0 break-words">{p.name}</span></PageLink>
         )) : <p className="px-2 text-xs text-stone-500">No page matches.</p>}
       </div>
     )
@@ -87,8 +87,9 @@ function PageList({ pages, currentId }: { pages: WikiPage[]; currentId?: string 
               const at = kind === 'person' ? placeChain(pages, page.place_id).at(-1)?.name : undefined
               return (
                 <PageLink key={page.id} page={page} className={rowCls(page.id)}>
-                  <span style={{ paddingLeft: `${depth * 0.75}rem` }} className="truncate">{page.name}</span>
-                  {at && <span className="ml-auto pl-2 text-[11px] text-stone-500 truncate shrink-0 max-w-[45%]">{at}</span>}
+                  {/* Names wrap rather than being cut off: they are what the list is for. */}
+                  <span style={{ paddingLeft: `${depth * 0.75}rem` }} className="min-w-0 flex-1 break-words">{page.name}</span>
+                  {at && <span className="pl-2 text-[11px] text-stone-500 text-right shrink-0 max-w-[45%] break-words">{at}</span>}
                 </PageLink>
               )
             })}

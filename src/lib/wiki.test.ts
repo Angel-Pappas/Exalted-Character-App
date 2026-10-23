@@ -95,8 +95,11 @@ describe('text', () => {
     { type: 'bulletList', content: [{ type: 'listItem', content: [para(text('Owes a favour'))] }] },
   )
 
-  it("reads a document's text, with links as their page's current name", () => {
+  it("reads a document's text, with links as their page's current name or their own wording", () => {
     expect(plainText(body, all)).toBe('Met Solaen at the docks.\nOwes a favour')
+    const piped = doc(para({ type: 'wikiLink', attrs: { id: 'sol', label: 'Solaen', text: 'Sol' } }, text("'s blade")))
+    expect(plainText(piped, all)).toBe("Sol's blade")
+    expect(plainText(doc(para(link('gone', 'Ral'))), all)).toBe('Ral')
     expect(plainText(null)).toBe('')
   })
 
