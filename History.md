@@ -4,6 +4,10 @@ One entry per shipped change, newest first: what changed and **why**. How things
 now is in `Summary.md`; plans in `ROADMAP.md`. Entries before 2026-10-15 were rebuilt
 from the git history (one per day, its commits listed).
 
+- **2026-10-23** — **Circle group in Kaien's wiki.** Angel asked for a group "Circle"
+  with Blaque, Veyra and Solaen; Veyra got her own page (no place yet), which also
+  turns the red Veyra link on Lenna's page into a working one. Added by a tested
+  migration that only adds.
 - **2026-10-23** — **Kaien's first People & Places pages.** Angel's list, added by a
   tested migration (adds only, skips names already there): Dovestone, Greyfalls and
   Port Calin; Kaien; Kaien's Entourage, the eighteen people of the Service Estate with
