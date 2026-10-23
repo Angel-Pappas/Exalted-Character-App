@@ -2227,7 +2227,7 @@ function InventoryPanel({ items, onChange, foi, foiOriginals, onFoiChange, dragE
 
 const numInput = "w-[30px] text-center bg-stone-800 border border-stone-600 text-stone-100 rounded px-1 py-0.5 text-xs focus:outline-none focus:border-amber-500"
 
-const counterBtnCls = "w-5 h-5 flex items-center justify-center rounded text-stone-400 hover:text-stone-100 hover:bg-stone-700 transition-colors text-sm font-bold shrink-0"
+const counterBtnCls = "w-4 h-5 flex items-center justify-center rounded text-stone-400 hover:text-stone-100 hover:bg-stone-700 transition-colors text-sm font-bold shrink-0"
 
 // Header for a section inside the Essence panel — one step down from SectionHeader,
 // which titles a whole panel.
@@ -2296,7 +2296,7 @@ function Counter({ value, onStep, size = 'lg', valueCls = 'text-stone-100' }: {
   valueCls?: string
 }) {
   return (
-    <div className="flex items-center justify-center gap-1">
+    <div className="flex items-center justify-center gap-0.5">
       <button onClick={() => onStep(-1)} className={counterBtnCls}>−</button>
       <span className={`font-bold text-center tabular-nums ${size === 'lg' ? 'text-3xl w-9' : 'text-xl w-8'} ${valueCls}`}>{value}</span>
       <button onClick={() => onStep(+1)} className={counterBtnCls}>+</button>
@@ -2716,19 +2716,21 @@ export default function SheetTab({ sheet, onChange, editMode, readOnly = false, 
       const setWill = (delta: number) => update({ will: Math.max(0, Math.min(10, will + delta)) })
 
       const divider = <div className="border-t border-stone-700/60" />
-      const vRule = <div className="hidden @[12rem]:block w-px self-stretch bg-stone-700/60" />
+      const vRule = <div className="hidden @[9.5rem]:block w-px self-stretch bg-stone-700/60" />
 
       // No panel-level SectionHeader here: the Essence label below would sit directly
       // under an identical "Essence" title.
       // Layout is a 2-column grid of three rows: Essence | Anima, then Motes (whose
       // Current | Committed pair fills both columns), then Power | Will. A panel too
       // narrow for two counters side by side stacks each pair instead, so no label
-      // is cut off (a container query on the panel's own width).
+      // is cut off (a container query on the panel's own width). 9.5rem is what two
+      // large counters need (2 × 72px + gap and rule); at 12rem the pairs stacked on
+      // Angel's desktop (2026-10-23), so keep the counters compact.
       return (
         <div className={`${panelBase} @container`}>
           <div className="space-y-2">
 
-            <div className="flex flex-col @[12rem]:flex-row items-stretch @[12rem]:items-start gap-2 @[12rem]:gap-1">
+            <div className="flex flex-col @[9.5rem]:flex-row items-stretch @[9.5rem]:items-start gap-2 @[9.5rem]:gap-1">
               <div className="flex-1 min-w-0">
                 <SubHeader title="Essence" />
                 <Counter value={essence} onStep={setEssence} />
@@ -2751,7 +2753,7 @@ export default function SheetTab({ sheet, onChange, editMode, readOnly = false, 
                 onReset={resetMotes}
                 right={<span className="text-[10px] text-stone-500">Total <span className="text-stone-300 font-semibold">{totalMotes}</span></span>}
               />
-              <div className="flex flex-col @[12rem]:flex-row items-stretch @[12rem]:items-start gap-1.5 @[12rem]:gap-0">
+              <div className="flex flex-col @[9.5rem]:flex-row items-stretch @[9.5rem]:items-start gap-1.5 @[9.5rem]:gap-0">
                 <div className="flex-1 min-w-0 flex flex-col items-center gap-0.5">
                   <span className="text-[10px] uppercase tracking-wider text-stone-500">Current</span>
                   <Counter value={current} onStep={setCurrent} size="sm" />
@@ -2765,7 +2767,7 @@ export default function SheetTab({ sheet, onChange, editMode, readOnly = false, 
 
             {divider}
 
-            <div className="flex flex-col @[12rem]:flex-row items-stretch @[12rem]:items-start gap-2 @[12rem]:gap-1">
+            <div className="flex flex-col @[9.5rem]:flex-row items-stretch @[9.5rem]:items-start gap-2 @[9.5rem]:gap-1">
               <div className="flex-1 min-w-0">
                 <SubHeader title="Power" onReset={() => update({ power: 0 })} />
                 <Counter value={power} onStep={setPower} />

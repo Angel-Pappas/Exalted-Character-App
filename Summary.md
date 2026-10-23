@@ -161,7 +161,7 @@ The **Essence** panel holds every pool in one box: an Essence | Anima row on top
 then Motes (Current | Committed), then a Power | Will row. Power and Will are 0–10; Essence is 1–5 and has no reset
 (it is a permanent trait, not a per-scene pool). All three look and behave like Anima
 minus its state label and color ramp. The panel has no title of its own — the counter
-row's labels serve as one. A panel narrower than 12rem (a container query on its own
+row's labels serve as one. A panel narrower than 9.5rem (a container query on its own
 width) stacks each pair instead of cutting the labels off ("ESSE…", found 2026-10-15).
 
 Older layouts are migrated on load and the rest of the column reflows to match: sheets

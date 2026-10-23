@@ -49,7 +49,7 @@ the VM and its MySQL backups (`~/backups/exalted/`) are the only copies. Keep
 - **Look before shipping:** `(cd backend && php artisan db:seed --class=DemoSeeder)`
   adds a `demo` / `password` admin with a "Demo Solar" character (it only adds, never
   wipes); `npm run build`; then `npm run shots -- / /characters "/character/<id>"`
-  (`--mobile`, `--light` = the app's light theme, `--wide` = Angel's 2560px desktop, full page, `--full` = full page at any size, `--click=Milestones`
+  (`--mobile`, `--light` = the app's light theme, `--wide` = Angel's 2560px desktop, full page, `--width=2048` = any window width, full page (2048 = a 2560 screen at 125% scaling), `--full` = full page at any size, `--click=Milestones`
   clicks that button and `--fill=Placeholder=text` types into that field first, in the
   order given; the `--` stops
   npm from swallowing those flags) → PNGs in `backend/storage/screenshots/`. The script serves

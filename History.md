@@ -4,6 +4,11 @@ One entry per shipped change, newest first: what changed and **why**. How things
 now is in `Summary.md`; plans in `ROADMAP.md`. Entries before 2026-10-15 were rebuilt
 from the git history (one per day, its commits listed).
 
+- **2026-10-23** — **Essence panel pairs side by side again.** Angel saw Essence,
+  Anima, the two Motes and Power/Will stacked in one column on his desktop: the panel
+  switched to one column below 12rem, wider than it is at his window width. The +/−
+  buttons are a little narrower now, so two counters fit in 9.5rem, and it stacks only
+  below that. `npm run shots` gained `--width=N` to check other window widths.
 - **2026-10-22** — **Health boxes wrap inside their panel.** Found in the screenshot
   review: at narrower desktop widths a long health level (Ox Body adds many boxes) ran
   past the panel's right edge; it now wraps onto a second row.

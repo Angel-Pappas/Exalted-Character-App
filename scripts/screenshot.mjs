@@ -1,13 +1,14 @@
 // Screenshot app pages from the DEV checkout (dev database + the `demo` login from
 // DemoSeeder, never live), so a change can be looked at before it ships. Usage:
 //
-//   npm run shots -- / /characters "/character/<id>"   [--mobile] [--light] [--wide] [--full] [--click=Milestones] [--fill=Search=Ox]
+//   npm run shots -- / /characters "/character/<id>"   [--mobile] [--light] [--wide] [--width=2048] [--full] [--click=Milestones] [--fill=Search=Ox]
 //
 // (the `--` matters: without it npm swallows the --flags itself)
 //
 // --wide is Angel's desktop (2560 wide) and captures the whole page, not just the
 // first screenful — the sheet's layout is sized for that width. --full captures the
-// whole page at any size. --light switches the app to its light theme (Settings →
+// whole page at any size. --width=N sets the window width (e.g. 2048 = a 2560 screen
+// at 125% scaling). --light switches the app to its light theme (Settings →
 // Appearance); without it the app is in its default dark theme.
 //
 // Serves the built front end (`dist/`, SPA fallback to index.html) and forwards
@@ -41,6 +42,7 @@ const mobile = args.includes('--mobile');
 const light = args.includes('--light');
 const full = args.includes('--full');
 const wide = args.includes('--wide');
+const width = Number(args.find((a) => a.startsWith('--width='))?.slice(8)) || 0;
 // Steps run on each page before the shot, in the order given:
 //   --click=Text           clicks the button, link or checkbox with that text, or else any element
 //                          showing exactly that text (e.g. --click=Milestones, --click="Ox Body Technique")
@@ -113,7 +115,9 @@ await new Promise((r) => web.listen(WEB_PORT, '127.0.0.1', r));
 const browser = await chromium.launch();
 try {
     const context = await browser.newContext({
-        viewport: mobile
+        viewport: width
+            ? { width, height: 1440 }
+            : mobile
             ? { width: 390, height: 844 }
             : wide
               ? { width: 2560, height: 1440 }
@@ -158,8 +162,8 @@ try {
         const clicked = steps
             .map((st) => `-${String(st.click ?? st.value ?? `scroll${st.scroll}`).replace(/[^a-z0-9]+/gi, '-')}`)
             .join('');
-        const file = `${OUT}/${slug}${clicked}${mobile ? '-mobile' : ''}${wide ? '-wide' : ''}${light ? '-light' : ''}.png`;
-        await page.screenshot({ path: file, fullPage: wide || full });
+        const file = `${OUT}/${slug}${clicked}${mobile ? '-mobile' : ''}${wide ? '-wide' : ''}${width ? `-w${width}` : ''}${light ? '-light' : ''}.png`;
+        await page.screenshot({ path: file, fullPage: wide || full || width > 0 });
         console.log(file);
     }
 } finally {
